@@ -3,7 +3,7 @@
 import {Suspense,useMemo} from 'react';
 import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
-import {safeReturnTarget} from '@/lib/navigation/return-context';
+import {safeReturnTarget,withReturnTarget} from '@/lib/navigation/return-context';
 import {useLiveQuery} from 'dexie-react-hooks';
 import {ArrowLeft,ArrowUpRight,CalendarDays,FileText,Link2,ShieldCheck} from 'lucide-react';
 import {useAuth} from '@/hooks/useAuth';
@@ -16,6 +16,7 @@ import {graphFromExistingA10,relatedFactsA10} from '@/lib/a10/relations';
 function ExactFactView(){
  const params=useSearchParams();const authority=params.get('origem')||'',id=params.get('id')||'';
  const backHref=safeReturnTarget(params.get('return_to'),'/saude/linha-clinica');
+ const detailHref=withReturnTarget(`/saude/linha-clinica/detalhe?origem=${encodeURIComponent(params.get('origem')||'')}&id=${encodeURIComponent(params.get('id')||'')}`,backHref);
  const {user,loading}=useAuth();const {activePersonId}=useActivePersonId();
  const uid=user?.id||'',pid=activePersonId||'',scope=`${uid}:${pid}`;
  const snapshot=useLiveQuery(()=>loadScopedA10(uid,pid),[uid,pid]);
@@ -32,10 +33,10 @@ function ExactFactView(){
     !permitted||!current?<p role="alert" className="rounded-xl border border-surface-border p-4 text-xs">Registro não encontrado nesta pessoa. Ele pode ter sido retificado, removido ou pertencer a outra conta.</p>:
     <>
      <section className="space-y-3 rounded-2xl border border-surface-border bg-surface p-4"><p className="flex items-center gap-2 text-xs text-emerald-300"><FileText size={16}/>{A10_DOMAIN_LABELS[current.domain]}</p><h2 className="break-words text-lg font-bold">{current.title}</h2><p className="flex items-center gap-2 text-xs text-ink-secondary"><CalendarDays size={16}/>{current.displayedDate}{current.dateKind==='planned'?' · Planejado':current.dateKind==='reported'?' · Relatado':current.dateKind==='registration'?' · Data do cadastro':''}</p><p className="text-sm font-semibold text-ink-primary">{current.status}</p>{current.detail?<p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-ink-secondary">{current.detail}</p>:null}<p className="text-xs text-ink-muted">Origem: {current.origin} · {current.source}</p><p className="text-xs text-ink-muted">{current.revision==='current'?'Registro atual':current.revision==='historical'?'Versão histórica retificada':current.revision==='deleted'?'Registro excluído no histórico':'Cancelamento documental'} · {current.sync==='synced'?'Marcado localmente como sincronizado':current.sync==='pending'?'Sincronização pendente':'Sincronização não comprovada'}</p><p className="break-all text-[11px] text-ink-muted">Identificador de origem: {current.id}</p>{graph&&(graph.privateEvidenceCounts[current.key]||0)>0?<p className="text-xs text-ink-secondary">{graph.privateEvidenceCounts[current.key]} {graph.privateEvidenceCounts[current.key]===1?'vínculo documental privado':'vínculos documentais privados'} registrados. Os arquivos originais não são expostos nesta tela.</p>:null}<div className="flex items-start gap-2 rounded-xl border border-emerald-300/15 bg-emerald-300/[.04] p-3 text-xs text-ink-secondary"><ShieldCheck size={17} className="shrink-0 text-emerald-300"/><p>Relato, plano, registro efetivo e interpretação são fatos diferentes. A ausência de evento não equivale a ausência de risco.</p></div>
-      {current.originHref.includes('?id=')||current.originHref.includes('?registro=')?<Link href={current.originHref} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-border px-3 text-xs font-semibold">Abrir registro canônico <ArrowUpRight size={16}/></Link>:null}
+      {current.originHref.includes('?id=')||current.originHref.includes('?registro=')?<Link href={withReturnTarget(current.originHref,detailHref)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-border px-3 text-xs font-semibold">Abrir registro canônico <ArrowUpRight size={16}/></Link>:null}
      </section>
      {related.length>0?<section className="space-y-2"><h3 className="flex items-center gap-2 text-sm font-bold"><Link2 size={17} className="text-emerald-300"/> Vínculos por identificador</h3>{related.map(rel=>{
-       const item=projection?.facts.find(f=>f.key===rel.to);return item?<Link key={rel.to} href={item.href+'&return_to='+encodeURIComponent(backHref)} className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-surface-border bg-surface p-3 text-xs"><span className="min-w-0 break-words">{item.title} · {item.displayedDate}</span><ArrowUpRight size={16} className="shrink-0"/></Link>:null;
+       const item=projection?.facts.find(f=>f.key===rel.to);return item?<Link key={rel.to} href={withReturnTarget(item.href,detailHref)} className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-surface-border bg-surface p-3 text-xs"><span className="min-w-0 break-words">{item.title} · {item.displayedDate}</span><ArrowUpRight size={16} className="shrink-0"/></Link>:null;
       })}<p className="text-[11px] text-ink-muted">Vínculos são relações explícitas, não prova de causa.</p></section>:null}
     </>}
   </div>

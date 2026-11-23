@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
@@ -355,6 +356,7 @@ export default function DiagnosticoPage() {
           </button>
           <div><p className="font-mono text-[11px] uppercase tracking-[.25em] text-ice">Vault</p><h1 className="text-xl font-semibold">Saúde da sincronização</h1></div>
         </header>
+        <Link href="/diagnostico/a11" className="mt-3 flex min-h-12 items-center gap-3 rounded-2xl border border-emerald-300/25 bg-surface px-4 py-3 text-xs font-semibold text-emerald-200"><ShieldCheck size={18} className="shrink-0"/><span className="min-w-0 flex-1">Certificação A11 · Android e privacidade</span><Smartphone size={18} className="shrink-0"/></Link>
 
         {!isOnline && <div className="mt-5 flex gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4"><WifiOff className="shrink-0 text-amber-400" /><p className="text-sm text-ink-muted">Sem rede. Seus dados permanecem no aparelho e a fila será retomada quando a conexão voltar.</p></div>}
 

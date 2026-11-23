@@ -1,5 +1,6 @@
 /** Documento A4 offline. Exportar/arquivar pertence exclusivamente ao gesto da UI. */
 import type { MedicalDossierP3, MedicalRowP3 } from './medical-dossier-p3';
+import {humanMedicalSourceG4, humanMedicalRelationG4} from './medical-human-g4';
 
 const clean=(input:unknown,max=6000):string=>String(input??'').replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,max);
 const shortDay=(iso:string)=>/^\d{4}-\d{2}-\d{2}$/.test(iso)?`${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}`:'Data não informada';
@@ -64,8 +65,8 @@ export async function makeMedicalPdfP3(report:MedicalDossierP3):Promise<Blob>{
     const titleLines=pdf.splitTextToSize(title,right-left) as string[];
     for(const piece of titleLines){room(6);pdf.text(piece,left,y);y+=5.2;}
     line(humanRowTextV34X(value.detail),9);
-    line(`Origem: ${clean(humanRowTextV34X(value.source),90)} · Evidência: ${value.provenance}${value.registeredAt?` · Registrado em: ${recordedAtBR(value.registeredAt)}`:''}`,8,[81,106,117]);
-    for(const link of value.relations)line(`Vínculo documentado: ${humanRowTextV34X(link)}`,8,[69,106,105]);
+    line(`Origem: ${humanMedicalSourceG4(value.source)} · Evidência: ${value.provenance}${value.registeredAt?` · Registrado em: ${recordedAtBR(value.registeredAt)}`:''}`,8,[81,106,117]);
+    for(const link of value.relations.map(humanMedicalRelationG4))line(`Vínculo documentado: ${humanRowTextV34X(link)}`,8,[69,106,105]);
     y+=3;
   }
   page();

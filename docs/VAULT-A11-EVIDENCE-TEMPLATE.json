@@ -1,0 +1,104 @@
+{
+  "schema": "VAULT_A11_EVIDENCE_V1",
+  "status": "not_certified",
+  "evidence": [
+    {
+      "track": "typescript",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "v63",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "v70",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "git_integrity",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "android_ci",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "android_install",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "identity_2x2",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "storage_2x2",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "offline_two_devices",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "race_two_devices",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "notification_doze",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "accessibility_320_430",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "avatar_performance",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    },
+    {
+      "track": "pwa_production",
+      "verdict": "not_tested",
+      "source": "not_tested",
+      "sha": null,
+      "evidenceRef": null
+    }
+  ]
+}

@@ -9,7 +9,7 @@ const scoped=(r:A10Row,uid:string,pid:string)=>str(r.user_id)===uid&&str(r.perso
 export const sameScopeA10=(a:Pick<A10Fact,'userId'|'personId'>,b:Pick<A10Fact,'userId'|'personId'>):boolean=>Boolean(a.userId&&a.personId&&a.userId===b.userId&&a.personId===b.personId);
 const ENTITY_A5:Record<string,A10Authority>={cirurgia:'cirurgias',consulta:'consultas',exam_order:'exam_orders'};
 const EVIDENCE_A7:Record<string,A10Authority>={procedure_event_a9:'procedure_events_a9',exam_order:'exam_orders',medication:'medicamentos',health_record:'registros_saude'};
-const M3_ENTITIES:Record<string,A10Authority>={exam_order:'exam_orders',exam_order_item:'exam_order_items',vaccination_event:'vaccination_events_a8',procedure_event:'procedure_events_a9',sensitivity_event:'sensitivity_events_a9',surgery_event:'surgery_journey_events_a7',surgical_intent:'surgical_intents_a7m5',rehab_milestone:'rehab_milestones_m5',hospitalization:'hospitalizations_a5'};
+const M3_ENTITIES:Record<string,A10Authority>={exam_order:'exam_orders',exam_order_item:'exam_order_items',consultation:'consultas',rehab_session:'rehab_sessions_m5',hospitalization_event:'hospitalization_events_a5',vaccination_event:'vaccination_events_a8',procedure_event:'procedure_events_a9',sensitivity_event:'sensitivity_events_a9',surgery_event:'surgery_journey_events_a7',surgical_intent:'surgical_intents_a7m5',rehab_milestone:'rehab_milestones_m5',hospitalization:'hospitalizations_a5'};
 /** Links never expose private Storage paths or file contents. */
 export function graphFromExistingA10(facts:readonly A10Fact[],data:A10Datasets,uid:string,pid:string):A10EvidenceGraph{
  if(!uid||!pid)return {edges:[],privateEvidenceCounts:{},excludedWrongScope:0};
@@ -43,12 +43,18 @@ export function graphFromExistingA10(facts:readonly A10Fact[],data:A10Datasets,u
  }
  const privateEvidenceCounts:Record<string,number>={};
  // Do not count dangling, deleted or foreign private binary metadata as a valid asset link.
- const ownedAssets=new Set(read('clinical_assets').filter(x=>scoped(x,uid,pid)).map(x=>str(x.id)).filter(Boolean));
+ const ownedAssets=new Set(read('clinical_assets').filter(x=>scoped(x,uid,pid)&&(!str(x.storage_bucket)||str(x.storage_bucket)==='clinical-private')).map(x=>str(x.id)).filter(Boolean));
+ const countedAssetFacts=new Set<string>();
  for(const r of read('clinical_asset_links')){
   if(!scoped(r,uid,pid)){excludedWrongScope++;continue;}
-  if(!ownedAssets.has(str(r.asset_id)))continue;
+  const assetId=str(r.asset_id);if(!ownedAssets.has(assetId))continue;
   const dest=M3_ENTITIES[str(r.entity_type)];const k=dest?`${dest}:${str(r.entity_id)}`:'';
-  if(k&&index.has(k))privateEvidenceCounts[k]=(privateEvidenceCounts[k]||0)+1;
+  // A document can belong to multiple facts (N:N), but duplicate active links
+  // for the same asset+fact must not inflate the evidence counter.
+  const proofKey=JSON.stringify([k,assetId]);
+  if(k&&index.has(k)&&!countedAssetFacts.has(proofKey)){
+   countedAssetFacts.add(proofKey);privateEvidenceCounts[k]=(privateEvidenceCounts[k]||0)+1;
+  }
  }
  return {edges:links,privateEvidenceCounts,excludedWrongScope};
 }

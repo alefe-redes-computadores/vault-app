@@ -15,6 +15,37 @@ import type {A8Course,A8Event} from '@/lib/vaccination-a8/types';
 import {activeFactsA9,A9_PROCEDURE_LABEL,A9_SENSITIVITY_LABEL} from '@/lib/clinical-a9/types';
 import type {A9Procedure,A9Sensitivity} from '@/lib/clinical-a9/types';
 import type {A10Fact} from '@/lib/a10/longitudinal';
+/** Guardian4 FIX1: adaptador PURO no próprio dossiê.
+ * Os contratos M3 P3/P6 executam esta fonte em VM e aceitam somente as autoridades
+ * clínicas preexistentes. Não adicionar import de execução aqui, nem modificar os gates.
+ * Esta é apresentação, não um writer; 'source', 'sourceId' e IDs ficam canônicos.
+ */
+const medicalUuidG4=/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
+function humanMedicalRelationG4(value:string):string {
+ const content=String(value||'').trim();
+ if(!content)return '';
+ if(/^Identificador relacionado\s*:/i.test(content))return 'Vínculo referenciado; descrição indisponível';
+ if(medicalUuidG4.test(content))return /^Consulta vinculada por ID\s*:/i.test(content)
+  ? 'Consulta vinculada por identificador; nome indisponível'
+  : 'Vínculo por identificador; descrição indisponível';
+ return content;
+}
+/** Resolver somente vínculo authority+id com titularidade idêntica e fato vigente. */
+function verifiedMedicalRelationsA10G4(f:A10Fact,all:readonly A10Fact[]):string[] {
+ const index=new Map(all.filter(x=>x.userId===f.userId&&x.personId===f.personId&&x.revision==='current')
+  .map(x=>[x.key,x] as const));
+ const names:string[]=[];const seen=new Set<string>();
+ for(const rel of f.relationTargets){
+  const key=`${rel.authority}:${rel.id}`;
+  if(!rel.id||key===f.key||seen.has(key))continue;
+  seen.add(key);
+  const target=index.get(key);
+  if(!target)continue;
+  const title=String(target.title||'').replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,160);
+  if(title)names.push(`Registro relacionado: ${title}`);
+ }
+ return names.slice(0,25);
+}
 
 export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation' | 'vaccinations' | 'procedures_a9' | 'sensitivities_a9' | 'hospitalizations';
 export type MedicalModeP3 = 'summary' | 'detailed';
@@ -144,7 +175,7 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
   const add=(r:Omit<MedicalRowP3,'key'>)=>{
     if(!r.sourceId||!r.source||!within(r.date))return;
     rows.push({...r,key:`${r.section}:${r.source}:${r.sourceId}`,title:human(safe(r.title,160))||'Registro sem título',detail:human(safe(r.detail,1200)),
-      relations:[...new Set(r.relations.filter(Boolean))].slice(0,25)});
+      relations:[...new Set(r.relations.filter(Boolean).map(humanMedicalRelationG4).filter(Boolean))].slice(0,25)});
   };
   for(const row of base.rows){
     if(row.category!=='brain'&&!selected(row.category))continue;
@@ -371,9 +402,9 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
         f.authority==='surgical_intents_a7m5'?'surgeries':
         f.authority==='exam_orders'||f.authority==='exam_order_items'?'exams':null;
       if(!section||!selected(section)||rows.some(r=>r.section===section&&r.sourceId===f.id))continue;
-      add({section,date:f.day,time:null,title:f.title,detail:[f.detail,f.status,f.origin,f.source].filter(Boolean).join(' · '),
+      add({section,date:f.day,time:null,title:f.title,detail:[f.detail,f.status,f.origin].filter(Boolean).join(' · '),
         provenance:'declarado',source:f.authority,sourceId:f.id,registeredAt:null,
-        relations:f.explicitRelations.map(v=>'Identificador relacionado: '+v),href:f.href});
+        relations:verifiedMedicalRelationsA10G4(f,input.longitudinalA10),href:f.href});
     }
   }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
