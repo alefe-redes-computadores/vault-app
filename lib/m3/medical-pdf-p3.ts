@@ -13,7 +13,7 @@ const recordedAtBR=(value:string):string=>{
 };
 const sectionLabels:Record<string,string>={
   consultations:'Consultas',careflow:'CareFlow e pedidos',medications:'Medicamentos',doses:'Doses registradas',
-  symptoms:'Sintomas e humor',measurements:'Medições',exams:'Exames avulsos',surgeries:'Cirurgias',
+  symptoms:'Sintomas e humor',measurements:'Medições',exams:'Exames avulsos',surgeries:'Cirurgias',hospitalizations:'Internações',
   withdrawals:'Retiradas',prescriptions:'Receitas e aquisições',treatments:'Tratamentos',rehabilitation:'Reabilitação',vaccinations:'Vacinação',procedures_a9:'Procedimentos não cirúrgicos',sensitivities_a9:'Alergias, intolerâncias e reações declaradas',documents:'Documentos',brain:'Brain (interpretação registrada)'
 };
 export function medicalP3FileName(input:MedicalDossierP3):string{

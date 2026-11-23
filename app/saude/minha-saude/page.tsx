@@ -83,6 +83,7 @@ import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index"
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { HealthHubLauncherR5 } from "@/components/saude/HealthHubLauncherR5";
+import { A10ContextLink } from "@/components/saude/A10ContextLink";
 import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
 import { AvatarEvidenceStripM102 } from "@/components/saude/AvatarEvidenceStripM102";
 import { AvatarEvidenceLensM122 } from "@/components/saude/AvatarEvidenceLensM122";
@@ -337,6 +338,8 @@ function HealthDashboard({
           </p>
         ) : (
           <>
+            {/* A10: navegação para fatos da pessoa, não outra Home nem outro Avatar. */}
+            <A10ContextLink context="health" compact />
             {/* R5: a entrada é o launcher; o painel de Fênix e métricas permanece íntegro. */}
             {!profileOnly?<HealthHubLauncherR5 userId={person?.user_id||""} personId={personId||""} onOpenPersonalSection={openPersonalSectionR5}/>:null}
             <section id="painel-pessoal-r5" aria-label="Painel de saúde e Fênix" className="scroll-mt-24 overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface/60">

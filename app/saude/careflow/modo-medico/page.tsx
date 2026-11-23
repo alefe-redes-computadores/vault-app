@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { projectA4ClinicalFacts } from '@/lib/treatment-a4/clinical-bridge';
+import {loadScopedA10} from '@/lib/a10/client-data';
+import {projectLongitudinalA10} from '@/lib/a10/longitudinal';
+import {A10ContextLink} from '@/components/saude/A10ContextLink';
 import Link from 'next/link';
 import { withReturnTarget } from '@/lib/navigation/return-context';
 import { ArrowLeft, Archive, CalendarDays, Check, ChevronRight, ClipboardList, Download, FileCheck2, FileText, LockKeyhole, Search, ShieldCheck, Stethoscope, WandSparkles, Pill, HeartPulse, FlaskConical, MessageSquareHeart, Brain, CalendarCheck, Activity, Scissors, PackageCheck, ReceiptText, Workflow, FolderLock } from 'lucide-react';
@@ -49,6 +52,8 @@ export default function MedicalModeP3Page(){
   const signature=[start,end,mode,sections.join(','),includeBrain?'brain':'factual',episode].join('|');
   scopeRef.current={userId:user?.id||'',personId:activePersonId||'',sig:signature};
   const scopeKey=`${user?.id||''}:${activePersonId||''}`;
+  const a10=useLiveQuery(()=>loadScopedA10(user?.id||'',activePersonId||''),[user?.id,activePersonId]);
+  const a10Facts=useMemo(()=>a10?.verified&&a10.scope===scopeKey?projectLongitudinalA10(a10.data,user?.id||'',activePersonId||'',false,Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC').facts:[],[a10,scopeKey,user?.id,activePersonId]);
   // Scoped A4 ledger; no duplicate writer and no stale person's phases in PDF.
   const a4Phases=useLiveQuery(async()=>{
     const uid=user?.id||'',pid=activePersonId||'';
@@ -126,7 +131,7 @@ export default function MedicalModeP3Page(){
     if(item.data&&item.data<start)setStart(item.data);
   },[scopeKey,user?.id,activePersonId,health.context,consultations,start]);
   const person=persons.find(p=>p.id===activePersonId);
-  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&a4Phases?.scope===scopeKey&&surgical?.scope===scopeKey&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey)&&(!sections.includes('vaccinations')||vaccination?.scope===scopeKey)&&(!sections.some(s=>s==='procedures_a9'||s==='sensitivities_a9')||a9?.scope===scopeKey));
+  const ready=Boolean(user?.id&&activePersonId&&a10?.scope===scopeKey&&a10.verified&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&a4Phases?.scope===scopeKey&&surgical?.scope===scopeKey&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey)&&(!sections.includes('vaccinations')||vaccination?.scope===scopeKey)&&(!sections.some(s=>s==='procedures_a9'||s==='sensitivities_a9')||a9?.scope===scopeKey));
   const a4Facts=useMemo(()=>user?.id&&activePersonId&&health.context&&a4Phases?.scope===scopeKey?
     projectA4ClinicalFacts({userId:user.id,personId:activePersonId,phases:a4Phases.rows,
       treatments:health.context.tratamentos,medications:health.context.medicamentos,from:start,through:end,max:2000}):[],
@@ -135,19 +140,19 @@ export default function MedicalModeP3Page(){
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:''};
     try{
       return {report:buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
-        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,
+        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,longitudinalA10:a10Facts,hospitalizationLinksA10:a10?.scope===scopeKey?a10.data.hospitalization_relations_a5:undefined,
         ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined}),error:''};
     }catch(error){return {report:null,error:error instanceof Error?error.message:'Não foi possível preparar esta prévia.'};}
-  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination,a9]);
+  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts]);
   const normalized=q.trim().toLocaleLowerCase('pt-BR');
   // Busca percorre a projeção detalhada completa, mas não altera o PDF.
   const searchReport=useMemo(()=>{
     if(!normalized||!ready||!user?.id||!activePersonId||!health.context)return prepared.report;
     try{return buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
-        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,
+        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,longitudinalA10:a10Facts,hospitalizationLinksA10:a10?.scope===scopeKey?a10.data.hospitalization_relations_a5:undefined,
       ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined});}
     catch{return prepared.report;}
-  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination,a9]);
+  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts]);
   const filtered=useMemo(()=>searchReport?.rows.filter(r=>
     (focusSection==='all'||r.section===focusSection)&&
     (!normalized||[r.title,r.detail,r.source,...r.relations].join(' ').toLocaleLowerCase('pt-BR').includes(normalized)))||[],
@@ -208,6 +213,7 @@ export default function MedicalModeP3Page(){
   const selectedCount=sections.length;
   return <PageTransition><main className="min-h-screen bg-void px-3 pb-36 pt-5 text-ink-primary header-safe-top sm:px-5 vault-adaptive-tail"><div className="mx-auto max-w-3xl space-y-4">
     <header className="flex items-start gap-3"><ClinicalBackLinkP0 fallback="/saude/careflow" aria-label="Voltar ao CareFlow" className="grid size-11 shrink-0 place-items-center rounded-2xl border border-surface-border bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300" /><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-300">Minha saúde · Em atendimento</p><h1 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">Modo Médico 360</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Resumo legível para mostrar no consultório, com registros relacionados e PDF opcional. Você escolhe o que exibir.</p></div></header>
+    <A10ContextLink context="medical" compact />
     <section className="overflow-hidden rounded-[26px] border border-emerald-300/25 bg-[radial-gradient(circle_at_95%_0%,rgba(16,185,129,.14),transparent_52%),linear-gradient(145deg,#15232c,#0c151e)] p-4 shadow-xl shadow-black/10"><div className="flex gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-300/10 text-emerald-300"><Stethoscope size={21}/></span><div className="min-w-0 flex-1"><strong className="block break-words text-sm">{person?.name||'Pessoa não selecionada'}</strong><p className="mt-1 text-[11px] leading-relaxed text-emerald-100/70">Dados da conta e pessoa ativa. Nenhum vínculo é criado para completar uma lacuna.</p></div></div><div className="mt-3 flex items-start gap-2 rounded-xl border border-white/10 bg-black/20 p-3"><LockKeyhole size={15} className="mt-0.5 shrink-0 text-emerald-300"/><p className="text-[11px] leading-relaxed text-emerald-100/80">Privado e local. A prévia não compartilha informações. Para exportar ou arquivar, você precisa tocar no botão correspondente.</p></div></section>
     <section aria-label="Modo de apresentação" className="rounded-[22px] border border-surface-border bg-surface p-3"><div className="flex items-center gap-2 text-sm font-bold"><FileCheck2 size={16} className="text-emerald-300"/>Formato da consulta</div><div className="mt-3 grid grid-cols-2 gap-2">{([['summary','Resumo médico','Últimas 30 ocorrências'],['detailed','Histórico completo','Todos os registros escolhidos']] as const).map(([id,label,description])=><button type="button" key={id} aria-pressed={mode===id} disabled={busy} onClick={()=>{setMode(id);setLimit(40);}} className={`min-h-20 min-w-0 rounded-2xl border px-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 ${mode===id?'border-emerald-300/50 bg-emerald-300/[.08]':'border-surface-border bg-surface-raised'}`}><span className="flex items-center gap-2 text-xs font-semibold">{mode===id&&<Check size={14} className="shrink-0 text-emerald-300"/>}{label}</span><span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">{description}</span></button>)}</div></section>
     <section aria-label="Episódio clínico confirmado" className="rounded-[22px] border border-sky-300/20 bg-surface p-4">

@@ -9,6 +9,7 @@ import {useHapticFeedback} from '@/lib/haptics';
 import {CustomDatePicker} from '@/components/DatePicker';
 import {HealthTimePicker} from '@/components/saude/HealthTimePicker';
 import {expandRehabSlotsA7M5,scheduleRehabSeriesA7M5} from '@/lib/rehab-m5/recurrence-a7m5';
+import {pluralClinicalCountA7M5} from '@/lib/rehab-m5/format-count-a7m5';
 import type {RehabSessionMode} from '@/lib/rehab-m5/types';
 import {ClinicalRecordFinderA7M5} from './ClinicalRecordFinderA7M5';
 import {useLiveQuery} from 'dexie-react-hooks';
@@ -31,7 +32,7 @@ export function RehabRecurringPlannerA7M5({programId}:{programId:string}){
  const act=async()=>{if(inFlight.current||!pid||!consent||!data)return;inFlight.current=true;setBusy(true);
   try{const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';const result=await scheduleRehabSeriesA7M5({personId:pid,programId,startDay:start,endDay:end,weekdays:days,clock,
    timezone,mode,localId:mode==='clinic'?place:undefined,hospitalId:mode==='hospital'?place:undefined});
-   trigger('vibrate');toast.showSuccess(`${result.created} sessão(ões) agendadas; ${result.skipped} datas já existentes. Nenhuma foi marcada como realizada.`);setOpen(false);setConsent(false);
+   trigger('vibrate');toast.showSuccess(`${pluralClinicalCountA7M5(result.created,'sessao')} ${result.created===1?'agendada':'agendadas'}; ${pluralClinicalCountA7M5(result.skipped,'data')} já ${result.skipped===1?'existente':'existentes'}. Nenhuma foi marcada como realizada.`);setOpen(false);setConsent(false);
   }catch(e){toast.showError(e instanceof Error?e.message:'Não foi possível registrar a rotina');}finally{inFlight.current=false;setBusy(false);}
  };
  if(!data||data.scope!==scope||data.program.status==='completed'||data.program.status==='interrupted')return null;
@@ -45,9 +46,9 @@ export function RehabRecurringPlannerA7M5({programId}:{programId:string}){
    <p className="text-xs font-semibold">Local da atividade</p><div className="grid grid-cols-2 gap-2">{([{mode:'clinic',label:'Clínica'},{mode:'hospital',label:'Hospital'},{mode:'home',label:'Domicílio'},{mode:'other',label:'Outro'}] as const).map(x=><button type="button" key={x.mode} aria-pressed={mode===x.mode} onClick={()=>{setMode(x.mode);setPlace('')}} className={'min-h-11 rounded-xl border px-2 text-xs '+(mode===x.mode?'border-teal-300/50 text-teal-200':'border-surface-border text-ink-muted')}>{x.label}</button>)}</div>
    {mode==='clinic'&&<ClinicalRecordFinderA7M5 label="Clínica (se cadastrada)" items={data.locais.filter(x=>x.id).map(x=>({id:x.id!,label:x.nome,href:'/saude/locais/detalhes?id='+x.id}))} value={place} onChange={setPlace} returnTo="/saude/reabilitacao"/>}
    {mode==='hospital'&&<ClinicalRecordFinderA7M5 label="Hospital (se cadastrado)" items={data.hospitais.filter(x=>x.id).map(x=>({id:x.id!,label:x.nome,href:'/saude/hospitais/detalhes?id='+x.id}))} value={place} onChange={setPlace} returnTo="/saude/reabilitacao"/>}
-   {slots.length>0&&<p className="rounded-xl border border-surface-border bg-surface px-3 py-2 text-xs text-ink-secondary">{slots.length} horário(s) serão cadastrados como <strong>agendados</strong>, nunca como realizados. Lembretes continuam desligados até opt-in específico.</p>}
+   {slots.length>0&&<p className="rounded-xl border border-surface-border bg-surface px-3 py-2 text-xs text-ink-secondary">{pluralClinicalCountA7M5(slots.length,'horario')} {slots.length===1?'será cadastrado':'serão cadastrados'} como <strong>{slots.length===1?'agendado':'agendados'}</strong>, nunca como {slots.length===1?'realizado':'realizados'}. Lembretes continuam desligados até opt-in específico.</p>}
    <label className="flex min-h-11 items-start gap-3 text-xs text-ink-secondary"><input type="checkbox" className="mt-1 size-4 accent-emerald-400" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>Confirmo que os dias e horários informados correspondem ao planejamento desta pessoa.</span></label>
-   <button type="button" disabled={busy||!consent||slots.length===0} onClick={()=>void act()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 text-xs font-bold text-slate-950 disabled:opacity-40"><Check size={16}/>{busy?'Salvando…':`Registrar ${slots.length} sessão(ões)`}</button>
+   <button type="button" disabled={busy||!consent||slots.length===0} onClick={()=>void act()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 text-xs font-bold text-slate-950 disabled:opacity-40"><Check size={16}/>{busy?'Salvando…':`Registrar ${pluralClinicalCountA7M5(slots.length,'sessao')}`}</button>
   </div>}
   <p className="flex items-center gap-2 text-[11px] text-ink-muted"><ShieldCheck size={15}/>Recorrência é somente ferramenta de cadastro. Não cria evolução, presença, alta ou recomendação clínica.</p>
  </section>;

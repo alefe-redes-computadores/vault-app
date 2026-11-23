@@ -23,6 +23,8 @@ import { PharmaLensEvidenceCardP6 } from '@/components/saude/PharmaLensEvidenceC
 import { PharmaLensDocumentStudioCI360 } from '@/components/saude/PharmaLensDocumentStudioCI360';
 import { PharmaLensLotEvidenceCI360 } from '@/components/saude/PharmaLensLotEvidenceCI360';
 import { RegulatorySourceTrailP4C } from '@/components/saude/RegulatorySourceTrailP4C';
+import {A10ContextLink} from '@/components/saude/A10ContextLink';
+import {PharmaLensProvenanceA10} from '@/components/saude/PharmaLensProvenanceA10';
 
 function daysAgo(day: string, n: number) {
   const t = new Date(`${day}T12:00:00Z`);
@@ -96,6 +98,7 @@ export function PharmaLensWorkspaceV7() {
         <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-violet-300">VAULT · Saúde · Fênix</p><h1 className="font-display text-2xl font-semibold">PharmaLens</h1><p className="mt-1 text-xs text-ink-muted">Experiência documentada por fabricante</p></div>
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-violet-400/20 bg-violet-400/10 text-violet-300"><Factory size={20}/></span>
       </header>
+      <A10ContextLink context="pharma" compact />
       {/* BRAIN_V7_UNIVERSAL_MACRO: contextual clinical evidence is separate from manufacturer causality. */}
       <nav className="grid grid-cols-2 gap-2" aria-label="Explorar evidências relacionadas">
         <Link href="/saude/brain-v7" aria-label="VAULT Brain · estabilidade, histórico e dossiê" className="flex min-h-11 min-w-0 items-center justify-between gap-1 rounded-xl border border-sky-400/25 bg-sky-400/[.055] px-3 py-2 text-xs font-semibold text-sky-200"><span>VAULT Brain</span><span aria-hidden="true">›</span></Link>
@@ -113,6 +116,7 @@ export function PharmaLensWorkspaceV7() {
         </section>
         {selected && report && observations && <>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-surface-border bg-surface/70 p-3"><span className="text-xs font-semibold text-ink-primary">Janela de evidências</span><div className="flex gap-2" role="group" aria-label="Período">{([7,30] as const).map(n=><button key={n} type="button" aria-pressed={rangeDays===n} onClick={()=>setRangeDays(n)} className={`min-h-11 rounded-xl border px-3 text-xs font-bold ${rangeDays===n?'border-violet-300/50 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{n} dias</button>)}</div></div>
+          <PharmaLensProvenanceA10 medication={selected} scopeKey={scopeKey} />
           <PharmaLensGuidedReviewP6 key={`${scopeKey}:${selected.id}`} medication={selected}/>
           {evidenceP6?<PharmaLensEvidenceCardP6 summary={evidenceP6} audit={auditP6} overlaps={overlapsP6} temporalSymptoms={temporalP6}/>:null}
           {/* CI360 P4 — estúdio documental privado opcional, preserva conferência antiga. */}

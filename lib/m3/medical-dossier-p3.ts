@@ -14,8 +14,9 @@ import { currentVaccinationEventsA8 } from '@/lib/vaccination-a8/types';
 import type {A8Course,A8Event} from '@/lib/vaccination-a8/types';
 import {activeFactsA9,A9_PROCEDURE_LABEL,A9_SENSITIVITY_LABEL} from '@/lib/clinical-a9/types';
 import type {A9Procedure,A9Sensitivity} from '@/lib/clinical-a9/types';
+import type {A10Fact} from '@/lib/a10/longitudinal';
 
-export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation' | 'vaccinations' | 'procedures_a9' | 'sensitivities_a9';
+export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation' | 'vaccinations' | 'procedures_a9' | 'sensitivities_a9' | 'hospitalizations';
 export type MedicalModeP3 = 'summary' | 'detailed';
 export type MedicalProvenanceP3 = 'registrado' | 'declarado' | 'motor';
 export type MedicalRowP3 = {
@@ -45,6 +46,7 @@ export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;des
   {id:'prescriptions',label:'Receitas e aquisições',description:'Data da receita versus data da aquisição'},
   {id:'treatments',label:'Tratamentos',description:'Fases versionadas e cadastro atual, sem inferências'},
   {id:'rehabilitation',label:'Reabilitação',description:'Ciclos, sessões e marcos documentados'},
+  {id:'hospitalizations',label:'Internações',description:'Episódios, admissões e eventos A5 com fonte'},
   {id:'vaccinations',label:'Vacinação',description:'Aplicações declaradas, planejamento e fontes documentadas'},
   {id:'procedures_a9',label:'Procedimentos não cirúrgicos',description:'Planos, realizações e retificações informadas'},
   {id:'sensitivities_a9',label:'Alergias e reações declaradas',description:'Origem, intensidade e incerteza sem diagnóstico automático'},
@@ -72,6 +74,8 @@ const human=(text:string):string=>text
 export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
   treatmentFacts?:readonly A4ClinicalFact[];
+  longitudinalA10?:readonly A10Fact[];
+  hospitalizationLinksA10?:readonly Record<string,unknown>[];
   surgeryEvents?:readonly A7Event[];
   surgeryTeam?:readonly A7Team[];
   vaccination?:{courses:readonly A8Course[];events:readonly A8Event[]};
@@ -358,6 +362,20 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
         href:`/saude/reacoes?id=${encodeURIComponent(e.id)}`});
     }
   }
+  // A10: complement only the canonical gaps; do not duplicate rows already emitted by M3.
+  // Same exact MedicalDossierP3 is consumed by preview and official PDF generator.
+  if(input.longitudinalA10){
+    for(const f of input.longitudinalA10){
+      if(f.userId!==uid||f.personId!==pid||f.revision!=='current'||!f.day||!within(f.day))continue;
+      const section:MedicalSectionP3|null=f.domain==='hospitalization'?'hospitalizations':
+        f.authority==='surgical_intents_a7m5'?'surgeries':
+        f.authority==='exam_orders'||f.authority==='exam_order_items'?'exams':null;
+      if(!section||!selected(section)||rows.some(r=>r.section===section&&r.sourceId===f.id))continue;
+      add({section,date:f.day,time:null,title:f.title,detail:[f.detail,f.status,f.origin,f.source].filter(Boolean).join(' · '),
+        provenance:'declarado',source:f.authority,sourceId:f.id,registeredAt:null,
+        relations:f.explicitRelations.map(v=>'Identificador relacionado: '+v),href:f.href});
+    }
+  }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
   const episodeRows=consultation?rows.filter(r=>{
     if(r.section==='consultations')return r.sourceId===consultation.id;
@@ -372,6 +390,15 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
     }
     if(r.section==='rehabilitation')return episodeRehabFacts.has(r.sourceId);
+    if(r.section==='hospitalizations'){
+      const f=input.longitudinalA10?.find(f=>f.userId===uid&&f.personId===pid&&f.id===r.sourceId&&f.authority===r.source);
+      if(!f)return false;
+      const episodeId=f.authority==='hospitalizations_a5'?f.id:f.authority==='hospitalization_events_a5'?f.relationId:null;
+      return Boolean(episodeId&&input.hospitalizationLinksA10?.some(link=>link.user_id===uid&&link.person_id===pid&&
+        !link.deleted_at&&link.hospitalization_id===episodeId&&link.entity_type==='consulta'&&link.entity_id===consultation.id));
+    }
+    if(r.section==='surgeries'&&r.source==='surgical_intents_a7m5')return Boolean(input.longitudinalA10?.some(f=>f.id===r.sourceId&&f.authority===r.source&&
+      f.userId===uid&&f.personId===pid&&f.relationTargets.some(link=>link.authority==='consultas'&&link.id===consultation.id)));
     if(r.section==='procedures_a9')return Boolean(input.clinicalA9?.procedures.some(p=>p.id===r.sourceId&&p.user_id===uid&&p.person_id===pid&&p.consultation_id===consultation.id));
     return false;
   }):rows;

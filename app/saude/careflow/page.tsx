@@ -11,6 +11,7 @@ import { TreatmentContinuityA4 } from '@/components/saude/TreatmentContinuityA4'
 import { VaccinationAccessA8 } from '@/components/saude/VaccinationAccessA8';
 import { A9ReadOnlySummary360 } from '@/components/saude/A9ReadOnlySummary360';
 const areas=[
+ {href:'/saude/linha-clinica',title:'Linha Clínica 360',description:'Fatos de todos os módulos, vínculos reais e histórico',icon:Activity,tone:'text-emerald-300'},
  {href:'/saude/careflow/modo-medico',title:'Modo Médico',description:'Conferir informações para a consulta',icon:Stethoscope,tone:'text-emerald-200'},
  {href:'/saude/careflow/episodios',title:'Atendimentos',description:'Consultas e vínculos reais',icon:GitBranch,tone:'text-sky-300'},
  {href:'/saude/careflow/linha-do-tempo',title:'Evolução clínica',description:'Doses, sintomas e medições',icon:Activity,tone:'text-sky-300'},

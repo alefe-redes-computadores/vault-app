@@ -3,6 +3,7 @@ import {useEffect,useId,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {ChevronDown,ExternalLink,Search} from 'lucide-react';
 import {withReturnTarget} from '@/lib/navigation/return-context';
+import {pluralClinicalCountA7M5} from '@/lib/rehab-m5/format-count-a7m5';
 export type RecordChoiceA7M5={id:string;label:string;description?:string;href?:string};
 /** Search before linking. Never truncate the underlying record set. */
 export function ClinicalRecordFinderA7M5({label,items,value,onChange,returnTo,placeholder='Buscar registro'}:
@@ -24,7 +25,7 @@ export function ClinicalRecordFinderA7M5({label,items,value,onChange,returnTo,pl
    </div>
    {!found.length&&<p className="text-xs text-ink-muted">Nenhum registro encontrado. Não foi criado vínculo implícito.</p>}
    {found.length>n&&<button type="button" onClick={()=>setN(x=>x+24)} className="min-h-11 w-full rounded-xl border border-surface-border px-3 text-xs text-emerald-300">Mostrar mais ({found.length-n})</button>}
-   <p className="text-[11px] text-ink-muted">{found.length} registro(s) encontrados. Vínculos somente por ID explícito.</p>
+   <p className="text-[11px] text-ink-muted">{pluralClinicalCountA7M5(found.length,'registro')} {found.length===1?'encontrado':'encontrados'}. Vínculos somente por ID explícito.</p>
   </div>}
  </div>;
 }
