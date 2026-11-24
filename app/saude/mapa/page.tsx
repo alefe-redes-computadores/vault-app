@@ -17,7 +17,7 @@ import {useCareFlowM2} from '@/hooks/useCareFlowM2';
 import {useBrainV5Pulse} from '@/hooks/useBrainV5Pulse';
 import {buildHealthFocusR5,HEALTH_MODULES_R5,EMPTY_PREFERENCES_R5,parseHubPreferencesR5,toggleHubFavoriteR5,recordHubRecentR5,type HubPreferenceR5} from '@/lib/health-hub/r5';
 import { PageTransition } from '@/components/PageTransition';
-import { clinicalDirectoryM150, searchClinicalDirectoryM150 } from '@/lib/navigation/clinical-directory-m150';
+import { clinicalDirectoryM150, clinicalAdditionalSectionsM150, searchClinicalDirectoryM150 } from '@/lib/navigation/clinical-directory-m150';
 import type { ClinicalMapIconM150, ClinicalMapEntryM150 } from '@/lib/navigation/clinical-directory-m150';
 import { safeClinicalReturnM150 } from '@/lib/navigation/clinical-return-m150';
 import { withReturnTarget } from '@/lib/navigation/return-context';
@@ -44,9 +44,10 @@ const featuredBySection: Readonly<Record<string,readonly string[]>> = {
 
 /** Um card para cada rota, sem contadores duplicados nem dados clínicos. */
 /** One full-width destination plus a separate, non-nested Star action. */
-function EntryCard({entry,large,onNavigate,favorite,onToggle}: {entry:ClinicalMapEntryM150;large:boolean;onNavigate:()=>void;favorite:boolean;onToggle?:((entry:ClinicalMapEntryM150)=>void)}) {
+function EntryCard({entry,large,onNavigate,favorite,onToggle,returnHref}: {entry:ClinicalMapEntryM150;large:boolean;onNavigate:()=>void;favorite:boolean;returnHref?:string;onToggle?:((entry:ClinicalMapEntryM150)=>void)}) {
   const Icon=icons[entry.icon];
-  const href=withReturnTarget(entry.href,'/saude/mapa');
+  const fallbackHref=withReturnTarget(entry.href,'/saude/mapa');
+  const href=returnHref?withReturnTarget(entry.href,returnHref):fallbackHref;
   return <article className={`relative min-w-0 rounded-[20px] border shadow-sm ${clinicalMapToneM150P3(entry.id)}`}>
     <Link href={href} onClick={onNavigate} aria-label={`${entry.label}. ${entry.description}`}
       className={`flex min-w-0 flex-col gap-2.5 p-3 pr-11 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${large?'min-h-[118px] justify-between':'min-h-[100px] justify-start'}`}>
@@ -88,15 +89,22 @@ export default function ClinicalMapM150Page() {
   const favoriteEntries=current.favorites.map(id=>HEALTH_MODULES_R5.find(m=>m.id===id)).filter((m):m is (typeof HEALTH_MODULES_R5)[number]=>Boolean(m));
   const focus=useMemo(()=>buildHealthFocusR5({userId:ready?uid:'',personId:ready?pid:'',consultations:consultas,events,brain:brain.records,favorites:current.favorites,recent:current.recent,now:clock}),[ready,uid,pid,consultas,events,brain.records,current.favorites,current.recent,clock]);
   const [query,setQuery] = useState('');
+  const [showAdditional,setShowAdditional] = useState(false);
   const [returnTo,setReturnTo] = useState('/');
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('return_to');
     setReturnTo(safeClinicalReturnM150(requested,'/saude/mapa','/'));
+    setQuery((new URLSearchParams(window.location.search).get('q')||'').slice(0,120));
+    setShowAdditional(new URLSearchParams(window.location.search).get('mais')==='1');
   }, []);
-  const groups = useMemo(() => searchClinicalDirectoryM150(query), [query]);
+  const groups = useMemo(() => query.trim()?searchClinicalDirectoryM150(query):showAdditional?[...clinicalDirectoryM150,...clinicalAdditionalSectionsM150]:clinicalDirectoryM150, [query,showAdditional]);
+  const sourceParams=new URLSearchParams();
+  if(query.trim())sourceParams.set('q',query.slice(0,120));
+  if(showAdditional)sourceParams.set('mais','1');
+  const sourceHref='/saude/mapa'+(sourceParams.toString()?'?'+sourceParams.toString():'');
   const entriesCount = groups.reduce((count,group)=>count+group.items.length,0);
   const searching=Boolean(query.trim());
-  const total=clinicalDirectoryM150.reduce((n,g)=>n+g.items.length,0);
+  const total=clinicalDirectoryM150.reduce((n,g)=>n+g.items.length,0)+clinicalAdditionalSectionsM150.reduce((n,g)=>n+g.items.length,0);
   const onNavigate=()=>trigger('vibrate');
   return <PageTransition><main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] pt-4 text-ink-primary">
     <div className="mx-auto max-w-2xl space-y-5 px-4">
@@ -115,13 +123,14 @@ export default function ClinicalMapM150Page() {
       </div>
       <p role="status" className="text-xs text-ink-muted" aria-live="polite">{searching ? `${entriesCount} resultado${entriesCount===1?'':'s'}` : `${total} acessos clínicos disponíveis · por área`}</p>
 
+      {!searching&&<button type="button" aria-expanded={showAdditional} onClick={()=>setShowAdditional(v=>!v)} className="min-h-11 w-full rounded-xl border border-surface-border px-3 text-left text-xs font-semibold text-ink-primary">{showAdditional?'Recolher outras áreas':'Ver mais 11 áreas de saúde'} <ChevronDown size={15} className="inline-block align-middle"/></button>}
       {!searching&&favoriteEntries.length>0&&<section aria-label="Favoritos" className="space-y-2">
         <h2 className="text-xs font-bold text-amber-200">Favoritos</h2>
-        <div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favoriteEntries.map(module=><Link key={module.id} href={withReturnTarget(module.href,'/saude/mapa')} onClick={()=>trigger('vibrate')} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2 text-xs font-semibold text-ink-primary"><span className="min-w-0 break-words">{module.title}</span><Star size={15} fill="currentColor" className="shrink-0 text-amber-300"/></Link>)}</div>
+        <div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favoriteEntries.map(module=><Link key={module.id} href={withReturnTarget(module.href,sourceHref)} onClick={()=>trigger('vibrate')} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2 text-xs font-semibold text-ink-primary"><span className="min-w-0 break-words">{module.title}</span><Star size={15} fill="currentColor" className="shrink-0 text-amber-300"/></Link>)}</div>
       </section>}
       {!searching&&focus.length>0&&<section aria-label="Em foco agora" className="space-y-2"><h2 className="text-xs font-bold text-sky-200">Em foco agora</h2>
         <p className="text-[11px] text-ink-muted">Registros e acessos recentes, sem criar tarefas.</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{focus.map(item=>{const module=HEALTH_MODULES_R5.find(m=>m.id===item.id);if(!module)return null;const entry=clinicalDirectoryM150.flatMap(group=>group.items).find(candidate=>candidate.id===item.id);const FocusIcon=item.kind==="brain"?BrainCircuit:item.kind==="consultation"?Stethoscope:item.kind==="exam"?FlaskConical:item.kind==="protocol"?HeartPulse:(entry?icons[entry.icon]:Clock3);return <Link key={item.id} href={withReturnTarget(module.href,'/saude/mapa')} className="flex min-h-14 items-center gap-2.5 rounded-xl border border-sky-300/20 bg-sky-300/[.04] p-3" aria-label={`Abrir ${module.title}`}><span data-vault-focus-icon="r4" className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/[.09] text-sky-200"><FocusIcon size={18} aria-hidden="true"/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{module.title}</strong><span className="mt-1 block line-clamp-1 text-[11px] leading-snug text-ink-muted">{item.reason.replace(/^Brain:\s*/i,'')}</span></span><ChevronRight size={16} className="shrink-0 text-sky-200" aria-hidden="true"/></Link>;})}</div></section>}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{focus.map(item=>{const module=HEALTH_MODULES_R5.find(m=>m.id===item.id);if(!module)return null;const entry=clinicalDirectoryM150.flatMap(group=>group.items).find(candidate=>candidate.id===item.id);const FocusIcon=item.kind==="brain"?BrainCircuit:item.kind==="consultation"?Stethoscope:item.kind==="exam"?FlaskConical:item.kind==="protocol"?HeartPulse:(entry?icons[entry.icon]:Clock3);return <Link key={item.id} href={withReturnTarget(module.href,sourceHref)} className="flex min-h-14 items-center gap-2.5 rounded-xl border border-sky-300/20 bg-sky-300/[.04] p-3" aria-label={`Abrir ${module.title}`}><span data-vault-focus-icon="r4" className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/[.09] text-sky-200"><FocusIcon size={18} aria-hidden="true"/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{module.title}</strong><span className="mt-1 block line-clamp-1 text-[11px] leading-snug text-ink-muted">{item.reason.replace(/^Brain:\s*/i,'')}</span></span><ChevronRight size={16} className="shrink-0 text-sky-200" aria-hidden="true"/></Link>;})}</div></section>}
       {groups.length===0&&<div className="rounded-2xl border border-surface-border/60 bg-surface/45 p-4 text-sm text-ink-secondary">Nenhuma área encontrada. Tente outro nome ou limpe a busca.</div>}
       {groups.map(group=>{
         const preferred=featuredBySection[group.id]||[];
@@ -130,8 +139,8 @@ export default function ClinicalMapM150Page() {
         const remaining=searching?[]:defaultItems.filter(item=>!preferred.includes(item.id));
         return <section key={group.id} aria-labelledby={`m150-${group.id}`} className="space-y-2.5">
           <div className="flex items-start gap-2 px-0.5"><span className={`mt-0.5 ${clinicalMapSectionToneM150P5P3(group.id)}`} aria-hidden="true"><Layers3 size={16}/></span><div><h2 id={`m150-${group.id}`} className={`text-sm font-bold ${clinicalMapSectionToneM150P5P3(group.id)}`}>{group.title}</h2><p className="mt-0.5 text-[11px] text-ink-muted">{group.description}</p></div></div>
-          {featured.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{featured.map(entry=>{const module=moduleFor(entry);return <EntryCard key={entry.id} entry={entry} large={group.id==='rotina'&&!searching} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/>;})}</div>}
-          {remaining.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{remaining.map(entry=>{const module=moduleFor(entry);return <EntryCard key={entry.id} entry={entry} large={false} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/>;})}</div>}
+          {featured.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{featured.map(entry=>{const module=moduleFor(entry);return <EntryCard key={entry.id} entry={entry} returnHref={sourceHref} large={group.id==='rotina'&&!searching} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/>;})}</div>}
+          {remaining.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{remaining.map(entry=>{const module=moduleFor(entry);return <EntryCard key={entry.id} entry={entry} returnHref={sourceHref} large={false} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/>;})}</div>}
         </section>;
       })}
       <p className="pb-3 text-[11px] leading-relaxed text-ink-muted">Este mapa organiza acessos existentes. Análises de Brain, Fênix e PharmaLens não substituem seus registros nem confirmam diagnósticos, receitas, estoque ou aquisições.</p>

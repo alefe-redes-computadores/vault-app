@@ -1,5 +1,6 @@
 // app/saude/consultas/detalhes/page.tsx
 "use client";
+import {safeClinicalReturnM150} from "@/lib/navigation/clinical-return-m150";
 import {ClinicalReverseProcedureA9} from '@/components/saude/ClinicalReverseProcedureA9';
 import {ConsultationRelationsViewP6} from "@/components/saude/ConsultationRelationsViewP6";
 import { SurgeryConsultationLinksM4P2 } from "@/components/saude/SurgeryConsultationLinksM4P2";
@@ -796,7 +797,7 @@ function DetalhesConsultaContent() {
                       "vibrate"
                     );
 
-                    router.replace("/saude/consultas");
+                    router.replace(safeClinicalReturnM150(searchParams.get("return_to"),"/saude/consultas/detalhes","/saude/consultas"));
                   }
                 }
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"

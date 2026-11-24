@@ -1,5 +1,6 @@
 // app/saude/cirurgias/detalhes/page.tsx
 "use client";
+import {safeClinicalReturnM150} from "@/lib/navigation/clinical-return-m150";
 import { surgeryBodyLabel } from "@/lib/surgery-body";
 
 import {
@@ -752,7 +753,7 @@ function DetalhesCirurgiaContent() {
                     "vibrate"
                   );
 
-                  router.replace("/saude/cirurgias");
+                  router.replace(safeClinicalReturnM150(searchParams.get("return_to"),"/saude/cirurgias/detalhes","/saude/cirurgias"));
                 }}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
                 aria-label="Voltar"

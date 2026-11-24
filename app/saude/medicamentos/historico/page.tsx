@@ -1,5 +1,6 @@
 // app/saude/medicamentos/historico/page.tsx
 "use client";
+import {safeClinicalReturnM150} from "@/lib/navigation/clinical-return-m150";
 
 import {
   Suspense,
@@ -272,9 +273,9 @@ function HistoryContent() {
           <div className="flex items-center gap-3 pt-3">
             <button
               type="button"
-              onClick={() => router.replace("/saude/medicamentos/detalhes?id=" + medicationId)}
+              onClick={() => router.replace(safeClinicalReturnM150(searchParams.get("return_to"),"/saude/medicamentos/historico","/saude/medicamentos/detalhes?id=" + encodeURIComponent(medicationId)))}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-secondary active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
-              aria-label="Voltar aos detalhes do medicamento"
+              aria-label="Voltar à origem do histórico de medicamentos"
             >
               <ArrowLeft size={18} />
             </button>

@@ -124,7 +124,9 @@ function DeferredHealthSection({id,title,description,badge,icon,children}:{id:st
 export default function MyHealthPage() {
   const data=useHealthProfile();
   const pathname=usePathname();
-  return pathname==="/saude/fenix"
+  // Normalize harmless trailing slash without turning the Fênix route into the Hub.
+  const isFenix=pathname==="/saude/fenix"||pathname?.replace(/\/+$/,'')==="/saude/fenix";
+  return isFenix
     ? <HealthDashboard key={data.personId || "none"} data={data}/>
     : <HealthHubRootP4 key={data.personId || "none"} data={data}/>;
 }

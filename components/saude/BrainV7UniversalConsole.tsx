@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {safeClinicalReturnM150} from '@/lib/navigation/clinical-return-m150';
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Activity, ArrowLeft, BookHeart, BrainCircuit, Check, ClipboardCopy, Clock3, FileText, HeartPulse, Package, ShieldAlert, ShieldCheck, Sparkles, Watch } from 'lucide-react';
@@ -47,6 +48,8 @@ export function BrainV7UniversalConsole() {
   const [copied,setCopied]=useState('');
   const [confirmRemoval,setConfirmRemoval]=useState('');
   const [busy,setBusy]=useState(false);
+  const [backHref,setBackHref]=useState('/saude/minha-saude');
+  useEffect(()=>{setBackHref(safeClinicalReturnM150(new URLSearchParams(window.location.search).get('return_to'),'/saude/brain-v7','/saude/minha-saude'));},[]);
   const nowISO=useMemo(()=>new Date().toISOString(),[today]);
   const storageKey=useMemo(()=>`vault:brain-v7:local:${encodeURIComponent(uid)}:${encodeURIComponent(pid)}`,[uid,pid]);
 
@@ -146,7 +149,7 @@ export function BrainV7UniversalConsole() {
   return <main className="min-h-[100dvh] bg-void px-3.5 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 text-ink-primary">
     <div className="mx-auto max-w-xl space-y-4">
       <header className="flex items-center gap-3">
-        <Link href="/saude/minha-saude" aria-label="Voltar para Minha Saúde" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={18}/></Link>
+        <Link href={backHref} aria-label="Voltar à origem do Brain" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={18}/></Link>
         <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-300">VAULT · Brain · Fênix</p><h1 className="font-display text-2xl font-bold">Inteligência de contexto</h1><p className={subtle}>Estabilidade, memória terapêutica e evidências</p></div>
         <BrainCircuit size={24} className="shrink-0 text-violet-300"/>
       </header>

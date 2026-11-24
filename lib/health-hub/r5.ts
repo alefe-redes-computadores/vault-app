@@ -24,7 +24,7 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"relatorio",title:"Relatório Clínico 360",description:"Resumo clínico completo",href:"/saude/relatorios",group:"capture",icon:"book",keywords:["relatorio medico","pdf","a4"]},
   {id:"tratamentos",title:"Tratamentos",description:"Condições e vínculos",href:"/saude/tratamentos",group:"foundation",icon:"shield",keywords:["condicao","tratamento","cuidado"]},
   {id:"engenharia-clinica",title:"Engenharia Clínica 360",description:"Fases, receitas vinculadas e locais",href:"/saude/engenharia-clinica",group:"foundation",icon:"activity",keywords:["evolucao","tratamento","receita","renovacao","fornecimento","fases"]},
-  {id:"medicamentos",title:"Medicamentos 360",description:"Rotina e estoque",href:"/saude/medicamentos",group:"foundation",icon:"pill",keywords:["dose","remedio","estoque"]},
+  {id:"medicamentos",title:"Medicamentos",description:"Rotina e estoque",href:"/saude/medicamentos",group:"foundation",icon:"pill",keywords:["dose","remedio","estoque"]},
   {id:"fenix",title:"Fênix e Perfil Clínico",description:"Avatar, medidas e histórico",href:"/saude/fenix",group:"foundation",icon:"user",keywords:["fenix","avatar","perfil","alergia","minha saude"]},
   {id:"studio",title:"Fênix Studio",description:"Aparência e identidade visual",href:"/saude/visual-studio",group:"foundation",icon:"sparkles",keywords:["avatar","studio","corpo"]},
   {id:"fontes",title:"Fontes de saúde",description:"Relógio, anel e aparelhos",href:"/saude/fenix#fontes",group:"foundation",icon:"chart",keywords:["samsung","health connect","relogio","anel","sincronizacao"]},
@@ -48,7 +48,7 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"resumo",title:"Resumo longitudinal",description:"Relatórios de registros",href:"/saude/registros/relatorio",group:"intelligence",icon:"chart",keywords:["historico","resumo","relatorio"]},
   {id:"documentos",title:"Documentos de saúde",description:"Acervo clínico",href:"/saude/documentos",group:"capture",icon:"files",keywords:["receita","documento","pdf"]},
   {id:"brain",title:"VAULT Brain",description:"Observações e evidências",href:"/saude/brain-v7",group:"intelligence",icon:"activity",keywords:["brain","inteligencia","observacao"]},
-  {id:"modo-medico",title:"Modo Médico 360",description:"Resumo para consulta",href:"/saude/careflow/modo-medico",group:"intelligence",icon:"stethoscope",keywords:["medico","pdf","dossie"]},
+  {id:"modo-medico",title:"Modo Médico",description:"Resumo para consulta",href:"/saude/careflow/modo-medico",group:"intelligence",icon:"stethoscope",keywords:["medico","pdf","dossie"]},
   {id:"episodios",title:"Episódio de atendimento",description:"Fatos de uma consulta",href:"/saude/careflow/episodios",group:"intelligence",icon:"calendar",keywords:["episodio","consulta","retorno"]},
   {id:"linha-do-tempo",title:"Brain longitudinal",description:"Registros rastreáveis",href:"/saude/careflow/linha-do-tempo",group:"intelligence",icon:"chart",keywords:["historico","brain","linha do tempo"]},
 ] as const;

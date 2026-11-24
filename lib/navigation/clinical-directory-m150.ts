@@ -113,10 +113,43 @@ const clinicalSearchAliasesM150P5P5: Readonly<Record<string, readonly string[]>>
   sintomas: ['dor','evolucao','relato'],
 };
 
+/** Complementary Hub routes: searchable without flooding the initial 31-card map.
+ * All entries point to existing destinations; IDs of original favorites remain untouched.
+ */
+export const clinicalAdditionalSectionsM150: readonly ClinicalMapSectionM150[] = [
+  {id:'complementares',title:'Outras áreas de saúde',description:'Profissionais, reabilitação, documentos e Fênix',items:[
+    {id:'reabilitacao',label:'Reabilitação',description:'Programas, equipe e sessões',href:'/saude/reabilitacao',icon:'heart'},
+    {id:'vacinas',label:'Vacinação',description:'Carteira e aplicações declaradas',href:'/saude/vacinas',icon:'syringe'},
+    {id:'procedimentos-a9',label:'Procedimentos não cirúrgicos',description:'Registros e planejamento',href:'/saude/procedimentos',icon:'stethoscope'},
+    {id:'reacoes-a9',label:'Alergias e reações',description:'Relatos e sensibilidades',href:'/saude/reacoes',icon:'heart'},
+    {id:'engenharia-clinica',label:'Engenharia Clínica',description:'Fases de tratamento e vínculos',href:'/saude/engenharia-clinica',icon:'activity'},
+    {id:'relatorio',label:'Relatório clínico',description:'Resumo revisável e PDF',href:'/saude/relatorios',icon:'file'},
+    {id:'rede-medicos',label:'Profissionais de saúde',description:'Médicos e especialidades',href:'/saude/medicos',icon:'users'},
+    {id:'rede-hospitais',label:'Hospitais e unidades',description:'Unidades e locais de atendimento',href:'/saude/hospitais',icon:'users'},
+    {id:'rede-farmacias',label:'Farmácias e SUS',description:'Farmácias e fornecimento',href:'/saude/farmacias',icon:'users'},
+    {id:'fenix-indicadores',label:'Indicadores do corpo',description:'Medidas, peso e sono na Fênix',href:'/saude/fenix#indicadores',icon:'activity'},
+    {id:'fenix-fontes',label:'Fontes de saúde',description:'Relógios e dispositivos na Fênix',href:'/saude/fenix#fontes',icon:'eye'},
+  ]},
+];
+const additionalSearchAliasesM150: Readonly<Record<string,readonly string[]>> = {
+ reabilitacao:['fisioterapia','terapia ocupacional','sessao','recuperacao funcional'],
+ vacinas:['vacina','imunizacao','carteira vacinal','reforco'],
+ 'procedimentos-a9':['curativo','ambulatorial','intervencao'],
+ 'reacoes-a9':['intolerancia','alergia','efeito adverso'],
+ 'engenharia-clinica':['fases','receitas vinculadas','fornecimento'],
+ relatorio:['relatorio medico','resumo para consulta','pdf'],
+ 'rede-medicos':['medicos','doutor','crm','especialidade'],
+ 'rede-hospitais':['hospital','clinica','unidade','laboratorio'],
+ 'rede-farmacias':['farmacia','farmacias','farmaceutico'],
+ 'fenix-indicadores':['sono','peso','altura','biometria'],
+ 'fenix-fontes':['samsung','health connect','relogio','anel'],
+};
 export function searchClinicalDirectoryM150(query: string): readonly ClinicalMapSectionM150[] {
   const needle = normalizeClinicalSearchM150(query);
   if (!needle) return clinicalDirectoryM150;
-  return clinicalDirectoryM150.map(section => ({...section,items:section.items.filter(item =>
-    normalizeClinicalSearchM150([item.label,item.description,section.title,...(clinicalSearchAliasesM150P5P5[item.id] || [])].join(' ')).includes(needle)
-  )})).filter(section => section.items.length > 0);
+  return [...clinicalDirectoryM150,...clinicalAdditionalSectionsM150].map(section =>
+    ({...section,items:section.items.filter(item => normalizeClinicalSearchM150([
+      item.label,item.description,section.title,...(clinicalSearchAliasesM150P5P5[item.id] || []),
+      ...(additionalSearchAliasesM150[item.id] || [])
+    ].join(' ')).includes(needle))})).filter(section => section.items.length > 0);
 }

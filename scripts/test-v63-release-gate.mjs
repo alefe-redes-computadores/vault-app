@@ -586,6 +586,14 @@ for (const contract of contracts) {
     console.log(`[V63 COLETA] ${checkedContracts}/${contracts.length} | falhas=${failedContracts.length}`);
   }
 }
+const guardianMacroA = "scripts/test-vault-guardian-ux360-macro-a.cjs";
+console.log(`
+=== ${guardianMacroA} ===`);
+const guardianResult = spawnSync(process.execPath, ["--require", vaultM2TestPreload, guardianMacroA], {stdio:"inherit"});
+if (guardianResult.status !== 0) {
+  if (!collectAll) process.exit(guardianResult.status ?? 1);
+  failedContracts.push({contract:guardianMacroA,code:guardianResult.status ?? 1});
+}
 if (failedContracts.length > 0) {
   console.error(`V63_BLOQUEADA_COLETA_INTEGRAL | executadas=${checkedContracts} | falhas=${failedContracts.length}`);
   for (const {contract,code} of failedContracts) console.error(`V63_FALHA | exit=${code} | ${contract}`);

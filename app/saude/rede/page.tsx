@@ -1066,7 +1066,10 @@ export default function RedeSaudePage() {
           {/* VAULT_HEALTH_HUB_V81 */}
           <p className="mt-2 pl-14 text-[10px] leading-relaxed text-ink-muted">Médicos, farmácias e unidades de atendimento.</p>
         </header>
-        <div className="px-5 pt-3"><HealthHubSwitchR5 active="rede" onNavigate={openFromNetwork}/></div>
+        <details className="mx-5 mt-3 rounded-xl border border-surface-border/55 bg-surface/30 px-3 py-2">
+          <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold text-ink-secondary">Outras áreas de saúde <ChevronDown size={16} className="group-open:rotate-180"/></summary>
+          <div className="pb-1 pt-2"><HealthHubSwitchR5 active="rede" onNavigate={openFromNetwork}/></div>
+        </details>
 
         <section className="space-y-3.5 px-5 pt-4">
           {!activePersonId && (
