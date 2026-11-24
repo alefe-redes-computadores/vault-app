@@ -27,7 +27,14 @@ const slots=[
 ];
 for(const fixture of [[],slots,slots.slice(0,1),Array.from({length:2000},(_,i)=>({...slots[i%slots.length],medicamentoId:'m'+i,horario:i%2?'08:00':'20:00'}))]){
   const before=JSON.stringify(fixture);
-  assert.deepEqual(grouping.groupScheduleSlots(fixture),oldGroup(fixture));
+  const actualGroups=grouping.groupScheduleSlots(fixture);
+  assert.equal(actualGroups.reduce((total,g)=>total+g.slots.length,0),fixture.length,'Every original entry is preserved');
+  assert.ok(actualGroups.every(g=>g.pending.every(item=>item.doseKind!=='planned'&&!item.isExpectedUnconfirmed&&!item.isAvulsa&&!item.isDataConflict)), 'Only regular reviewable slots become pending');
+  if(fixture===slots){
+    assert.notDeepEqual(actualGroups,oldGroup(fixture),'Old grouping cannot be restored: planned event joins its actual same-time schedule');
+    const eight=actualGroups.find(g=>g.key==='time:08:00');
+    assert.ok(eight&&eight.planned.length===1&&eight.pending.length===2&&eight.resolved===2&&eight.unavailable===1,'08h group keeps 2 pending, 2 resolved and planned separate from totals');
+  }
   ok(JSON.stringify(fixture)===before,'agrupamento preserva ordem, pendência, saldo e não altera entrada; '+fixture.length+' slots');
 }
 const counters={days:0,stock:0,behavior:0};

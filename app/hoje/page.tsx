@@ -115,6 +115,7 @@ import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import {
   filterTimelineItems,
   groupTimelineItems,
+  isScheduledRoutineEvidence,
   summarizeTimeline,
   visibleTimelineItems,
 } from "@/lib/today/timeline-summary";
@@ -774,17 +775,25 @@ export default function HojePage() {
       selectedDate: dataSelecionada,
       today: hoje,
       nowTime: operationalMinute,
+      // The normal view still hides resolved rows. Co-location is opt-in
+      // only after they are explicitly shown by the user.
+      coLocatePlannedWithScheduled: isHoje && filtroStatus === "todos" && mostrarConcluidas,
     }).map(([key, items]) => {
-      const total = items.length;
+      const meta = key === "horarios"
+        ? { icon: Clock, label: "Mesmo horário", sub: "Doses regulares e planejamentos" }
+        : metadata[key];
+      const total = items.filter(isScheduledRoutineEvidence).length;
       const completed = items.reduce(
-        (count, item) => count + (item.tomada ? 1 : 0),
+        (count, item) => count + (isScheduledRoutineEvidence(item) && item.tomada ? 1 : 0),
         0
       );
+      const plannedCount = items.filter(item => item.doseKind === "planned").length;
       return [
         key,
         {
-          ...metadata[key],
-          sub: todayTimelineGroupContext(metadata[key].sub, items.length),
+          ...meta,
+          sub: todayTimelineGroupContext(meta.sub, items.length) +
+            (plannedCount ? ` · ${plannedCount} planejada${plannedCount === 1 ? "" : "s"}` : ""),
           items,
           total,
           completed,
@@ -792,7 +801,7 @@ export default function HojePage() {
         },
       ] as const;
     });
-  }, [dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada]);
+  }, [dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada, filtroStatus, mostrarConcluidas]);
 
   // M76: read-only agenda projection across categories. It never changes dose state.
   const agendaOverview = useMemo(
@@ -817,7 +826,8 @@ export default function HojePage() {
           !dose.isExpectedUnconfirmed &&
           !dose.isDataConflict &&
           !dose.isAvulsa &&
-          !dose.isSintoma
+          !dose.isSintoma &&
+          isScheduledRoutineEvidence(dose)
       ),
     [doses]
   );

@@ -456,7 +456,9 @@ function identityFor(medication: Medicamento, reference: MedicationReference | n
     savedAuthority?.state === "confirmed" &&
     (!reference || normalizeMedicationText(reference.canonicalName) === normalizeMedicationText(persisted.canonicalName)) &&
     (authority.state === "confirmed" || authority.state === "unvalidated"));
-  const displayIngredients = authority.activeIngredients.length
+  // A divergent catalog match cannot assert a medication ingredient.
+  // Keep a persisted, still-confirmed exact identity for the offline case.
+  const displayIngredients = (authority.state === "confirmed" || authority.state === "compatible") && authority.activeIngredients.length
     ? authority.activeIngredients
     : sameVerifiedProduct ? savedAuthority?.activeIngredients || [] : [];
   return {

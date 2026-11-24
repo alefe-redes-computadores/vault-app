@@ -42,6 +42,7 @@ export function medicationRegulatoryShortLabel(
   if (/notifica[cç][aã]o\s+b2/i.test(label)) return "Notif. B2";
   if (/notifica[cç][aã]o\s+b/i.test(label)) return "Notif. B";
   if (/notifica[cç][aã]o\s+a/i.test(label)) return "Notif. A";
+  if (/receita comum/i.test(label)) return "Comum";
   if (/especial|controle/i.test(label)) return "Especial";
   return "Receita";
 }

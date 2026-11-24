@@ -43,7 +43,25 @@ const items=[
  {medicamentoId:'f',horario:'10:00',tomada:false,ignorada:false,doseKind:'planned'},
  {medicamentoId:'a',horario:'10:00',tomada:false,ignorada:false},
 ];
-assert.equal(groupScheduleSlots(items).length,3,'Three individual cases stay outside the scheduled group');
+const v223Groups=groupScheduleSlots(items);
+assert.equal(v223Groups.length,2,'Only the genuinely ad-hoc dose remains separate; planned and historical-unconfirmed share the visual time group');
+const v223Time=v223Groups.find(group=>group.key==='time:10:00');
+assert.ok(v223Time&&v223Time.slots.length===6&&v223Time.planned.length===1&&v223Time.unconfirmed.length===1,'Visual group preserves all 10h entries without falsely resolving planned or historical-unknown events');
+assert.equal(v223Time.pending.length,3);
+assert.equal(v223Time.resolved,1);
+const fourCompleted=['a','b','c','d'].map(medicamentoId=>({medicamentoId,horario:'10:00',tomada:true,ignorada:false}));
+const actualPlanned={medicamentoId:'p',horario:'10:00',tomada:false,ignorada:false,isAvulsa:true,doseKind:'planned'};
+const fourPlusOne=groupScheduleSlots([...fourCompleted,actualPlanned]);
+assert.equal(fourPlusOne.length,1,'Actual planned DoseLog with isAvulsa=true still shares the hour visually');
+assert.equal(fourPlusOne[0].resolved,4);
+assert.equal(fourPlusOne[0].pending.length,0);
+assert.equal(fourPlusOne[0].planned.length,1);
+assert.deepEqual(eligibleGroupDoseKeys([...fourCompleted,actualPlanned]),[],'Neither completed nor planned doses enter a batch');
+const night=groupScheduleSlots([{medicamentoId:'n1',horario:'22:00',tomada:false,ignorada:false},{medicamentoId:'n2',horario:'22:00',tomada:false,ignorada:false},{...actualPlanned,horario:'22:00'}]);
+assert.equal(night.length,1);
+assert.equal(night[0].pending.length,2);
+assert.equal(night[0].planned.length,1);
+assert.deepEqual(eligibleGroupDoseKeys(night[0].pending),['n1-22:00','n2-22:00']);
 assert.deepEqual(eligibleGroupDoseKeys(items),['a-10:00','b-10:00'],'Only distinct actionable slots may enter a batch');
 assert.deepEqual(eligibleGroupDoseKeys([{medicamentoId:'a',horario:'tomorrow',tomada:false,ignorada:false}]),[]);
 const today=source('app/hoje/page.tsx');

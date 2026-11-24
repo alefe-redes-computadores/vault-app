@@ -29,7 +29,7 @@ ok(agenda.includes('onNavigate(item.href)')&&home.includes('trigger("vibrate"); 
 ok(!/fetch\(|supabase|db\./.test(agenda)&&agenda.includes('motion-reduce:transition-none'),'Componente sem leituras remotas e acessível');
 ok(hero.includes('homeRoutineSummaryNote(scheduled, safeCompleted)')&&hero.includes('safeProgress')&&hero.includes('safeCompleted'),'Hero separa nota da contagem');
 ok(hero.includes('Rotina programada')&&hero.includes('role="progressbar"')&&hero.includes('Sem horários'),'Autoridade visual legada preservada');
-ok(today.includes('const metadata = todayTimelineGroupPresentation')&&today.includes('todayTimelineGroupContext(metadata[key].sub, items.length)'),'Hoje modulariza metadados e preserva R9 R9');
+ok(today.includes('const metadata = todayTimelineGroupPresentation')&&today.includes('todayTimelineGroupContext(meta.sub, items.length)')&&today.includes('const total = items.filter(isScheduledRoutineEvidence).length;'),'Hoje modulariza metadados e preserva R9 R9');
 const v45=read('scripts/test-v45-hoje-doses-contract.mjs'),v49=read('scripts/test-v49-today-v3-contract.mjs');
 ok(v45.includes('TodayTimelineGroupPresentation.ts')&&v45.includes('groups.includes(`${key}: { label: "${label}"`)'),'V45 valida a fonte modular real de cada rótulo');
 ok(v49.includes('TodayTimelineGroupPresentation.ts')&&v49.includes('groups.indexOf(')&&v49.includes('const metadata = todayTimelineGroupPresentation'),'V49 valida ordem modular e ligação ao agrupamento');

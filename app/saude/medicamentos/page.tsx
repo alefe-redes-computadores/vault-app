@@ -976,7 +976,9 @@ export default function MedicamentosListPage() {
         ?? shortPrescriptionKnowledgeLabel(stablePrescriptionFact?.value);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
-      const knowledgeIngredient = medicationKnowledge360.facts.find(fact => fact.kind === "active_ingredient")?.value;
+      const knowledgeIngredient = (catalogIdentity?.authorityState === "confirmed" || catalogIdentity?.authorityState === "compatible")
+        ? medicationKnowledge360.facts.find(fact => fact.kind === "active_ingredient" && fact.authority === "official_exact")?.value
+        : undefined;
       const activeIngredients =
         catalogIdentity?.activeIngredients?.length
           ? catalogIdentity.activeIngredients
@@ -1465,7 +1467,7 @@ export default function MedicamentosListPage() {
                     <ChevronRight size={14} className="shrink-0 text-ink-faint" aria-hidden="true"/>
                     </span>
                   </button>
-                  {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`}>Princípio ativo: {activeIngredient}</span>}
+                  {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                   {med.data_receita && <span data-vault-v34x-receita-cadastro className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada no cadastro · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
                   {!med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Documento de receita vinculado</span>}
                   </div>

@@ -34,7 +34,7 @@ const [home,today,details,evidence,avatar,mesh]=names.map(read);
 ok(home.includes('selectHomeDayEvents(consultas, hoje, true)')&&home.includes('selectHomeDayEvents(exames, hoje, false)')&&home.includes('selectHomeDayEvents(cirurgias, hoje, true)'),'Home delega seleção sem novo hook');
 ok(home.includes('countHomeTodayAppointments({')&&home.includes('appointments={totalCompromissosHoje}'),'Home preserva contagem R8');
 ok(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('openWithdrawalsDueBy(retiradas, hoje)'),'Home conserva proprietário e índice V196');
-ok(today.includes('todayTimelineGroupContext(metadata[key].sub, items.length)')&&today.includes('groupTimelineItems(dosesParaExibir'),'Hoje mantém grupos canônicos');
+ok(today.includes('todayTimelineGroupContext(meta.sub, items.length)')&&today.includes('const total = items.filter(isScheduledRoutineEvidence).length;')&&today.includes('groupTimelineItems(dosesParaExibir'),'Hoje mantém grupos canônicos');
 ok(today.includes('todayTimelineGroupPresentation')&&read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 preservados');
 ok(/const metricItems\s*=\s*useMemo\(\s*\(\)\s*=>\s*doses\.filter\(/.test(today)&&today.includes('summarizeTimeline(doses)'),'Métrica P10 não perdeu o memo');
 ok(today.includes('visibleTimelineItems(dosesFiltradas')&&today.includes('countHiddenTodayResolved(dosesFiltradas'),'Visibilidade e contagem R8 mantidas');

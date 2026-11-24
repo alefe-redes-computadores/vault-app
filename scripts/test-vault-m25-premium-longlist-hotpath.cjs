@@ -55,7 +55,7 @@ for(const items of fixtures){
  const snapshot=JSON.stringify(items);
  for(const status of statuses)for(const isToday of [true,false])for(const showResolved of [true,false]){
   const actual=visibleTimelineItems(items,{isToday,status,showResolved});
-  const expected=!isToday||status!=='todos'||showResolved?items:items.filter(x=>!x.tomada&&!x.ignorada&&!x.isDataConflict);
+  const expected=!isToday||status!=='todos'||showResolved?items:items.filter(x=>x.doseKind==='planned'||(!x.tomada&&!x.ignorada&&!x.isDataConflict));
   assert.deepEqual(actual,expected);
   if(expected.length===items.length)assert.strictEqual(actual,items);
   count++;

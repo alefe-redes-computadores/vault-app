@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  Fragment,
   useMemo,
   useState,
 } from "react";
@@ -67,6 +68,7 @@ import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-sear
 import { isPrescriptionOnly, renewalEventDate, isFutureAcquisition, realizedAcquisitionExpense } from "@/lib/health-supply/renewal-event";
 import { presentRenewalEvent, summarizeRenewalEvents } from "@/lib/health-supply/renewal-event-presentation";
 import { useLocalDay } from "@/hooks/useLocalDay";
+import { stripManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { useProgressiveReveal } from "@/hooks/useProgressiveReveal";
 
 import type {
@@ -461,7 +463,7 @@ export default function RenovacoesPage() {
               medicamentoNome:
                 renovacao.medicamento_nome?.trim() ||
                 medicamento?.nome ||
-                "Medicamento removido",
+                "Referência do medicamento indisponível",
 
               medicamentoDosagem:
                 renovacao.medicamento_dosagem?.trim() ||
@@ -514,6 +516,7 @@ export default function RenovacoesPage() {
           const renovacao of
           renovacoesEnriquecidas
         ) {
+          if (isFutureAcquisition(renovacao, hojeISO)) continue;
           if (
             renovacao.validadeConhecida &&
             renovacao.vencida
@@ -560,6 +563,7 @@ export default function RenovacoesPage() {
       },
       [
         renovacoesEnriquecidas,
+        hojeISO,
       ]
     );
 
@@ -574,7 +578,7 @@ export default function RenovacoesPage() {
   const renewalSearchIndex = useMemo(() => createLocalSearchIndex(renovacoesEnriquecidas, (item) => [
     item.medicamentoNome,
     item.medicamentoDosagem,
-    item.observacoes,
+    stripManufacturerMetadata(item.observacoes),
     item.lote,
     getAcquisitionTypeLabel(item),
     getEffectiveAcquisitionDate(item),
@@ -636,7 +640,7 @@ export default function RenovacoesPage() {
               (
                 renovacao
               ) =>
-                renovacao.validadeConhecida &&
+                !isFutureAcquisition(renovacao, hojeISO) && renovacao.validadeConhecida &&
                 renovacao.vencida
             );
         }
@@ -650,7 +654,7 @@ export default function RenovacoesPage() {
               (
                 renovacao
               ) =>
-                renovacao.validadeConhecida &&
+                !isFutureAcquisition(renovacao, hojeISO) && renovacao.validadeConhecida &&
                 !renovacao.vencida
             );
         }
@@ -666,7 +670,7 @@ export default function RenovacoesPage() {
               ) =>
                 filtroAquisicao === "receita"
                   ? isPrescriptionOnly(renovacao)
-                  : filtroAquisicao === "aquisicoes" ? !isPrescriptionOnly(renovacao)
+                  : filtroAquisicao === "aquisicoes" ? (presentRenewalEvent(renovacao, hojeISO).realized && !isPrescriptionOnly(renovacao))
                   : filtroAquisicao === "planejada"
                     ? presentRenewalEvent(renovacao, hojeISO).planned
                     : renovacao.tipo_aquisicao === filtroAquisicao && !presentRenewalEvent(renovacao, hojeISO).planned
@@ -679,9 +683,15 @@ export default function RenovacoesPage() {
          * Criamos nova referência para impedir mutação acidental
          * caso novos tratamentos sejam adicionados depois.
          */
-        return [
-          ...result,
-        ];
+        return [...result].sort((a, b) => {
+          // Pure chronological projection; never mutate useRenovacoes source records.
+          const aPlanned = presentRenewalEvent(a, hojeISO).planned;
+          const bPlanned = presentRenewalEvent(b, hojeISO).planned;
+          if (aPlanned !== bPlanned) return aPlanned ? -1 : 1;
+          const aDay = renewalEventDate(a).slice(0, 10);
+          const bDay = renewalEventDate(b).slice(0, 10);
+          return aPlanned ? aDay.localeCompare(bDay) : bDay.localeCompare(aDay);
+        });
       },
       [
         renewalSearchIndex,
@@ -775,7 +785,7 @@ export default function RenovacoesPage() {
               <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/lote"); }} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] text-xs font-bold text-emerald-200 active:scale-[.99]"><Receipt size={14}/>Registrar vários medicamentos</button>
             </div>
           )}
-          {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-ice/25 bg-ice/[0.07] px-4 py-3 text-xs text-ice"><strong>{datasFuturas} aquisição(ões) planejada(s).</strong> Permanecem fora do gasto e do estoque até a confirmação.</div>}
+          {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-ice/25 bg-ice/[0.07] px-4 py-3 text-xs text-ice"><strong>{datasFuturas} {datasFuturas === 1 ? "aquisição planejada" : "aquisições planejadas"}.</strong> Permanecem fora do gasto e do estoque até a confirmação.</div>}
 
           {/* ==================================================
               FILTERS
@@ -1046,17 +1056,24 @@ export default function RenovacoesPage() {
                   );
 
                 const borderColor =
-                  renovacao.validadeConhecida &&
+                  !isFutureAcquisition(renovacao, hojeISO) && renovacao.validadeConhecida &&
                   renovacao.vencida
                     ? "#EF4444"
                     : theme.hex;
 
                 const eventPresentation = presentRenewalEvent(renovacao, hojeISO);
+                const visibleNotes = stripManufacturerMetadata(renovacao.observacoes);
                 const acquisitionLabel = eventPresentation.state === "private_acquisition"
                   ? getAcquisitionLabel(renovacao)
                   : eventPresentation.chip;
 
                 return (
+                  <Fragment key={renovacao.id || `historico-${index}`}>
+                    {(index === 0 || presentRenewalEvent(filteredRenovacoes[index - 1], hojeISO).planned !== eventPresentation.planned) && (
+                      <h3 className="mt-4 mb-2 text-xs font-semibold uppercase tracking-wide text-ink-secondary" aria-label={eventPresentation.planned ? "Aquisições planejadas" : "Histórico de receitas e aquisições"}>
+                        {eventPresentation.planned ? "Aquisições planejadas" : "Histórico de receitas e aquisições"}
+                      </h3>
+                    )}
                   <ListCard
                     key={
                       renovacao.id
@@ -1215,9 +1232,9 @@ export default function RenovacoesPage() {
                         {eventPresentation.title}
                       </span>
 
-                      {/* VALIDADE */}
+                      {/* VALIDADE · receita histórica, nunca confirmar planejamento futuro */}
 
-                      {renovacao.validadeConhecida && (
+                      {!eventPresentation.planned && renovacao.validadeConhecida && (
                         renovacao.vencida ? (
                           <span className="flex items-center gap-1 rounded-full border border-coral/30 bg-coral/20 px-2 py-0.5 text-[10px] font-bold uppercase text-coral">
                             <AlertCircle
@@ -1243,7 +1260,7 @@ export default function RenovacoesPage() {
 
                       {/* DIAS */}
 
-                      {renovacao.validadeConhecida &&
+                      {!eventPresentation.planned && renovacao.validadeConhecida &&
                         renovacao.diasRestantes !==
                           null &&
                         !renovacao.vencida &&
@@ -1292,7 +1309,7 @@ export default function RenovacoesPage() {
 
                       {/* OBS */}
 
-                      {renovacao.observacoes && (
+                      {visibleNotes && (
                         <span className="flex min-w-0 max-w-full flex-wrap items-center gap-1 break-words text-ink-muted">
                           <MessageCircle
                             size={
@@ -1303,13 +1320,14 @@ export default function RenovacoesPage() {
 
                           <span className="truncate">
                             {
-                              renovacao.observacoes
+                              visibleNotes
                             }
                           </span>
                         </span>
                       )}
                     </div>
                   </ListCard>
+                  </Fragment>
                 );
               }
             )

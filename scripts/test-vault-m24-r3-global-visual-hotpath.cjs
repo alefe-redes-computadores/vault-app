@@ -63,7 +63,7 @@ const {filterTimelineItems,visibleTimelineItems}=m.exports;
 function original(items,status,period,isToday){
  let out=items;
  if(status==='tomados')out=out.filter(item=>item.tomada&&!item.isDataConflict);
- else if(status==='pendentes')out=out.filter(item=>!item.tomada&&!item.ignorada&&!item.isDataConflict&&!item.isSintoma&&(isToday?!item.isExpectedUnconfirmed:item.isExpectedUnconfirmed));
+ else if(status==='pendentes')out=out.filter(item=>!item.tomada&&!item.ignorada&&!item.isDataConflict&&!item.isSintoma&&!item.isAvulsa&&!['planned','sos','extra'].includes(item.doseKind)&&(isToday?!item.isExpectedUnconfirmed:item.isExpectedUnconfirmed));
  else if(status==='ignorados')out=out.filter(item=>item.ignorada&&!item.isDataConflict);
  if(period!=='todos')out=out.filter(item=>{const h=Number(String(item.horario||'00:00').split(':')[0]);return (h>=5&&h<12?'manha':h>=12&&h<18?'tarde':'noite')===period});
  return out;

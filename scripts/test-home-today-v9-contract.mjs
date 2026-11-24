@@ -39,7 +39,7 @@ ok("Hoje resume concluídos por padrão", today.includes("mostrarConcluidas") &&
 ok("pendentes continuam visíveis por padrão",
   /visibleTimelineItems\(dosesFiltradas,\s*\{\s*isToday:\s*isHoje,\s*status:\s*filtroStatus,\s*showResolved:\s*mostrarConcluidas,?\s*\}\)/.test(today) &&
   timeline.includes('if (!options.isToday || options.status !== "todos" || options.showResolved) return items;') &&
-  timeline.includes('if (item.tomada || item.ignorada || item.isDataConflict)') &&
+  timeline.includes('if (item.doseKind!=="planned" && (item.tomada || item.ignorada || item.isDataConflict))') &&
   timeline.includes('if (filtered === null) filtered = items.slice(0, i)') &&
   timeline.includes('return filtered ?? items;'));
 

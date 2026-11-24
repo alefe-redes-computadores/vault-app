@@ -22,8 +22,8 @@ ok(home.includes("buildHomePendingDoseProjection")&&homePending.includes("buildP
 // obsolete literal negation used before the single-pass refactoring.
 ok(todayProjection.includes('slot.state === "conflict"')&&
   read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas')&&today.includes('todayTimelineGroupPresentation')&&
-  todaySummary.includes('if (item.isExpectedUnconfirmed || item.isDataConflict || item.isAvulsa || item.isSintoma) continue;')&&
-  todaySummary.includes('if (item.tomada || item.ignorada || item.isDataConflict)')&&
+  todaySummary.includes('if (!isScheduledRoutineEvidence(item)) continue;')&&todaySummary.includes('if(item.doseKind==="planned" || item.doseKind==="sos" || item.doseKind==="extra") continue;')&&
+  todaySummary.includes('if (item.doseKind!=="planned" && (item.tomada || item.ignorada || item.isDataConflict))')&&
   todaySummary.includes('if (status === "pendentes" && (item.tomada || item.ignorada || item.isDataConflict'),
   "Hoje isola conflito das ações e métricas");
 // Execute the genuine projection with a stub only for the calendar classifier:

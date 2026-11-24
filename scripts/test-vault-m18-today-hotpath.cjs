@@ -18,7 +18,10 @@ ok(v98.includes("summary.includes('if (item.isExpectedUnconfirmed) totalEsperada
    !v98.includes("summary.includes('!item.isAvulsa && !item.isSintoma')"),
    'V98 validates the optimized SOS/extra, symptoms, conflict and historical exclusions');
 ok(today.includes('const operationalMinute = isHoje ? horaAtual : "00:00"'),'clock only groups today');
-ok(today.includes('nowTime: operationalMinute')&&today.includes('[dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada]'),'past/future grouping avoids minute dependency');
+ok(today.includes('nowTime: operationalMinute')&&
+   today.includes('[dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada, filtroStatus, mostrarConcluidas]')&&
+   today.includes('coLocatePlannedWithScheduled: isHoje && filtroStatus === "todos" && mostrarConcluidas'),
+   'past/future grouping avoids minute dependency and co-location tracks both UI toggles');
 ok(today.includes('dose.horario <= operationalMinute')&&today.includes('[isHoje, metricItems, batchTargetKeys, operationalMinute]'),'batch eligibility remains current for today');
 ok((/const concluidasOcultas\s*=\s*useMemo\(\s*\(\)\s*=>\s*countHiddenTodayResolved\(dosesFiltradas,/.test(today))&&today.includes('[dosesFiltradas, isHoje, filtroStatus, mostrarConcluidas]'),'hidden count only recomputes on relevant change');
 ok(owner.includes('const EMPTY_TODAY_ROWS: never[] = [];')&&(owner.match(/: EMPTY_TODAY_ROWS,/g)||[]).length===10,'ten unavailable Dexie rows share stable empty identity');

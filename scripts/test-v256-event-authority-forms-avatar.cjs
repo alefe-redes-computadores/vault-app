@@ -13,7 +13,14 @@ ok(model.includes('state: "prescription"')&&model.includes('Não confirma compra
 ok(model.includes('state: "planned_acquisition"')&&model.includes('Não entra no gasto nem no estoque'),'planejamento futuro não vira realizado');
 ok(model.includes('state: "sus_withdrawal"')&&model.includes('retirada vinculada preserva seu próprio histórico'),'SUS preserva relação independente com retirada');
 ok(model.includes('realizedAcquisitions: privateAcquisitions + publicAcquisitions'),'contagem realizada exclui planejamento');
-ok(list.includes('summarizeRenewalEvents')&&list.includes('aquisição(ões) planejada(s)'),'listagem separa realizado de planejado');
+ok(
+  list.includes('summarizeRenewalEvents') &&
+  list.includes('eventSummary.realizedAcquisitions') &&
+  list.includes('filtroAquisicao === "aquisicoes" ? (presentRenewalEvent(renovacao, hojeISO).realized && !isPrescriptionOnly(renovacao))') &&
+  list.includes('datasFuturas === 1 ? "aquisição planejada" : "aquisições planejadas"') &&
+  !list.includes('filtroAquisicao === "aquisicoes" ? !isPrescriptionOnly(renovacao)'),
+  'listagem separa realizado de planejado'
+);
 ok(list.includes('filtroAquisicao === "planejada"')&&list.includes('eventPresentation.planned'),'filtro planejado tem semântica própria');
 ok(detail.includes('eventPresentation?.attachmentLabel')&&detail.includes('Relações comprovadas'),'detalhe nomeia anexo e relações pelo evento real');
 ok(detail.includes('linkedWithdrawals')&&detailGraph.includes('renovacao_origem_id')&&detailGraph.includes('renovacao_realizada_id'),'detalhe reconhece origem e recebimento da retirada');
