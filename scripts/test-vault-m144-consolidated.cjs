@@ -58,14 +58,20 @@ ok(clinicalPanel.includes('/saude/plano-seguranca'),'resgate SOS acessível pela
 const centralPage=fs.readFileSync('app/saude/central-m144/page.tsx','utf8');
 ok(!/\bpt-safe\b|safe-area-inset-top/.test(centralPage) && centralPage.includes('bg-void px-3.5 pb-24 pt-4'),'central M144 segue contrato V31 de safe-area superior global');
 
-// V112: every new clinical date is typed through the masked Vault control.
+// V112: every clinical date uses the official controlled Vault calendar.
 // No native date/time input or visible select may enter app/components.
 const nativeDateFieldM144=/<input\b[^>]*type\s*=\s*["'](?:date|time|datetime-local)["'][^>]*>/gs;
 ok(!nativeDateFieldM144.test(clinicalPanel),'V112: M144 não usa campos nativos date/time');
 ok(!/<select\b[^>]*>/g.test(clinicalPanel),'V112: M144 não usa select nativo');
-ok(clinicalPanel.includes('function maskDayInputM144('),'V112: máscara de datas controlada');
-ok((clinicalPanel.match(/maskDayInputM144\(e\.target\.value\)/g)||[]).length===6,'V112: 6 datas passam pela máscara, sem exceção');
-ok((clinicalPanel.match(/inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD"/g)||[]).length===6,'V112: teclado numérico com formato declarado');
+ok(clinicalPanel.includes("import { CustomDatePicker } from '@/components/DatePicker';"),'V112: calendário oficial, sem controle paralelo');
+const dateAstR4=ts.createSourceFile('M144ClinicalPanel.tsx',clinicalPanel,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+const datePickersR4=[];function visitDateR4(node){if((ts.isJsxSelfClosingElement(node)||ts.isJsxOpeningElement(node))&&node.tagName.getText(dateAstR4)==='CustomDatePicker')datePickersR4.push(node);ts.forEachChild(node,visitDateR4)}visitDateR4(dateAstR4);
+ok(datePickersR4.length===6,'V112: seis calendários oficiais, sem duplicação');
+for(const [state,setter] of [['from','setFrom'],['until','setUntil'],['courseFrom','setCourseFrom'],['courseUntil','setCourseUntil'],['eventDate','setEventDate'],['next','setNext']]){
+ const hits=datePickersR4.filter(node=>{const attrs=Object.fromEntries(node.attributes.properties.filter(ts.isJsxAttribute).map(a=>[a.name.getText(dateAstR4),a.initializer?.getText(dateAstR4)]));return attrs.value==='{'+state+'}'&&attrs.onChange==='{'+setter+'}'&&attrs.disabled==='{!enabled||busy}'&&Boolean(attrs.label)});
+ ok(hits.length===1,'V112: data '+state+' ligada ao setter e proteção busy/disabled');
+}
+ok(!clinicalPanel.includes('maskDayInputM144')&&!clinicalPanel.includes('placeholder="AAAA-MM-DD"'),'V112: nenhuma máscara livre residual');
 
 
 console.log(`VAULT M144: ${checks} verificações de integração e segurança aprovadas.`);

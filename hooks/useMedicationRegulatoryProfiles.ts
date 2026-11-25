@@ -124,6 +124,16 @@ function lookupKeyFor(medication: Medicamento): string {
   return normalizeMedicationText(medication.nome);
 }
 
+/** MED-04: cache entries must NOT collide across account/person, medicine or presentation. */
+function catalogCacheKeyFor(medication: Medicamento): string {
+  return [
+    medication.user_id || "", medication.person_id || "", medication.id || "",
+    lookupKeyFor(medication), normalizeMedicationText(medication.dosagem || ""),
+    normalizeMedicationText(medication.formato || ""),
+    normalizeMedicationText(medication.forma_farmaceutica || ""),
+  ].join("::");
+}
+
 function snapshotReference(medication: Medicamento): PersistedReference | null {
   const snapshot = medication.catalog_snapshot;
   if (
@@ -147,10 +157,18 @@ function snapshotReference(medication: Medicamento): PersistedReference | null {
 }
 
 function knownReference(medication: Medicamento): PersistedReference | null {
-  const local = loadCache().entries[lookupKeyFor(medication)] || null;
+  const local = loadCache().entries[catalogCacheKeyFor(medication)] || null;
   const persisted = snapshotReference(medication);
   if (!local) return persisted;
   if (!persisted) return local;
+  // An official exact snapshot must not lose to an unrelated, unverified cache candidate.
+  const savedOfficial = resolveMedicationRegulatoryVisual(
+    medication, persisted.reference
+  ).verified;
+  const localOfficial = resolveMedicationRegulatoryVisual(
+    medication, local.reference
+  ).verified;
+  if (savedOfficial !== localOfficial) return savedOfficial ? persisted : local;
   return local.quality >= persisted.quality ? local : persisted;
 }
 
@@ -341,31 +359,32 @@ async function ensureReference(
 ): Promise<MedicationReference | null> {
   const key = lookupKeyFor(medication);
   if (!key) return null;
+  const cacheKey = catalogCacheKeyFor(medication);
   const current = loadCache();
   const known = knownReference(medication);
-  if (known && !current.entries[key]) current.entries[key] = known;
+  if (known && !current.entries[cacheKey]) current.entries[cacheKey] = known;
   if (known && referenceIsFresh(known, signature)) {
     persistKnownReference(medication, known);
     return known.reference;
   }
-  if (current.retryAfter[key] && current.retryAfter[key] > Date.now()) {
+  if (current.retryAfter[cacheKey] && current.retryAfter[cacheKey] > Date.now()) {
     return known?.reference || null;
   }
-  const running = inflight.get(key);
+  const running = inflight.get(cacheKey);
   if (running) return running;
 
   const request = (async () => {
     try {
       const resolved = await resolveBestReference(medication);
       if (!resolved) {
-        loadCache().retryAfter[key] = Date.now() + RETRY_TTL_MS;
+        loadCache().retryAfter[cacheKey] = Date.now() + RETRY_TTL_MS;
         persistCache();
         return known?.reference || null;
       }
 
       // Atualização atômica e monotônica: nem uma nova versão do catálogo pode
       // rebaixar uma verdade regulatória confirmada para um candidato sem regra.
-      const previous = loadCache().entries[key];
+      const previous = loadCache().entries[cacheKey];
       const previousVerified = previous
         ? resolveMedicationRegulatoryVisual(medication, previous.reference).verified
         : false;
@@ -388,8 +407,8 @@ async function ensureReference(
           quality: resolved.quality,
           matchKind: resolved.matchKind,
         };
-        loadCache().entries[key] = next;
-        delete loadCache().retryAfter[key];
+        loadCache().entries[cacheKey] = next;
+        delete loadCache().retryAfter[cacheKey];
         persistCache();
         emit();
         const snapshot: MedicationCatalogSnapshot = {
@@ -410,15 +429,15 @@ async function ensureReference(
       }
       return previous.reference;
     } catch {
-      loadCache().retryAfter[key] = Date.now() + RETRY_TTL_MS;
+      loadCache().retryAfter[cacheKey] = Date.now() + RETRY_TTL_MS;
       persistCache();
       return known?.reference || null;
     } finally {
-      inflight.delete(key);
+      inflight.delete(cacheKey);
     }
   })();
 
-  inflight.set(key, request);
+  inflight.set(cacheKey, request);
   return request;
 }
 
@@ -426,8 +445,8 @@ async function ensureMedicationBatch(medications: Medicamento[]): Promise<void> 
   const signature = await refreshCatalogManifest();
   const unique = new Map<string, Medicamento>();
   for (const medication of medications) {
-    const key = lookupKeyFor(medication);
-    if (key && medication.id) unique.set(key, medication);
+    const key = catalogCacheKeyFor(medication);
+    if (lookupKeyFor(medication) && medication.id) unique.set(key, medication);
   }
   await Promise.allSettled(
     [...unique.values()].map((medication) => ensureReference(medication, signature))
@@ -442,11 +461,38 @@ export type MedicationCatalogIdentity = {
   authorityState: MedicationCatalogAuthorityState;
   authorityLabel: string;
   authorityDetail: string;
+  /** UI-only: ambiguity is not an official classification. */
+  regulatoryNeedsReview: boolean;
   referenceType: "product" | "substance" | null;
   registrationNumber: string | null;
   manufacturer: string | null;
   presentationCount: number;
 };
+
+/** MED-06: surface an evidence conflict; never rewrite the Details regulator. */
+function regulatoryNeedsReviewMED04(medication: Medicamento, reference: MedicationReference | null): boolean {
+  if (!reference) return false;
+  const identity = getMedicationCatalogAuthority(medication.nome, reference);
+  if (identity.state === "possible_divergence") return true;
+  const rules = reference.regulatoryRules || [];
+  if (!rules.length) return false;
+  const isOfficial = (source: { authority?: string }) =>
+    source.authority === "anvisa" || source.authority === "ministerio_saude";
+  if (!rules.every(rule => rule.sources?.some(isOfficial))) return true;
+  if (reference.regulatoryIdentity?.referenceType === "substance") return true;
+  if (!resolveMedicationRegulatoryVisual(medication, reference).verified) return true;
+  // Explicit presentation contradictions cannot be presented as unambiguous facts.
+  const tokens = (value: unknown) => [...String(value || "").toLowerCase()
+    .replace(/,/g, ".").matchAll(/\d+(?:\.\d+)?\s*(?:mcg\/ml|mg\/ml|ui\/ml|mcg|mg|g|ml|ui|%)/g)]
+    .map(match => match[0].replace(/\s+/g, ""));
+  const registered = tokens(medication.dosagem);
+  const candidates = (reference.presentations || []).map(item =>
+    tokens(`${item.label} ${item.value ?? ""} ${item.unit ?? ""}`)
+  ).filter(values => values.length);
+  if (registered.length && candidates.length &&
+    !candidates.some(values => registered.every(token => values.includes(token)))) return true;
+  return false;
+}
 
 function identityFor(medication: Medicamento, reference: MedicationReference | null): MedicationCatalogIdentity {
   const authority = getMedicationCatalogAuthority(medication.nome, reference);
@@ -469,6 +515,7 @@ function identityFor(medication: Medicamento, reference: MedicationReference | n
     authorityState: authority.state,
     authorityLabel: authority.label,
     authorityDetail: authority.detail,
+    regulatoryNeedsReview: regulatoryNeedsReviewMED04(medication, reference),
     referenceType: authority.referenceType,
     registrationNumber: authority.registrationNumber,
     manufacturer: authority.manufacturer,

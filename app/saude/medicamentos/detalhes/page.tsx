@@ -2880,7 +2880,7 @@ function MedicamentoDetalhesContent() {
                           tratamento:
                             Tratamento
                         ) => (
-                          (() => { const TreatmentIcon = getVaultTreatmentIcon(tratamento.nome); const color = safeTreatmentColorP7(tratamento.cor); return <span
+                          (() => { const TreatmentIcon = getVaultTreatmentIcon(tratamento); const color = safeTreatmentColorP7(tratamento.cor); return <span
                             key={
                               tratamento.id
                             }

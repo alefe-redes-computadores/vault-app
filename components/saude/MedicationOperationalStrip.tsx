@@ -23,13 +23,13 @@ export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTo
     title={`${today.detail} · ${stockDetail}`}>
     <span className={`flex min-w-0 items-center gap-1 font-semibold ${compact ? "h-[18px]" : "min-h-6"} ${today.tone}`}>
       {doseOutcome==="ignored"?<MinusCircle size={12} className="shrink-0"/>:doseOutcome==="completed"?<CheckCircle2 size={12} className="shrink-0"/>:<Circle size={11} className="shrink-0"/>}
-      <span className="min-w-0 truncate">{today.label}</span>
+      <span className="min-w-0 whitespace-normal break-words">{today.label}</span>
     </span>
     {!compact && <span aria-hidden="true" className="h-3 w-px bg-surface-border/60" />}
     <span className={`flex min-w-0 items-center gap-1 font-semibold ${compact ? "h-[18px]" : "min-h-6"} ${tone}`}>
       <Package size={12} className="shrink-0"/>
-      <span className="min-w-0 truncate">{stockLabel}</span>
-      {showStockDetail ? <span className="min-w-0 truncate text-[10px] font-normal text-ink-muted" role="note">· {stockDetail}</span> : null}
+      <span className="min-w-0 whitespace-normal break-words">{stockLabel}</span>
+      {showStockDetail ? <span className="min-w-0 whitespace-normal break-words text-[10px] font-normal text-ink-muted" role="note">· {stockDetail}</span> : null}
     </span>
   </div>;
 }

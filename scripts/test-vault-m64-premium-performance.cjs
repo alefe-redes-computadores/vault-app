@@ -58,7 +58,7 @@ check(Boolean(cardColorAttribute && ts.isJsxAttribute(cardColorAttribute) &&
  cardColorAttribute.initializer.expression.text === 'regulatoryBorderColor' &&
  cardRailAttribute && list.includes('railSize="label"') &&
  list.includes('[writing-mode:vertical-rl]') &&
- list.includes('setSelectedRegulatory(regulatoryProfile)') &&
+ (list.includes('setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""})') && list.includes('med.id === selectedRegulatoryScope.medicationId') && list.includes('med.user_id === selectedRegulatoryScope.userId') && list.includes('med.person_id === selectedRegulatoryScope.personId') && list.includes('regulatoryProfiles[selectedRegulatoryMedication.id') && list.includes('selectedRegulatory && selectedRegulatoryMedication') && list.includes('onClick={closeRegulatoryModal}') && !list.includes('setSelectedRegulatory(regulatoryProfile)')) &&
  /const\s+regulatoryBorderColor\s*=\s*regulatorySurface\.rail\s*;/.test(list) &&
  list.includes('aria-label={`Ver classificação da receita:')),
  'classificação na borda e etiqueta regulatória preservada via AST');

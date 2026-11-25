@@ -13,9 +13,10 @@ for (const [path, source, kind] of [["ListCard.tsx",card,ts.ScriptKind.TSX],["me
   assert.equal(parsed.parseDiagnostics.length,0,`${path}: JSX/TS válido`);
 }
 assert(meds.includes('railSize="label"') && meds.includes('aria-label={`Ver classificação da receita:'), "classificação permanece interativa em faixa fina");
-assert(meds.includes('[writing-mode:vertical-rl]') && meds.includes('Abrir classificação:') && meds.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'),"classificação legível e informativa preservada");
-assert.equal((meds.match(/setSelectedRegulatory\(regulatoryProfile\)/g)||[]).length,1,"uma ação regulatória, não duas");
-assert(meds.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'),"incerteza e abreviação regulatórias preservadas");
+assert(meds.includes('[writing-mode:vertical-rl]') && meds.includes('Abrir classificação:') && (meds.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true)') && meds.includes('{prescriptionIdentityP6}') && meds.includes('aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}') && !meds.includes('prescriptionIdentityP6 ?? medicationRegulatoryShortLabel')),"classificação legível e informativa preservada");
+assert.equal((meds.match(/setSelectedRegulatoryScope\(\{/g)||[]).length,1,"uma ação regulatória, não duas");
+assert.ok((meds.includes('setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""})') && meds.includes('med.id === selectedRegulatoryScope.medicationId') && meds.includes('med.user_id === selectedRegulatoryScope.userId') && meds.includes('med.person_id === selectedRegulatoryScope.personId') && meds.includes('regulatoryProfiles[selectedRegulatoryMedication.id') && meds.includes('selectedRegulatory && selectedRegulatoryMedication') && meds.includes('onClick={closeRegulatoryModal}') && !meds.includes('setSelectedRegulatory(regulatoryProfile)')),"seleção vinculada ao medicamento, conta, pessoa e perfil vivo");
+assert((meds.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true)') && meds.includes('{prescriptionIdentityP6}') && meds.includes('aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}') && !meds.includes('prescriptionIdentityP6 ?? medicationRegulatoryShortLabel')),"incerteza e abreviação regulatórias preservadas");
 assert(meds.includes('"Conferir SUS"') && meds.includes('"Revisar continuidade"'),"CTAs curtos, sem perda de título completo");
 assert(meds.includes('router.push(careAction.href)') && meds.includes('setQuickDoseMedId(med.id!)'),"ações reais preservadas");
 assert(meds.includes('aria-label={`${careAction.description} para ${med.nome}`}'),"rótulo completo preservado");
@@ -34,4 +35,12 @@ assert.deepEqual(resolve({href:self,currentMedicationId:"m x",title:"Registrar r
 assert.deepEqual(resolve({href:self,currentMedicationId:"outro",title:"Revisar continuidade"}),{kind:"route",href:self});
 assert.deepEqual(resolve({href:"/saude/renovacao/novo?medicamento_id=m",currentMedicationId:"m"}),{kind:"route",href:"/saude/renovacao/novo?medicamento_id=m"});
 assert(meds.includes('routeMode={supplyRoute?.mode}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'hybrid'"), "SUS e comprado independentes");
+const vmR4=require('node:vm');
+const listAstR4=ts.createSourceFile('list.tsx',meds,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);let selectionR4;
+function visitR4(n){if(ts.isVariableDeclaration(n)&&n.name.getText(listAstR4)==='selectedRegulatoryMedication')selectionR4=n.initializer?.getText(listAstR4);ts.forEachChild(n,visitR4)}visitR4(listAstR4);assert.ok(selectionR4);
+const fixturesR4=[{id:'a',user_id:'u',person_id:'p',nome:'Um'},{id:'b',user_id:'u',person_id:'p',nome:'Dois'},{id:'a',user_id:'u',person_id:'q',nome:'Outra pessoa'},{id:'a',user_id:'v',person_id:'p',nome:'Outra conta'}];
+const selectR4=(scope,uid,pid)=>vmR4.runInNewContext(selectionR4,{selectedRegulatoryScope:scope,treatmentOwner:{id:uid},activePersonId:pid,medicamentosDaPessoa:fixturesR4},{timeout:1000});
+const scopeR4={medicationId:'a',userId:'u',personId:'p'};
+assert.equal(selectR4(scopeR4,'u','p')?.nome,'Um');assert.equal(selectR4({...scopeR4,medicationId:'b'},'u','p')?.nome,'Dois');
+assert.equal(selectR4(scopeR4,'v','p'),null);assert.equal(selectR4(scopeR4,'u','q'),null);assert.equal(selectR4({...scopeR4,medicationId:'missing'},'u','p'),null);assert.equal(selectR4(null,'u','p'),null);
 console.log("VAULT V328/M109: identidade regulatória, densidade e ações de cuidado sem navegação silenciosa OK");

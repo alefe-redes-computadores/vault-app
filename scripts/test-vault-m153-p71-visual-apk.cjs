@@ -12,7 +12,7 @@ assert(home.includes('setMostrarTodosAlertas(false)')&&home.includes('HomeAttent
 assert(home.includes('Acompanhamento contextual do Brain')&&home.includes('Explorar observações no VAULT Brain')&&home.includes('!quantityAlreadyInBrain'));
 assert(hero.includes('{title}')&&hero.includes('{description}')&&!hero.includes('contextLabel &&')&&home.includes('routineContextP7R3'));
 assert(command.includes('Retiradas e fornecimento')&&command.includes('<HomeSupplyAccessTiles')&&supply.includes('withdrawalPath')&&supply.includes('supplyPath'));
-assert(!med.includes('min-h-[200px]')&&med.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'));
+assert(!med.includes('min-h-[200px]')&&(med.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true)') && med.includes('{prescriptionIdentityP6}') && med.includes('aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}') && !med.includes('prescriptionIdentityP6 ?? medicationRegulatoryShortLabel')));
 assert(med.includes('VAULT_M144_LIST_ENTRY')&&med.includes('Mais opções e ajuda')&&med.includes('MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>'));
 assert(med.includes('exactClosedWithdrawalP7')&&med.includes('activeScheduledWithdrawalP5P4'));
 assert.equal(read('scripts/test-v63-release-gate.mjs').split('"scripts/test-vault-m153-p71-visual-apk.cjs"').length-1,1);

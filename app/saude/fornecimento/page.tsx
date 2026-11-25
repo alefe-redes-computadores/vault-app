@@ -168,7 +168,7 @@ function ProcessForm({
     >
       {seed&&!initial&&<p role="status" className="rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-xs leading-relaxed text-amber-200">Dados reaproveitados da retirada de {fmt(seed.data)}. Confira os vínculos e escolha a origem do fornecimento. Quantidade, periodicidade e autorização não são presumidas.</p>}
       {!initial ? <div className="space-y-2">
-        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=>{const t=existingTreatments.find(x=>x.id===value);const Icon=getVaultTreatmentIcon(t?.nome||"");return <Icon size={20} style={{color:t?.cor || "#8b5cf6"}}/>;}} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id,withdrawals);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
+        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=>{const t=existingTreatments.find(x=>x.id===value);const Icon=getVaultTreatmentIcon(t??null);return <Icon size={20} style={{color:t?.cor || "#8b5cf6"}}/>;}} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id,withdrawals);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
           <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status!=='concluido').map(t=><option key={t.id} value={t.id}>{t.nome}{t.status === "suspenso" ? " · tratamento suspenso (SOS permitido)" : ""}</option>)}
         </HealthRelationPicker>
         {treatmentId && !selected.length ? <p className="text-xs text-amber-300">Nenhum medicamento disponível foi encontrado neste tratamento. Confira os vínculos em Medicamentos e os processos ativos antes de continuar.</p> : null}
@@ -1207,7 +1207,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     const treatment = supplyVisualTreatmentM143(p.titulo, relationalIndex.treatmentsByProcess.get(p.id) || []);
     const visualName = treatment?.nome || p.titulo;
     const theme = getClinicalTheme(visualName);
-    const Icon = getVaultTreatmentIcon(visualName);
+    const Icon = getVaultTreatmentIcon(treatment??null);
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
     const ids=processMedicationIds.get(p.id)||new Set<string>();
     const hasPrivateRoute=[...ids].some(id=>medicationSupplyRoute(id,data,renovacoes,personId||"",p.user_id).hasPrivatePurchase);
@@ -1313,7 +1313,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           {/* V156: a treatment is not a funding source; each process retains its own origin. */}
           {/* Mixed origins remain accessible without duplicating one-process navigation. */}
           {processView.treatmentGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({processView.treatmentGroups.length})</summary><div className="mt-2 space-y-2">{processView.treatmentGroups.map(({treatment:t,linked,purchased})=>{
-            const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:getClinicalTheme(t.nome).hex;
+            const Icon=getVaultTreatmentIcon(t),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:getClinicalTheme(t.nome).hex;
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
               <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
               <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>

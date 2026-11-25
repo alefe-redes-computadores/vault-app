@@ -40,7 +40,7 @@ ok(
 
 ok(
   page.includes('railSize="label"') && page.includes('[writing-mode:vertical-rl]') &&
-    page.includes("setSelectedRegulatory(regulatoryProfile)"),
+    (page.includes('setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""})') && page.includes('med.id === selectedRegulatoryScope.medicationId') && page.includes('med.user_id === selectedRegulatoryScope.userId') && page.includes('med.person_id === selectedRegulatoryScope.personId') && page.includes('regulatoryProfiles[selectedRegulatoryMedication.id') && page.includes('selectedRegulatory && selectedRegulatoryMedication') && page.includes('onClick={closeRegulatoryModal}') && !page.includes('setSelectedRegulatory(regulatoryProfile)')),
   "identidade visual regulatória preservada"
 );
 

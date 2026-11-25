@@ -1283,7 +1283,7 @@ export default function RenovacoesPage() {
                             {renovacao.diasRestantes ===
                             0
                               ? "Vence hoje"
-                              : `${renovacao.diasRestantes} dia(s)`}
+                              : `${renovacao.diasRestantes} ${renovacao.diasRestantes === 1 ? "dia" : "dias"}`}
                           </span>
                         )}
 

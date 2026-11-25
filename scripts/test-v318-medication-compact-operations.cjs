@@ -28,7 +28,7 @@ for(const label of ['Abrir retirada','Registrar aquisição','Renovar receita','
 assert.match(page,/router\.push\(careAction\.href\)/,'Ação canônica navega ao destino real');
 assert.match(page,/setQuickDoseMedId\(med\.id!\)/,'Tomar e SOS abrem o modal rápido');
 assert.match(page,/!isSuspenso && canQuickDose && quickDoseLabel/,'não permitir dose rápida para medicamento suspenso ou sem estoque');
-assert.match(page,/setSelectedRegulatory\(regulatoryProfile\)/,'informação regulatória continua acessível');
+assert.ok((page.includes('setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""})') && page.includes('med.id === selectedRegulatoryScope.medicationId') && page.includes('med.user_id === selectedRegulatoryScope.userId') && page.includes('med.person_id === selectedRegulatoryScope.personId') && page.includes('regulatoryProfiles[selectedRegulatoryMedication.id') && page.includes('selectedRegulatory && selectedRegulatoryMedication') && page.includes('onClick={closeRegulatoryModal}') && !page.includes('setSelectedRegulatory(regulatoryProfile)')),'informação regulatória continua acessível');
 assert.match(page,/navigationLabel=\{`Ver detalhes de \$\{med\.nome\}`\}/,'ListCard recebe rótulo acessível para detalhes');
 assert.match(card,/aria-label=\{navigationLabel\}/,'ListCard aplica rótulo acessível ao botão de navegação');
 assert.match(page,/careDecision\.stage !== "stable" && !careAction/,'decisão sem ação ainda tem badge');

@@ -36,7 +36,15 @@ ok('Três filtros rápidos, SOS visível uma única vez', /const PRIMARY:[\s\S]*
 ok('Busca e categorias de filtros permanecem',med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>') && filter.includes('setExpanded(false)'));
 ok('SOS recolhido no panorama e progressivo',med.includes('tone="sos" forceOpen=') && !med.includes('tone="sos" defaultOpen=') && med.includes('medsSOS.slice(0, limit).map(renderCard)'));
 ok('Grupos por prioridade e dose rápida preservados',med.includes('medsPrioridade.map(renderCard)') && med.includes('setQuickDoseMedId(med.id!)'));
-ok('Classificação regulatória interativa preservada',med.includes('regulatoryProfile?.label') && med.includes('setSelectedRegulatory(regulatoryProfile)'));
+ok('Classificação regulatória interativa preservada', med.includes('regulatoryProfile?.label') &&
+  /setSelectedRegulatoryScope\(\{\s*medicationId:\s*med\.id[^}]*userId:\s*treatmentOwner\?\.id[^}]*personId:\s*activePersonId/.test(med) &&
+  med.includes('med.id === selectedRegulatoryScope.medicationId') &&
+  med.includes('med.user_id === selectedRegulatoryScope.userId') &&
+  med.includes('med.person_id === selectedRegulatoryScope.personId') &&
+  med.includes('regulatoryProfiles[selectedRegulatoryMedication.id') &&
+  med.includes('role="dialog"') && med.includes('selectedRegulatory && selectedRegulatoryMedication') &&
+  med.includes('onClick={closeRegulatoryModal}') &&
+  med.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6'));
 ok('Ações reais em coluna fixa e gaveta sem altura adicional',
       med.includes('grid-cols-[minmax(0,1fr)_88px]') &&
       med.includes('aria-label="Ações do medicamento"') &&

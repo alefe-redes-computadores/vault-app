@@ -21,6 +21,14 @@ ok(!med.includes('<p className="min-w-0 truncate text-[10px] leading-snug text-i
 const strip=med.indexOf('<MedicationOperationalStrip today={todayStatus}'),action=med.indexOf('aria-label="Ações do medicamento"');
 ok(strip>0&&strip<action&&(med.match(/<MedicationOperationalStrip today=\{todayStatus\}/g)||[]).length===1,"estado de dose/estoque vem antes de ações, sem duplicação");
 ok(med.includes('setQuickDoseMedId(med.id!)')&&med.includes('router.push(careAction.href)')&&med.includes('<MedicationRestockAction name={med.nome}'),"dose, ação contextual e reposição preservadas");
-ok(med.includes('regulatoryProfile?.label')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS'),"autoridade regulatória, ignoradas e SOS preservados");
+ok((med.includes('regulatoryProfile?.label') &&
+  /setSelectedRegulatoryScope\(\{\s*medicationId:\s*med\.id[^}]*userId:\s*treatmentOwner\?\.id[^}]*personId:\s*activePersonId/.test(med) &&
+  med.includes('med.id === selectedRegulatoryScope.medicationId') &&
+  med.includes('med.user_id === selectedRegulatoryScope.userId') &&
+  med.includes('med.person_id === selectedRegulatoryScope.personId') &&
+  med.includes('regulatoryProfiles[selectedRegulatoryMedication.id') &&
+  med.includes('role="dialog"') && med.includes('selectedRegulatory && selectedRegulatoryMedication') &&
+  med.includes('onClick={closeRegulatoryModal}') &&
+  med.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6')) && med.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS'),"autoridade regulatória, ignoradas e SOS preservados");
 ok(read('scripts/test-v63-release-gate.mjs').includes('"scripts/test-vault-m131-home-medication-density.cjs"'),"novo contrato integrado ao release gate");
 console.log(`VAULT M131: ${n} verificações visuais/semânticas aprovadas. Sem migração de dados.`);

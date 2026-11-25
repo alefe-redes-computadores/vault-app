@@ -58,6 +58,7 @@ import {
 
 import {
   getLocalTodayISO,
+  getDaysUntil,
 } from "@/lib/health-utils";
 
 import {
@@ -275,6 +276,10 @@ function NovaRetiradaContent() {
     localId,
   ]);
 
+  // A distant plan is legitimate, but a mistyped year requires explicit review.
+  const [reviewedDateKeyUX360, setReviewedDateKeyUX360] = useState("");
+  const distantDateUX360 = (getDaysUntil(data) ?? 0) > 365;
+  const dateReviewKeyUX360 = JSON.stringify([medicamentoId, data]);
   const save =
     async () => {
       if (
@@ -290,6 +295,10 @@ function NovaRetiradaContent() {
         return;
       }
 
+      if ((getDaysUntil(data) ?? 0) > 365 && reviewedDateKeyUX360 !== dateReviewKeyUX360) {
+        showToast("Confira o ano e confirme a data distante antes de agendar.", "error");
+        return;
+      }
       setSaving(
         true
       );
@@ -515,13 +524,7 @@ function NovaRetiradaContent() {
                   value={
                     data
                   }
-                  onChange={(
-                    event
-                  ) =>
-                    setData(
-                      event
-                    )
-                  }
+                  onChange={(event) => { setReviewedDateKeyUX360(""); setData(event); }}
                   className={
                     selectClass
                   }
@@ -555,6 +558,7 @@ function NovaRetiradaContent() {
               </label>
             </div>
 
+            {distantDateUX360 && <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-xs leading-relaxed text-amber-200"><input type="checkbox" className="size-5 shrink-0 accent-amber-400" checked={reviewedDateKeyUX360 === dateReviewKeyUX360} onChange={event => setReviewedDateKeyUX360(event.target.checked ? dateReviewKeyUX360 : "")}/>Conferi a data {data.split("-").reverse().join("/")} (mais de 365 dias à frente). Quero manter este planejamento.</label>}
             <label className="mt-4 block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
               Tipo
               <HealthRelationPicker title="Tipo de retirada"

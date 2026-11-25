@@ -133,7 +133,7 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
           <section className="space-y-2 border-t border-surface-border/40 pt-3" aria-label="Tratamentos vinculados">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-primary"><Brain size={16} className="text-ink-muted"/>Tratamentos vinculados</h3>
           {value.treatments.length ? value.treatments.map((t,i)=>{
-            const TreatmentIcon = getVaultTreatmentIcon(t.name);
+            const TreatmentIcon = getVaultTreatmentIcon(t);
             return <div key={`${t.id||"noid"}-${i}`} className={rowClass}>
             <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-surface-border/50 bg-surface" style={t.color?{color:t.color}:undefined}><TreatmentIcon size={16}/></span>
             <span className="min-w-0 flex-1 break-words text-xs font-semibold text-ink-primary">{t.name}</span>

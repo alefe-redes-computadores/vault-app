@@ -141,7 +141,6 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components/saude/MedicationActionsSheetR4";
 import { MedicationSheet360R3, type Medication360Value, type Medication360Tab } from "@/components/saude/MedicationSheet360R3";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
-import { shortPrescriptionKnowledgeLabel } from "@/lib/medications/visual-copy";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
@@ -224,6 +223,20 @@ function getMedicamentoIconComponent(
 // ============================================================
 // PAGE
 // ============================================================
+
+/** MED-04: same canonical regulator as Detalhes, documentary evidence only as fallback.
+ * Never interpret an attached prescription as proof of official class or validity.
+ */
+function regulatoryListLabelMED04(
+  profile: MedicationRegulatoryVisual | null | undefined,
+  summary: Parameters<typeof medicationListEvidenceLabelP6>[0],
+  needsReview = false
+): string {
+  if (needsReview) return "REVISAR";
+  if (profile?.verified) return medicationRegulatoryShortLabel(profile);
+  if (profile?.label === "Classificação em revisão") return "REVISAR";
+  return medicationListEvidenceLabelP6(summary, profile) ?? "REC. N/C";
+}
 
 export default function MedicamentosListPage() {
   const healthIntelligence = useSharedHealthIntelligence();
@@ -373,10 +386,18 @@ export default function MedicamentosListPage() {
   const [secondaryActionSheetR4, setSecondaryActionSheetR4] = useState<MedicationActionsR4 | null>(null);
   const [medicationSheet360, setMedicationSheet360] = useState<Medication360Value | null>(null);
   const [medicationContextP7R3, setMedicationContextP7R3] = useState<MedicationContextP7R3 | null>(null);
-  const [selectedRegulatory, setSelectedRegulatory] =
-    useState<MedicationRegulatoryVisual | null>(null);
-  const [selectedRegulatoryAuthority, setSelectedRegulatoryAuthority] =
-    useState<"confirmed" | "compatible" | "possible_divergence" | "unvalidated">("unvalidated");
+  // MED-UX360: single selected medication identity, never a detached visual snapshot.
+  const [selectedRegulatoryScope, setSelectedRegulatoryScope] = useState<{
+    medicationId: string; userId: string; personId: string;
+  } | null>(null);
+  const regulatoryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const regulatoryCloseRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => { setSelectedRegulatoryScope(null); }, [treatmentOwner?.id, activePersonId]);
+  const closeRegulatoryModal = () => {
+    setSelectedRegulatoryScope(null);
+    if (typeof window !== "undefined") window.requestAnimationFrame(() => regulatoryTriggerRef.current?.focus());
+  };
+
 
   // ==========================================================
   // PREFERÊNCIA DE FILTRO
@@ -433,6 +454,27 @@ export default function MedicamentosListPage() {
   } = useMedicationCatalogProfiles(
     medicamentosDaPessoa
   );
+  // Keep both identity and regulatory class attached to the active person and
+  // exact catalogue-backed medication, including simultaneous same-class cards.
+  const selectedRegulatoryMedication = selectedRegulatoryScope &&
+    selectedRegulatoryScope.userId === (treatmentOwner?.id || "") &&
+    selectedRegulatoryScope.personId === (activePersonId || "")
+      ? medicamentosDaPessoa.find(med => med.id === selectedRegulatoryScope.medicationId &&
+          med.user_id === selectedRegulatoryScope.userId && med.person_id === selectedRegulatoryScope.personId) || null
+      : null;
+  const selectedRegulatory = selectedRegulatoryMedication
+    ? regulatoryProfiles[selectedRegulatoryMedication.id || ""] || null : null;
+  const selectedRegulatoryAuthority = selectedRegulatoryMedication
+    ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.authorityState || "unvalidated" : "unvalidated";
+  const selectedRegulatoryNeedsReview = selectedRegulatoryMedication
+    ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.regulatoryNeedsReview === true : false;
+  const selectedRegulatoryIngredient = selectedRegulatoryMedication &&
+    (selectedRegulatoryAuthority === "confirmed" || selectedRegulatoryAuthority === "compatible")
+      ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.activeIngredients?.join(" + ") || null
+      : null;
+  useEffect(() => {
+    if (selectedRegulatory && selectedRegulatoryMedication) regulatoryCloseRef.current?.focus();
+  }, [selectedRegulatoryScope?.medicationId, selectedRegulatory, selectedRegulatoryMedication]);
 
   // ==========================================================
   // PROCESSAMENTO BASE
@@ -971,9 +1013,9 @@ export default function MedicamentosListPage() {
         catalogIdentities[med.id];
       const reconciliationP6=reconcileMedicationP6({medication:med,documents:prescriptionDocumentsP6||[],
         renewals:renewalsByMedication.get(med.id||'')||[],userId:treatmentOwner?.id||'',personId:activePersonId||'',regulatory:regulatoryProfile});
-      const stablePrescriptionFact = medicationKnowledge360.facts.find(fact => fact.kind === "prescription_type" && fact.authority !== "conflict");
-      const prescriptionIdentityP6=medicationListEvidenceLabelP6(reconciliationP6,regulatoryProfile)
-        ?? shortPrescriptionKnowledgeLabel(stablePrescriptionFact?.value);
+      // MED-04: a verified catalogue class wins over a documentary fallback.
+      // The Detalhes page already consumes regulatoryProfiles from this same hook.
+      const prescriptionIdentityP6 = regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
       const knowledgeIngredient = (catalogIdentity?.authorityState === "confirmed" || catalogIdentity?.authorityState === "compatible")
@@ -1414,24 +1456,24 @@ export default function MedicamentosListPage() {
             <button
               type="button"
               title={regulatoryMeaning}
-              aria-label={`Ver classificação da receita: ${regulatoryProfile?.label || receita?.sigla || "Receita"}`}
+              aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}
               aria-haspopup={regulatoryProfile ? "dialog" : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 trigger("vibrate");
                 if (regulatoryProfile) {
-                  setSelectedRegulatory(regulatoryProfile);
-                  setSelectedRegulatoryAuthority(catalogIdentity?.authorityState ?? "unvalidated");
+                  regulatoryTriggerRef.current = event.currentTarget;
+                  setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""});
                 }
                 else router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent("/saude/medicamentos")}#medicamento-agora`);
               }}
               className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
             >
               <span aria-hidden="true" className="flex max-h-[calc(100%-1rem)] flex-col items-center justify-center gap-1.5"><span className="whitespace-nowrap font-sans text-[10px] font-semibold uppercase tracking-[.14em] text-void [writing-mode:vertical-rl] rotate-180">
-                {prescriptionIdentityP6 ?? medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}
+                {prescriptionIdentityP6}
               </span></span>
-              <span className="sr-only">Abrir classificação: {prescriptionIdentityP6 ?? medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}. {reconciliationP6.hasDocumentEvidence?"Receita existente vinculada, sem confirmar classificação regulatória.":""}</span>
+              <span className="sr-only">Abrir classificação: {prescriptionIdentityP6}. {reconciliationP6.hasDocumentEvidence?"Receita existente vinculada, sem confirmar classificação regulatória.":""}</span>
             </button>
           ) : null}
           icon={
@@ -1456,9 +1498,9 @@ export default function MedicamentosListPage() {
               <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <div data-vault-med360-header className="flex min-w-0 w-full items-start gap-1">
-                  <div data-vault-v34x-title-hitbox className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                  <div data-vault-v34x-title-hitbox className="flex min-w-0 flex-1 flex-col items-start gap-0">
                   <button type="button" aria-haspopup="dialog" data-vault-med360-entry="name" aria-label={`Abrir Gaveta 360 de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
-                    className="pointer-events-auto relative z-20 inline-flex min-h-11 w-fit max-w-full flex-none flex-col items-start justify-center gap-0.5 rounded-lg px-1 text-left transition-transform active:scale-[.99] active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                    className="pointer-events-auto relative z-20 inline-flex min-h-11 w-fit max-w-full flex-none flex-col items-start justify-center gap-[2px] rounded-lg px-1 text-left transition-transform active:scale-[.99] active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                     <span className="flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5">
                     <span title={medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
                       {medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)}
@@ -1466,8 +1508,8 @@ export default function MedicamentosListPage() {
                     {med.dosagem && <span title={med.dosagem} className="shrink-0 text-[11px] font-medium leading-snug text-ink-secondary">{med.dosagem}</span>}
                     <ChevronRight size={14} className="shrink-0 text-ink-faint" aria-hidden="true"/>
                     </span>
+                    {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                   </button>
-                  {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                   {med.data_receita && <span data-vault-v34x-receita-cadastro className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada no cadastro · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
                   {!med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Documento de receita vinculado</span>}
                   </div>
@@ -1510,13 +1552,13 @@ export default function MedicamentosListPage() {
                 )}
               {Boolean(cardTreatments.length > 0) && <div data-vault-med360-treatment-tags className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0">
                 {cardTreatments.slice(0,compactCards ? 2 : 3).map(t=>{
-                  const TreatmentIcon = getVaultTreatmentIcon(t.nome);
+                  const TreatmentIcon = getVaultTreatmentIcon(t);
                   const color = safeTreatmentColorP7(t.cor);
                   return <button key={t.id || t.nome} type="button" data-vault-r5-context="tratamento"
                     onClick={event=>{event.preventDefault();event.stopPropagation();trigger("vibrate");if(t.id) router.push(`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id)}`);else openMedicationSheet360("ficha");}}
                     aria-label={`Abrir tratamento ${t.nome}`} className={`pointer-events-auto relative z-20 inline-flex min-h-6 max-w-full items-center gap-1 text-[10px] font-semibold ${compactCards ? "min-h-6 border-0 bg-transparent px-0" : "min-h-7 rounded-lg border border-surface-border/50 bg-surface/40 px-2"}`}
                     style={color ? (compactCards ? {color} : {borderColor:`${color}66`,backgroundColor:`${color}12`,color}) : undefined}>
-                    <TreatmentIcon size={12} aria-hidden="true"/><span className="max-w-[10rem] truncate">{t.nome}</span>
+                    <TreatmentIcon size={12} aria-hidden="true"/><span className="min-w-0 max-w-full whitespace-normal break-words">{t.nome}</span>
                   </button>;
                 })}
                 {!compactCards && cardTreatments.length>3&&<button type="button" data-vault-r5-context="mais-tratamentos" aria-label={`Conferir todos os ${cardTreatments.length} tratamentos vinculados de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center text-[10px] text-ink-secondary underline underline-offset-2">+{cardTreatments.length-3} tratamentos na gaveta</button>}
@@ -1535,7 +1577,7 @@ export default function MedicamentosListPage() {
               </div>}
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && !(stockReview || prescriptionReview360 || (!stockUnknown && (isEstoqueCritico || isEstoqueZerado))) && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
-              <div data-vault-r5-operational className={`${actionLayoutM150P3.primary ? "grid grid-cols-[minmax(0,1fr)_88px]" : "flex"} min-w-0 items-end gap-1.5`}>
+              <div data-vault-r5-operational className={`${actionLayoutM150P3.primary ? "grid grid-cols-[minmax(0,1fr)_88px]" : "flex"} min-w-0 items-end gap-1`}>
                 <div className="min-w-0 flex-1">
               <MedicationOperationalStrip today={todayStatus} compact={compactCards}
               stockLabel={stockUnknown ? "Estoque não registrado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
@@ -1907,7 +1949,7 @@ export default function MedicamentosListPage() {
         />
 
         {/* VAULT_REGULATORY_COMPACT_DIALOG_V76_1 */}
-        {selectedRegulatory && (
+        {selectedRegulatory && selectedRegulatoryMedication && (
           <div
             className="fixed inset-0 z-[90] flex items-end justify-center bg-black/75 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] vault-r3-dialog-top-inset backdrop-blur-md min-[480px]:items-center min-[480px]:px-5"
             role="presentation"
@@ -1916,9 +1958,7 @@ export default function MedicamentosListPage() {
                 event.target ===
                 event.currentTarget
               ) {
-                setSelectedRegulatory(
-                  null
-                );
+                closeRegulatoryModal();
               }
             }}
           >
@@ -1926,6 +1966,11 @@ export default function MedicamentosListPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="vault-regulatory-dialog-title"
+              aria-describedby="vault-regulatory-dialog-medication"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeRegulatoryModal(); }
+                if (event.key === "Tab") { event.preventDefault(); regulatoryCloseRef.current?.focus(); }
+              }}
               className="vault-r3-regulatory-height w-full max-w-[380px] overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border/60 bg-surface-raised p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
               style={{
                 boxShadow:
@@ -1935,6 +1980,19 @@ export default function MedicamentosListPage() {
                 event.stopPropagation()
               }
             >
+              <div data-vault-regulatory-medication-context className="mb-3 flex min-w-0 items-center gap-2.5 border-b border-surface-border/50 pb-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface">
+                  {selectedRegulatoryMedication.formato
+                    ? <MedicationFormatIcon formato={selectedRegulatoryMedication.formato} cores={selectedRegulatoryMedication.cores} size={24}/>
+                    : <Pill size={20} className="text-ink-muted" aria-hidden="true"/>}
+                </span>
+                <div id="vault-regulatory-dialog-medication" className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-bold leading-snug text-ink-primary">
+                    {selectedRegulatoryMedication.nome} {selectedRegulatoryMedication.dosagem || ""}
+                  </p>
+                  {selectedRegulatoryIngredient && <p className="mt-0.5 break-words text-[11px] text-ink-secondary">{selectedRegulatoryIngredient}</p>}
+                </div>
+              </div>
               <div className="flex items-start gap-3">
                 <span
                   className="mt-1 h-8 w-1 shrink-0 rounded-full"
@@ -1968,12 +2026,9 @@ export default function MedicamentosListPage() {
                 <button
                   type="button"
                   aria-label="Fechar classificação da receita"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border/60 bg-black/10 text-ink-muted transition-transform active:scale-95"
-                  onClick={() =>
-                    setSelectedRegulatory(
-                      null
-                    )
-                  }
+                  ref={regulatoryCloseRef}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/60 bg-black/10 text-ink-muted transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ice"
+                  onClick={closeRegulatoryModal}
                 >
                   <X size={15} />
                 </button>
@@ -1989,13 +2044,14 @@ export default function MedicamentosListPage() {
 
                 <span className="rounded-full border border-surface-border/50 bg-black/[0.06] px-2.5 py-1 text-[9px] font-semibold text-ink-secondary">
                   {
-                    selectedRegulatory.verified
+                    selectedRegulatory.verified && !selectedRegulatoryNeedsReview
                       ? "Confirmada"
                       : "Receita não confirmada"
                   }
                 </span>
               </div>
 
+              {selectedRegulatoryNeedsReview && <p className="mt-2.5 text-xs leading-relaxed text-amber-200">Referência regulatória em conferência: fonte, identidade ou apresentação requer revisão. A receita pessoal não confirma a classificação.</p>}
               {!selectedRegulatory.verified && (
                 <p className="mt-2.5 text-xs leading-relaxed text-amber-200">
                   {selectedRegulatoryAuthority === "confirmed"

@@ -300,6 +300,11 @@ export default function PressureCareFlowPage() {
       bottom: Math.round(min),
       systolic: toPoint("sys"),
       diastolic: toPoint("dia"),
+      markers:trend.slice(-3).map((point,i)=>{
+        const index=trend.length-Math.min(3,trend.length)+i;
+        const x=20+(index*280)/Math.max(1,trend.length-1);
+        return {id:point.id||`${point.date}-${index}`,x,sysY:125-(100*(point.sys-min))/span,diaY:125-(100*(point.dia-min))/span,date:point.date,sys:point.sys,dia:point.dia,unitConfirmed:point.unitConfirmed};
+      }),
     };
   }, [trend]);
   const createPlan = async () => {
@@ -1019,6 +1024,10 @@ export default function PressureCareFlowPage() {
                   strokeLinejoin="round"
                   points={chart.diastolic}
                 />
+                {chart.markers.map((p,index)=><g key={`${p.id}-${index}`}>
+                  <circle cx={p.x} cy={p.sysY} r="4" fill="#38bdf8" stroke="currentColor" strokeWidth="0.7"><title>{`Sistólica: ${p.sys}${p.unitConfirmed?' mmHg':''} · ${p.date}`}</title></circle>
+                  <circle cx={p.x} cy={p.diaY} r="4" fill="#34d399" stroke="currentColor" strokeWidth="0.7"><title>{`Diastólica: ${p.dia}${p.unitConfirmed?' mmHg':''} · ${p.date}`}</title></circle>
+                </g>)}
               </svg>}
               <p className="flex gap-4 text-[10px] text-ink-muted">
                 <span className="text-sky-300">● Sistólica</span>

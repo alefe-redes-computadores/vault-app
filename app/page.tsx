@@ -217,7 +217,7 @@ function parseLocalDateTimeInput(
   return parsed.toISOString();
 }
 
-function getTratamentoIcon(nome:string) { return getVaultTreatmentIcon(nome); }
+function getTratamentoIcon(tratamento:{id?:string;icone?:string;icon?:string;icon_name?:string}|null) { return getVaultTreatmentIcon(tratamento); }
 
 function mapUrgenciaToAlertLevel(
   urgencia:
@@ -2048,7 +2048,7 @@ export default function HomePage() {
                     }}
                     className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/70 bg-surface-raised/70 px-3 py-2.5 text-left transition-all active:scale-[0.98]"
                   >
-                    <FolderHeart size={18} aria-hidden="true" className="shrink-0 text-emerald-300" />
+                    {(()=>{const href=primaryMedicationCareOpportunity.treatmentHref||'';const match=new URLSearchParams(href.split('?')[1]||'').get('id');const linked=tratamentos.find((t:any)=>Boolean(match)&&t.id===match);if(linked){const Icon=getVaultTreatmentIcon(linked);return <Icon size={18} aria-hidden="true" className="shrink-0 text-emerald-300"/>;}return <FolderHeart size={18} aria-hidden="true" className="shrink-0 text-emerald-300"/>;})()}
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-ink-primary">
                         Ver tratamento vinculado
@@ -2211,7 +2211,7 @@ export default function HomePage() {
                   ) => {
                     const Icon =
                       getTratamentoIcon(
-                        tratamento.nome
+                        tratamento
                       );
 
                     const cor =

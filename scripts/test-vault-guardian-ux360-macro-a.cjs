@@ -109,7 +109,7 @@ const identityCases={
  'CL-03':()=>assert(flow.includes('cards:[areas[1],areas[3],areas[7]]')),
  'GX-01':()=>assert(extras.some(e=>e.href==='/saude/reabilitacao')),
  'GX-02':()=>assert(read('app/saude/careflow/pressao/page.tsx').includes('preserveReturnTarget(')),
- 'GX-06':()=>assert(read('app/saude/linha-clinica/page.tsx').includes('encodeURIComponent(sourceBack+')&&read('app/saude/linha-clinica/page.tsx').includes("p.set('origin_from',backHref)")),
+ 'GX-06':()=>{const page=read('app/saude/linha-clinica/page.tsx');assert(page.includes('encodeURIComponent(sourceBack)')&&page.includes('sanitizeClinicalBackHrefUX360')&&page.includes('persistReturnFilters')&&!page.includes("p.set('busca',query")&&!page.includes("params.get('busca')"));},
  'GX-08':()=>assert(read('components/saude/ClinicalBackLinkP0.tsx').includes('safeClinicalReturnM150')),
  'GM-06':()=>assert(flow.includes('>Linha Clínica</strong>')&&flow.includes('>Modo Médico</strong>')===false),
  'GM-07':()=>assert(read('app/saude/rede/page.tsx').includes('Outras áreas de saúde')&&read('app/saude/rede/page.tsx').includes('<HealthHubSwitchR5')),

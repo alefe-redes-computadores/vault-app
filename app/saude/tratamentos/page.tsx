@@ -901,7 +901,7 @@ function TratamentoListContent() {
 
                 const theme = getClinicalTheme(tratamento.nome);
 
-                const IconComp = getVaultTreatmentIcon(tratamento.nome);
+                const IconComp = getVaultTreatmentIcon(tratamento);
                 const treatmentColor = getTreatmentColor(tratamento, theme.hex);
 
                 return (

@@ -129,7 +129,7 @@ const page=src('app/saude/linha-clinica/page.tsx');const detail=src('app/saude/l
 ok(page.indexOf('Interpretações do Brain')>page.indexOf('filtered.slice(0,limit)'), 'Brain separated below factual timeline');
 ok(!page.slice(page.indexOf('<header'),page.indexOf('Interpretações do Brain')).includes('violet-'),'factual surface has no violet');
 ok(page.includes('filtered.slice(0,limit)')&&page.includes('filtered.length>limit'),'progressive page no silent cutoff');
-ok(page.includes('if(previousScope.current===scope)return')&&page.includes("setDomain('all');setQuery('');"),'person change resets search/history filters without erasing return state');
+ok(page.includes('previous.uid!==uid||previous.pid!==pid')&&page.includes('clearClinicalA10Filter')&&page.includes("setQuery('')")&&page.includes('setReadyScope(scope)'),'person change resets search/history filters without erasing return state');
 ok(page.includes("const sourceBack=useMemo(")&&page.includes('encodeURIComponent(sourceBack)'),'fact link restores filters');
 ok(detail.includes("safeReturnTarget(params.get('return_to')"),'exact detail respects sanitized back target');
 ok(page.includes('snapshot?.scope===scope'),'snapshot scope gate');

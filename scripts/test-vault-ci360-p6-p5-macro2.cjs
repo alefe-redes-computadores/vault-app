@@ -69,6 +69,17 @@ const list=fs.readFileSync(path.join(ROOT,'app/saude/medicamentos/page.tsx'),'ut
 const gate=fs.readFileSync(path.join(ROOT,'scripts/test-v63-release-gate.mjs'),'utf8');
 assert.ok(ws.includes('<PharmaLensEvidenceCardP6 '),'Componente renderizado no PharmaLens');
 assert.ok(ws.includes('db.documents.where(\'[user_id+person_id]\')'),'Consulta Dexie com escopo pessoa');
-assert.ok(list.includes('prescriptionIdentityP6 ?? medicationRegulatoryShortLabel'),'Listagem reaproveita documento sem promover classificação');
+assert.ok((list.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true)') && list.includes('{prescriptionIdentityP6}') && list.includes('aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}') && !list.includes('prescriptionIdentityP6 ?? medicationRegulatoryShortLabel')), 'Listagem consome o adaptador canônico no trilho visível e acessível');
+function extractP6R4(source,name,kind){const ast=ts.createSourceFile('source.tsx',source,ts.ScriptTarget.Latest,true,kind);const fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name);assert.ok(fn,'função real '+name);return ts.transpileModule(fn.getText(ast),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;}
+const visualR4=fs.readFileSync(path.join(ROOT,'lib/medication-regulatory-visual.ts'),'utf8');
+const sandboxR4={exports:{},medicationListEvidenceLabelP6:rec.medicationListEvidenceLabelP6};
+vm.runInNewContext(extractP6R4(visualR4,'medicationRegulatoryShortLabel',ts.ScriptKind.TS)+'\nthis.medicationRegulatoryShortLabel=medicationRegulatoryShortLabel;',sandboxR4,{timeout:1000});
+vm.runInNewContext(extractP6R4(list,'regulatoryListLabelMED04',ts.ScriptKind.TSX)+'\nthis.label=regulatoryListLabelMED04;',sandboxR4,{timeout:1000});
+const documentEvidenceR4={hasDocumentEvidence:true,declaredType:'azul'};
+for(const [full,short] of [['Controle especial','Especial'],['Notificação A','Notif. A'],['Notificação B','Notif. B'],['Notificação B2','Notif. B2'],['Receita comum','Comum']])assert.equal(sandboxR4.label({verified:true,label:full},documentEvidenceR4,false),short,'oficial prevalece sobre documento pessoal');
+assert.equal(sandboxR4.label({verified:false,label:'Receita informada'},documentEvidenceR4,false),'Rec. vinc.','documento não cria classe');
+assert.equal(sandboxR4.label(null,{hasDocumentEvidence:false,declaredType:'azul'},false),'Rec. inf.');
+assert.equal(sandboxR4.label(null,{hasDocumentEvidence:false,declaredType:null},false),'REC. N/C');
+assert.equal(sandboxR4.label({verified:true,label:'Notificação A'},documentEvidenceR4,true),'REVISAR','divergência não afirma classe');
 assert.equal((gate.match(/scripts\/test-vault-ci360-p6-p5-macro2\.cjs/g)||[]).length,1,'Gate V63 contém contrato uma vez');
 console.log('P6 P5 MACRO2: 30 contratos de reconciliação, pessoa, proveniência, sobreposição, interação e sintoma temporal OK');

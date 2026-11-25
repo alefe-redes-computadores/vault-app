@@ -2,6 +2,7 @@
 "use client";
 import Link from "next/link";
 import { CustomDatePicker } from "@/components/DatePicker";
+import { getDaysUntil } from "@/lib/health-utils";
 import { parseWithdrawalTimeM127, maskWithdrawalTimeM127 } from "@/lib/health-intelligence/withdrawal-time-m127";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRenovacoes} from "@/hooks/useRenovacoes";
@@ -187,6 +188,8 @@ function DetalhesRetiradaContent() {
   ] =
     useState("");
 
+  const [reviewedRescheduleDateUX360, setReviewedRescheduleDateUX360] = useState("");
+
   const [
     rescheduleTime,
     setRescheduleTime,
@@ -284,8 +287,11 @@ function DetalhesRetiradaContent() {
         retirada.local_id
     );
 
+  const distantRescheduleDateUX360 = (getDaysUntil(rescheduleDate) ?? 0) > 365;
+  const rescheduleReviewKeyUX360 = JSON.stringify([retirada.id, rescheduleDate]);
   const openReschedule =
     () => {
+      setReviewedRescheduleDateUX360("");
       setRescheduleDate(
         retirada.data
       );
@@ -313,6 +319,10 @@ function DetalhesRetiradaContent() {
         return;
       }
 
+      if ((getDaysUntil(rescheduleDate) ?? 0) > 365 && reviewedRescheduleDateUX360 !== rescheduleReviewKeyUX360) {
+        showToast("Confira o ano e confirme a data distante antes de reagendar.", "error");
+        return;
+      }
       // M127: um horário inválido nunca vira null silenciosamente.
       const confirmedTime = parseWithdrawalTimeM127(rescheduleTime);
       if (confirmedTime === null) {
@@ -1052,13 +1062,7 @@ function DetalhesRetiradaContent() {
                     value={
                       rescheduleDate
                     }
-                    onChange={(
-                      event
-                    ) =>
-                      setRescheduleDate(
-                        event
-                      )
-                    }
+                    onChange={(event) => { setReviewedRescheduleDateUX360(""); setRescheduleDate(event); }}
                     className="mt-1.5 w-full rounded-2xl border border-surface-border bg-surface-raised px-3.5 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
                   />
                 </label>
@@ -1083,6 +1087,7 @@ function DetalhesRetiradaContent() {
                 </label>
               </div>
 
+              {distantRescheduleDateUX360 && <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-xs leading-relaxed text-amber-200"><input type="checkbox" className="size-5 shrink-0 accent-amber-400" checked={reviewedRescheduleDateUX360 === rescheduleReviewKeyUX360} onChange={event => setReviewedRescheduleDateUX360(event.target.checked ? rescheduleReviewKeyUX360 : "")}/>Conferi a data {rescheduleDate.split("-").reverse().join("/")} (mais de 365 dias à frente). Quero manter este planejamento.</label>}
               <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Motivos frequentes de reagendamento">
                 {["Ainda tenho estoque", "Aguardando receita", "Indisponível no serviço"].map((reason) => (
                   <button key={reason} type="button" disabled={processing} aria-pressed={rescheduleReason === reason}

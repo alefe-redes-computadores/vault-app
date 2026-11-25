@@ -138,8 +138,17 @@ function describe(table:A10Authority,r:A10Row,ctx:{meds:Map<string,string>;vacci
  if(table==='registros_saude')return {title:get(r,'nome')||get(r,'tipo')||'Registro de saúde',detail:get(r,'valor_medicao')||get(r,'motivo')||'',status:get(r,'categoria')||'Relato registrado',date:firstDay(r,'data'),planned:false,origin:'Registro de saúde canônico',relationId:null,href:'/saude/careflow/fato?tipo=registro&id='+q(id)};
  if(table==='doseLogs'){
   const med=ctx.meds.get(get(r,'medicamento_id'))||'Medicamento não identificado nesta pessoa';
-  const taken=Boolean(value(r,'tomado_em')),ignored=Boolean(value(r,'ignorado_em'));
-  return {title:med,detail:get(r,'motivo'),status:taken?'Tomada registrada':ignored?'Ignorada — informada':'Registro sem confirmação de tomada',date:firstDay(r,'data'),planned:!taken&&!ignored,origin:'Registro de dose — somente fato confirmado',relationId:get(r,'medicamento_id')||null,href:'/saude/careflow/fato?tipo=dose&id='+q(id)};
+  const rawKind=get(r,'dose_kind')||get(r,'doseKind')||get(r,'tipo_dose');
+  const plannedKind=['planned','scheduled','prevista','planejada'].includes(rawKind);
+  const isSOS=['sos','extra','avulsa'].includes(rawKind);
+  const hadTaken=Boolean(value(r,'tomado_em')),hadIgnored=Boolean(value(r,'ignorado_em'));
+  const contradicted=plannedKind&&(hadTaken||hadIgnored);
+  const taken=hadTaken&&!plannedKind,ignored=hadIgnored&&!plannedKind;
+  const recordedClock=get(r,'horario')||get(r,'hora');
+  const clock=/^([01]\d|2[0-3]):[0-5]\d$/.test(recordedClock)?' · Horário informado: '+recordedClock:'';
+  const effectiveStatus=contradicted?'Registro contraditório — conferir origem':taken?'Tomada registrada':ignored?'Ignorada — informada':plannedKind?'Dose prevista — tomada não confirmada':isSOS?'Registro SOS/extra sem tomada confirmada':'Registro sem confirmação de tomada';
+  const eventOrigin=contradicted?'Registro de dose — estado contraditório':taken?'Registro de dose — tomada informada':ignored?'Registro de dose — ignorada informada':plannedKind?'Registro de dose — previsão documentada':'Registro de dose — sem confirmação de tomada';
+  return {title:med,detail:(get(r,'motivo')||'')+clock,status:effectiveStatus,date:firstDay(r,'data'),planned:plannedKind&&!taken&&!ignored,origin:eventOrigin,relationId:get(r,'medicamento_id')||null,href:'/saude/careflow/fato?tipo=dose&id='+q(id)};
  }
  return null;
 }

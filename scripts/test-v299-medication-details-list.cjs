@@ -39,6 +39,6 @@ assert.match(list,/contextualActionLabel/,'Acao contextual real, contexto comple
 assert.match(list,/\{careAction\.label\}/,'Rótulo completo permanece acessivel');
 assert.match(list,/const careAction = brainAction \?\?/,'Prioridade do Brain preservada');
 assert.match(list,/VAULT_V318_OPERATIONAL_STRIP/,'Hoje e estoque em faixa curta, sem painel repetido');
-assert.match(list,/setSelectedRegulatory\(regulatoryProfile\)/,'Modal regulatorio e classificação preservados');
+assert.ok((list.includes('setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""})') && list.includes('med.id === selectedRegulatoryScope.medicationId') && list.includes('med.user_id === selectedRegulatoryScope.userId') && list.includes('med.person_id === selectedRegulatoryScope.personId') && list.includes('regulatoryProfiles[selectedRegulatoryMedication.id') && list.includes('selectedRegulatory && selectedRegulatoryMedication') && list.includes('onClick={closeRegulatoryModal}') && !list.includes('setSelectedRegulatory(regulatoryProfile)')),'Modal regulatorio e classificação preservados');
 assert.match(routeError,/não conseguiu renderizar esta tela/,'Erro generico sem atribuir causa prematura ao PWA');
 console.log('V299 OK: ordem de hooks com AST TypeScript, memoizacao, nome, acoes, estoque, segurança e erro de rota.');

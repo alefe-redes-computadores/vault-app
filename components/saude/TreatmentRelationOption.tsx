@@ -27,7 +27,7 @@ export function TreatmentRelationOption({
   selected: boolean;
 }) {
   const color = treatmentColor(treatment);
-  const Icon = getVaultTreatmentIcon(treatment.nome);
+  const Icon = getVaultTreatmentIcon(treatment);
 
   return (
     <div className="flex min-w-0 w-full items-center gap-3">

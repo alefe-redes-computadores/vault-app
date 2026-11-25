@@ -22,14 +22,6 @@ function readEvent(context:string|null|undefined):EntryM144|null{
  try{const r=JSON.parse(context.slice(11)) as EntryM144;return r&&['bridge','course','immunization','procedure','risk_benefit'].includes(r.tag)?r:null;}catch{return null;}
 }
 function medLabel(name:string){return name.length>42?name.slice(0,39)+'…':name;}
-// V112: máscara textual não nativa — digitar 8 algarismos produz AAAA-MM-DD.
-// A validação de dia real continua em isDayM144/episodeProgressM144.
-function maskDayInputM144(value:string):string{
- const digits=value.replace(/\D/g,'').slice(0,8);
- if(digits.length<=4)return digits;
- if(digits.length<=6)return `${digits.slice(0,4)}-${digits.slice(4)}`;
- return `${digits.slice(0,4)}-${digits.slice(4,6)}-${digits.slice(6)}`;
-}
 export function M144ClinicalPanel(){
  const {user,loading:authLoading}=useAuth();const {activePersonId}=useActivePersonId();const today=useLocalDay();
  const {medicamentosIncluindoDescontinuados=[]}=useMedicamentos();
@@ -108,16 +100,7 @@ export function M144ClinicalPanel(){
    <div className="mt-1 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Medicação-base">{meds.map(m=><button key={m.id} type="button" disabled={!enabled||busy} aria-pressed={anchor===m.id} onClick={()=>setAnchor(m.id||'')} className={`${buttonBase} shrink-0 ${anchor===m.id?'border-amber-300/60 bg-amber-300/10 text-amber-200':'border-surface-border text-ink-muted'}`}>{medLabel(m.nome)}</button>)}</div>
    <p className="mt-2 text-xs font-semibold text-ink-secondary">2. Medicação pontual já cadastrada</p>
    <div className="mt-1 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Medicação da ocorrência">{meds.filter(m=>m.id!==anchor).map(m=><button key={m.id} type="button" disabled={!enabled||busy} aria-pressed={bridge===m.id} onClick={()=>setBridge(m.id||'')} className={`${buttonBase} shrink-0 ${bridge===m.id?'border-amber-300/60 bg-amber-300/10 text-amber-200':'border-surface-border text-ink-muted'}`}>{medLabel(m.nome)}</button>)}</div>
-   <div className="mt-2 grid grid-cols-2 gap-3"><label className="text-xs text-ink-muted">Início informado<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={from} onChange={e=>setFrom(maskDayInputM144(e.target.value))} className={input}/></label><label className="text-xs text-ink-muted">Fim informado<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={until} onChange={e=>setUntil(maskDayInputM144(e.target.value))} className={input}/></label></div>
-   <p className="mt-1 text-[11px] text-ink-faint">Datas: digite 8 números (AAAAMMDD). O VAULT adiciona os hífens.</p>
-   <details className="mt-2 rounded-xl border border-surface-border/60 p-2">
-    <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Alternativa à digitação: escolher início e fim no calendário (DD/MM/AAAA)</summary>
-    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Este calendário preenche os mesmos campos da digitação; não cria outro registro.</p>
-    <div className="grid grid-cols-1 gap-3 pt-2 min-[380px]:grid-cols-2">
-     <CustomDatePicker label="Início informado — calendário" value={from} onChange={setFrom} disabled={!enabled||busy} />
-     <CustomDatePicker label="Fim informado — calendário" value={until} onChange={setUntil} disabled={!enabled||busy} />
-    </div>
-   </details>
+   <div className="mt-2 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2"><CustomDatePicker label="Início informado" value={from} onChange={setFrom} disabled={!enabled||busy}/><CustomDatePicker label="Fim informado" value={until} onChange={setUntil} disabled={!enabled||busy}/></div>
    {((from.length===10&&!isDayM144(from))||(until.length===10&&!isDayM144(until)))?<p role="alert" className="mt-1 text-xs text-amber-200">Data impossível. Confira o calendário antes de registrar.</p>:null}
    <label className="mt-3 block text-xs text-ink-muted">Contexto (opcional)<textarea value={note} onChange={e=>setNote(e.target.value)} maxLength={350} rows={2} className={input+' resize-y py-3'} placeholder="O que aconteceu? O que foi relatado ao profissional?"/></label>
    <button type="button" disabled={!enabled||busy||!anchor||!bridge||anchor===bridge||!isDayM144(from)||!isDayM144(until)||until<from} onClick={()=>void save({tag:'bridge',id:'v1',anchorId:anchor,bridgeId:bridge,start:from,end:until,note})} className={buttonBase+' mt-3 w-full border-amber-300/30 bg-amber-300/10 text-amber-200 disabled:opacity-40'}>Registrar ocorrência no Diário</button>
@@ -133,16 +116,7 @@ export function M144ClinicalPanel(){
    <p className="mt-2 text-xs leading-relaxed text-ink-muted">Documente o período informado de um ciclo, inclusive já encerrado. Dia X/Y é apenas calendário. Este registro não cria doses, reativa medicamento nem altera o tratamento.</p>
    <p className="mt-3 text-xs font-semibold text-ink-secondary">Medicamento do episódio</p>
    <div className="mt-1 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Medicamento do ciclo">{meds.map(m=><button key={m.id} type="button" disabled={!enabled||busy} aria-pressed={courseMed===m.id} onClick={()=>setCourseMed(m.id||'')} className={`${buttonBase} shrink-0 ${courseMed===m.id?'border-violet-300/60 bg-violet-300/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{medLabel(m.nome)}</button>)}</div>
-   <div className="mt-2 grid grid-cols-2 gap-3"><label className="text-xs text-ink-muted">Início declarado<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={courseFrom} onChange={e=>setCourseFrom(maskDayInputM144(e.target.value))} className={input}/></label><label className="text-xs text-ink-muted">Fim declarado<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={courseUntil} onChange={e=>setCourseUntil(maskDayInputM144(e.target.value))} className={input}/></label></div>
-   <p className="mt-1 text-[11px] text-ink-faint">Datas: digite 8 números (AAAAMMDD). O VAULT adiciona os hífens.</p>
-   <details className="mt-2 rounded-xl border border-surface-border/60 p-2">
-    <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Alternativa à digitação: escolher período do ciclo no calendário (DD/MM/AAAA)</summary>
-    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Este calendário preenche os mesmos campos da digitação; não cria outro registro.</p>
-    <div className="grid grid-cols-1 gap-3 pt-2 min-[380px]:grid-cols-2">
-     <CustomDatePicker label="Início declarado — calendário" value={courseFrom} onChange={setCourseFrom} disabled={!enabled||busy} />
-     <CustomDatePicker label="Fim declarado — calendário" value={courseUntil} onChange={setCourseUntil} disabled={!enabled||busy} />
-    </div>
-   </details>
+   <div className="mt-2 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2"><CustomDatePicker label="Início declarado" value={courseFrom} onChange={setCourseFrom} disabled={!enabled||busy}/><CustomDatePicker label="Fim declarado" value={courseUntil} onChange={setCourseUntil} disabled={!enabled||busy}/></div>
    {((courseFrom.length===10&&!isDayM144(courseFrom))||(courseUntil.length===10&&!isDayM144(courseUntil)))?<p role="alert" className="mt-1 text-xs text-amber-200">Período com data inválida. A ocorrência não será registrada.</p>:null}
    {episodeProgressM144(courseFrom,courseUntil,today)?<p role="status" className="mt-2 rounded-lg border border-violet-300/15 bg-violet-300/[.045] p-2 text-xs text-violet-200">{(()=>{const x=episodeProgressM144(courseFrom,courseUntil,today)!;return x.state==='ativo'?`Dia ${x.elapsed} de ${x.total} · período em andamento`:x.state==='historico'?`Histórico · ${x.total} dias declarados`:`Agendado · ${x.total} dias declarados`;})()}</p>:null}
    <label className="mt-2 block text-xs text-ink-muted">Contexto declarado (opcional)<textarea value={courseNote} onChange={e=>setCourseNote(e.target.value)} maxLength={350} rows={2} className={input+' resize-y py-3'}/></label>
@@ -171,19 +145,10 @@ export function M144ClinicalPanel(){
    <div className="mt-3 flex gap-2" role="group" aria-label="Tipo de ocorrência"><button type="button" aria-pressed={eventKind==='immunization'} onClick={()=>setEventKind('immunization')} className={buttonBase+(eventKind==='immunization'?' border-violet-300/60 text-violet-200':' border-surface-border text-ink-muted')}>Vacina</button><button type="button" aria-pressed={eventKind==='procedure'} onClick={()=>setEventKind('procedure')} className={buttonBase+(eventKind==='procedure'?' border-violet-300/60 text-violet-200':' border-surface-border text-ink-muted')}>Procedimento</button></div>
    {eventKind==='immunization'?<div className="mt-3 space-y-2 rounded-xl border border-teal-300/20 bg-void/25 p-3"><p className="text-xs text-ink-muted">A carteira de vacinação é o único cadastro atual de vacinas. Os relatos antigos deste Diário continuam no histórico, sem serem convertidos em doses.</p><Link href="/saude/vacinas" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-300/10 px-3 py-2 text-xs font-semibold text-emerald-200"><Syringe size={17}/>Abrir carteira de vacinação</Link></div>:<>
    <label className="mt-3 block text-xs text-ink-muted">Descrição<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100} className={input} placeholder="Nome ou descrição fornecida"/></label>
-   <label className="mt-3 block text-xs text-ink-muted">Data da aplicação ou do procedimento<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={eventDate} onChange={e=>setEventDate(maskDayInputM144(e.target.value))} className={input}/></label>
-   <p className="mt-1 text-[11px] text-ink-faint">Datas: digite 8 números (AAAAMMDD). O VAULT adiciona os hífens.</p>
-   <details className="mt-2 rounded-xl border border-surface-border/60 p-2">
-    <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Alternativa à digitação: escolher datas do procedimento no calendário (DD/MM/AAAA)</summary>
-    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Este calendário preenche os mesmos campos da digitação; não cria outro registro.</p>
-    <div className="grid grid-cols-1 gap-3 pt-2 min-[380px]:grid-cols-2">
-     <CustomDatePicker label="Data do procedimento — calendário" value={eventDate} onChange={setEventDate} disabled={!enabled||busy} />
-     <CustomDatePicker label="Próxima data declarada — calendário" value={next} onChange={setNext} disabled={!enabled||busy} />
-    </div>
-   </details>
+   <div className="mt-3"><CustomDatePicker label="Data do procedimento" value={eventDate} onChange={setEventDate} disabled={!enabled||busy}/></div>
    {((eventDate.length===10&&!isDayM144(eventDate))||(next.length===10&&!isDayM144(next)))?<p role="alert" className="mt-1 text-xs text-amber-200">Data impossível. Confira os valores antes de registrar.</p>:null}
    <p className="mt-1 text-[11px] text-ink-muted">Vacinas: somente datas efetivamente aplicadas; reforços futuros são datas declaradas, nunca aplicação confirmada.</p>
-   <div className="mt-2 grid grid-cols-2 gap-3"><label className="text-xs text-ink-muted">Lote (se conhecido)<input value={lot} onChange={e=>setLot(e.target.value)} maxLength={70} className={input}/></label><label className="text-xs text-ink-muted">Próxima data declarada<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={next} onChange={e=>setNext(maskDayInputM144(e.target.value))} className={input}/></label></div>
+   <div className="mt-2 grid grid-cols-2 gap-3"><label className="text-xs text-ink-muted">Lote (se conhecido)<input value={lot} onChange={e=>setLot(e.target.value)} maxLength={70} className={input}/></label><div className="min-w-0"><CustomDatePicker label="Próxima data declarada" value={next} onChange={setNext} disabled={!enabled||busy}/></div></div>
    <label className="mt-2 block text-xs text-ink-muted">Comprovante / observação (opcional)<textarea rows={2} maxLength={350} value={proofNote} onChange={e=>setProofNote(e.target.value)} className={input+' resize-y py-3'} placeholder="Referência descritiva; anexe o arquivo original em Documentos"/></label>
    <Link href="/documentos" className="mt-1 inline-flex min-h-10 items-center text-xs font-semibold text-violet-200 underline underline-offset-4">Abrir Documentos para anexar o comprovante</Link>
    <button type="button" disabled={!enabled||busy||!title.trim()||!isDayM144(eventDate)||Boolean(next&&!isDayM144(next))} onClick={()=>void save({tag:eventKind,id:'v1',title:title.trim(),lot:lot.trim(),next:next||undefined,start:eventDate,note:proofNote.trim()})} className={buttonBase+' mt-3 w-full border-violet-300/30 bg-violet-300/10 text-violet-200 disabled:opacity-40'}>Registrar no Diário</button>

@@ -29,7 +29,7 @@ const fingerprint = read(paths[5]);
 const regulatory = read(paths[6]);
 
 assert(page.includes('data-vault-executive-density={compactCards?"compact":"comfort"}') && page.includes('className="min-h-0"') && page.includes('actionLayoutM150P3.primary'), "cards não devem manter altura mínima artificial");
-assert(page.includes('railSize="label"') && page.includes('[writing-mode:vertical-rl]') && page.includes('Abrir classificação:') && page.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)') && page.includes('aria-label={`Ver classificação da receita:'), "faixa regulatória opt-in permanece informativa e acessível");
+assert(page.includes('railSize="label"') && page.includes('[writing-mode:vertical-rl]') && page.includes('Abrir classificação:') && (page.includes('regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true)') && page.includes('{prescriptionIdentityP6}') && page.includes('aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}') && !page.includes('prescriptionIdentityP6 ?? medicationRegulatoryShortLabel')) && page.includes('aria-label={`Ver classificação da receita:'), "faixa regulatória opt-in permanece informativa e acessível");
 assert(page.includes('Ver classificação da receita:') && page.includes('medicationRegulatoryShortLabel'), "autoridade regulatória permanece acessível e abreviada");
 assert(card.includes('railSize?: "standard" | "slim" | "label"') && card.includes('railSize === "slim" ? "w-4"'), "faixa fina é opt-in e não altera outros cards");
 assert(regulatory.includes('return "Notif. A"') && regulatory.includes('return "Notif. B"') && regulatory.includes('return "Especial"'), "abreviações regulatórias são determinísticas");
