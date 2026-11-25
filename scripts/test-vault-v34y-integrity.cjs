@@ -76,7 +76,8 @@ check('Horário: toda tecla atualiza estado do formulário; normalizador único 
  assert.match(time,/setDraft\(next\);onChange\(next\)/);
  assert.match(time,/className="grid size-11 shrink-0/);
  assert.match(time,/onBlur=\{commit\}/);
- assert.match(time,/onKeyDown=\{event=>\{if\(event\.key==="Enter"\)event\.currentTarget\.blur\(\);\}\}/);
+ assert.match(time,/onKeyDown=\{event=>\{if\(event\.key==="Enter"\)\{event\.preventDefault\(\);event\.currentTarget\.blur\(\);\}\}\}/);
+ assert.match(time,/const next=event\.target\.value;setDraft\(next\);onChange\(next\)/);
 });
 check('Pressão: um formulário e labels data/hora alinhados',()=>{
  assert.match(pressure,/activeForm/);

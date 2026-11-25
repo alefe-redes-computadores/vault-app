@@ -6,7 +6,7 @@
 export type ClinicalMapIconM150 =
   | 'clock' | 'pill' | 'heart' | 'file' | 'truck' | 'calendar' | 'activity'
   | 'stethoscope' | 'flask' | 'droplet' | 'bell' | 'users' | 'shield'
-  | 'brain' | 'eye' | 'layers' | 'factory' | 'clipboard' | 'syringe';
+  | 'brain' | 'eye' | 'layers' | 'factory' | 'clipboard' | 'syringe' | 'bed' | 'rehab';
 export type ClinicalMapEntryM150 = {
   id: string;
   label: string;
@@ -64,6 +64,7 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
     description: 'Episódios, sintomas, pressão, Brain e relatórios',
     items: [
       {id:'careflow',label:'Acompanhamento clínico',description:'Consultas e histórico',href:'/saude/careflow',icon:'activity'},
+      {id:'internacoes',label:'Internações',description:'Admissões, permanência e alta hospitalar',href:'/saude/internacoes',icon:'bed'},
       {id:'episodios',label:'Episódio de atendimento',description:'Consulta e desdobramentos reais',href:'/saude/careflow/episodios',icon:'calendar'},
       {id:'modo-medico',label:'Modo Médico 360',description:'Resumo para consulta e PDF',href:'/saude/careflow/modo-medico',icon:'stethoscope'},
       {id:'linha-do-tempo',label:'Brain longitudinal',description:'História clínica rastreável',href:'/saude/careflow/linha-do-tempo',icon:'brain'},
@@ -98,6 +99,7 @@ const clinicalSearchAliasesM150P5P5: Readonly<Record<string, readonly string[]>>
   renovacao: ['renovar receita','pedir receita','nova receita','anexar receita'],
   fornecimento: ['sus','medicamento gratuito','fornecimento publico','processo de fornecimento'],
   consultas: ['consulta medica','agendar medico','atendimento medico'],
+  internacoes: ['internacao','hospitalizacao','alta hospitalar','admissao hospitalar','leito'],
   exames: ['resultado de exame','pedido de exame'],
   rede: ['farmacia','farmacias','medico','medicos','hospitais'],
   brain: ['inteligencia','analise de medicamentos','alertas do brain'],
@@ -118,7 +120,7 @@ const clinicalSearchAliasesM150P5P5: Readonly<Record<string, readonly string[]>>
  */
 export const clinicalAdditionalSectionsM150: readonly ClinicalMapSectionM150[] = [
   {id:'complementares',title:'Outras áreas de saúde',description:'Profissionais, reabilitação, documentos e Fênix',items:[
-    {id:'reabilitacao',label:'Reabilitação',description:'Programas, equipe e sessões',href:'/saude/reabilitacao',icon:'heart'},
+    {id:'reabilitacao',label:'Reabilitação',description:'Programas, equipe e sessões clínicas',href:'/saude/reabilitacao',icon:'rehab'},
     {id:'vacinas',label:'Vacinação',description:'Carteira e aplicações declaradas',href:'/saude/vacinas',icon:'syringe'},
     {id:'procedimentos-a9',label:'Procedimentos não cirúrgicos',description:'Registros e planejamento',href:'/saude/procedimentos',icon:'stethoscope'},
     {id:'reacoes-a9',label:'Alergias e reações',description:'Relatos e sensibilidades',href:'/saude/reacoes',icon:'heart'},
@@ -132,7 +134,7 @@ export const clinicalAdditionalSectionsM150: readonly ClinicalMapSectionM150[] =
   ]},
 ];
 const additionalSearchAliasesM150: Readonly<Record<string,readonly string[]>> = {
- reabilitacao:['fisioterapia','terapia ocupacional','sessao','recuperacao funcional'],
+ reabilitacao:['fisioterapia','terapia ocupacional','sessao','recuperacao funcional','fonoaudiologia','fisiatra','reabilitacao fisica'],
  vacinas:['vacina','imunizacao','carteira vacinal','reforco'],
  'procedimentos-a9':['curativo','ambulatorial','intervencao'],
  'reacoes-a9':['intolerancia','alergia','efeito adverso'],
@@ -144,6 +146,15 @@ const additionalSearchAliasesM150: Readonly<Record<string,readonly string[]>> = 
  'fenix-indicadores':['sono','peso','altura','biometria'],
  'fenix-fontes':['samsung','health connect','relogio','anel'],
 };
+/** STB-02: promote an existing complementary entry in the visible catalog; keep its canonical ID and historical inventory. */
+export function clinicalVisibleSectionsSTB(showAdditional:boolean):readonly ClinicalMapSectionM150[] {
+  const promoted=clinicalAdditionalSectionsM150.flatMap(g=>g.items).filter(item=>item.id==='reabilitacao');
+  const primary=clinicalDirectoryM150.map(group=>group.id==='careflow'?{...group,items:[...group.items,...promoted]}:group);
+  return showAdditional?[...primary,...clinicalAdditionalSectionsM150.map(group=>({...group,items:group.items.filter(item=>item.id!=='reabilitacao')})).filter(group=>group.items.length>0)]:primary;
+}
+export function clinicalHiddenCountSTB():number {
+  return clinicalVisibleSectionsSTB(true).reduce((sum,group)=>sum+group.items.length,0)-clinicalVisibleSectionsSTB(false).reduce((sum,group)=>sum+group.items.length,0);
+}
 export function searchClinicalDirectoryM150(query: string): readonly ClinicalMapSectionM150[] {
   const needle = normalizeClinicalSearchM150(query);
   if (!needle) return clinicalDirectoryM150;

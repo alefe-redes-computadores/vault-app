@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Medicamento, MedicationCatalogSnapshot } from "@/lib/types";
 import type { MedicationReference } from "@/lib/medication-intelligence/types";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
+import { catalogLookupNameSTB, catalogAuthorityForMedicationSTB, catalogReferenceUsableSTB, catalogScopeSTB, chooseUnambiguousCatalogReferenceSTB, catalogPreserveIngredientEvidenceSTB, catalogPresentationFitSTB } from "@/lib/health/medication-reference-fit-stb";
 import { supabaseMedicationCatalogProvider } from "@/lib/medication-catalog";
 import {
-  getMedicationCatalogAuthority,
   type MedicationCatalogAuthorityState,
 } from "@/lib/medication-catalog/authority";
 import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
@@ -125,13 +125,16 @@ function lookupKeyFor(medication: Medicamento): string {
 }
 
 /** MED-04: cache entries must NOT collide across account/person, medicine or presentation. */
-function catalogCacheKeyFor(medication: Medicamento): string {
+function legacyCatalogCacheKeyForSTB(medication: Medicamento): string {
   return [
     medication.user_id || "", medication.person_id || "", medication.id || "",
     lookupKeyFor(medication), normalizeMedicationText(medication.dosagem || ""),
     normalizeMedicationText(medication.formato || ""),
     normalizeMedicationText(medication.forma_farmaceutica || ""),
   ].join("::");
+}
+function catalogCacheKeyFor(medication: Medicamento): string {
+  return catalogScopeSTB(medication);
 }
 
 function snapshotReference(medication: Medicamento): PersistedReference | null {
@@ -144,7 +147,7 @@ function snapshotReference(medication: Medicamento): PersistedReference | null {
   ) return null;
 
   const reference = snapshot.reference as MedicationReference;
-  if (!reference.canonicalName || !Array.isArray(reference.sources)) return null;
+  if (!reference.canonicalName || !Array.isArray(reference.sources) || !catalogReferenceUsableSTB(medication,reference)) return null;
   const resolvedAt = Date.parse(snapshot.resolved_at);
   return {
     lookupKey: snapshot.lookup_key || lookupKeyFor(medication),
@@ -157,7 +160,9 @@ function snapshotReference(medication: Medicamento): PersistedReference | null {
 }
 
 function knownReference(medication: Medicamento): PersistedReference | null {
-  const local = loadCache().entries[catalogCacheKeyFor(medication)] || null;
+  const current = loadCache();
+  const cached = current.entries[catalogCacheKeyFor(medication)] || current.entries[legacyCatalogCacheKeyForSTB(medication)];
+  const local = cached && catalogReferenceUsableSTB(medication,cached.reference) ? cached : null;
   const persisted = snapshotReference(medication);
   if (!local) return persisted;
   if (!persisted) return local;
@@ -169,11 +174,14 @@ function knownReference(medication: Medicamento): PersistedReference | null {
     medication, local.reference
   ).verified;
   if (savedOfficial !== localOfficial) return savedOfficial ? persisted : local;
+  if (catalogPreserveIngredientEvidenceSTB(persisted.reference,local.reference)) return persisted;
+  if (catalogPreserveIngredientEvidenceSTB(local.reference,persisted.reference)) return local;
   return local.quality >= persisted.quality ? local : persisted;
 }
 
 function medicationFingerprint(medication: Medicamento): string {
   return [
+    catalogScopeSTB(medication),
     medication.id || "",
     lookupKeyFor(medication),
     medication.dosagem || "",
@@ -205,6 +213,7 @@ async function refreshCatalogManifest(): Promise<string | null> {
       const status = await supabaseMedicationCatalogProvider.getStatus();
       const signature = catalogSignatureFromStatus(status);
       const target = loadCache();
+      if (signature && target.catalogSignature !== signature) target.retryAfter = {};
       target.catalogSignature = signature || null;
       target.manifestCheckedAt = Date.now();
       target.manifestRetryAfter = 0;
@@ -230,6 +239,7 @@ function isDeterministicCandidate(
   const persisted = snapshotReference(medication)?.reference;
   const authoritativeTerms = [
     medication.nome,
+    catalogLookupNameSTB(medication),
     persisted?.canonicalName,
     persisted?.activeIngredient,
     ...(persisted?.activeIngredients || []),
@@ -253,10 +263,9 @@ function referenceQuality(
   matchedText: string,
   searchScore: number
 ): { quality: number; matchKind: PersistedReference["matchKind"] } {
-  const key = lookupKeyFor(medication);
-  const exact =
-    normalizeMedicationText(matchedText) === key ||
-    normalizeMedicationText(reference.canonicalName) === key;
+  const key = normalizeMedicationText(catalogLookupNameSTB(medication));
+  const exact = normalizeMedicationText(reference.canonicalName) === key;
+  const matchedName = normalizeMedicationText(matchedText) === key;
   const regulatory = resolveMedicationRegulatoryVisual(medication, reference);
   const officialSource = reference.sources.some(
     (source) => source.authority === "anvisa" || source.authority === "ministerio_saude"
@@ -271,7 +280,8 @@ function referenceQuality(
       (officialSource ? 100 : 0) +
       (product ? 40 : 0) +
       (ingredients ? 20 : 0) +
-      Math.round(searchScore * 10),
+      (catalogPresentationFitSTB(medication,reference) === "match" ? 30 : 0) +
+      (matchedName ? 5 : 0) + Math.round(searchScore * 10),
     matchKind: exact ? "exact" : "pharmaceutical_equivalence",
   };
 }
@@ -282,6 +292,7 @@ async function resolveBestReference(
   const persisted = snapshotReference(medication)?.reference;
   const queries = Array.from(new Set([
     medication.nome,
+    catalogLookupNameSTB(medication),
     persisted?.canonicalName,
     persisted?.activeIngredient,
     ...(persisted?.activeIngredients || []),
@@ -306,7 +317,7 @@ async function resolveBestReference(
   const settled = await Promise.allSettled(
     deterministic.map(async (candidate) => {
       const hydrated = await supabaseMedicationCatalogProvider.hydrateQuickResult(candidate);
-      if (!hydrated?.reference) return null;
+      if (!hydrated?.reference || !catalogReferenceUsableSTB(medication,hydrated.reference)) return null;
       const rank = referenceQuality(
         medication,
         hydrated.reference,
@@ -317,13 +328,14 @@ async function resolveBestReference(
     })
   );
 
-  return settled
+  const ranked = settled
     .filter(
       (result): result is PromiseFulfilledResult<ResolvedReference> =>
         result.status === "fulfilled" && Boolean(result.value)
     )
     .map((result) => result.value)
-    .sort((left, right) => right.quality - left.quality)[0] || null;
+    .sort((left, right) => right.quality - left.quality);
+  return chooseUnambiguousCatalogReferenceSTB(ranked,persisted);
 }
 
 function referenceIsFresh(entry: PersistedReference, signature: string | null): boolean {
@@ -337,7 +349,7 @@ function persistKnownReference(
   entry: PersistedReference
 ): void {
   const current = snapshotReference(medication);
-  if (current && current.quality >= entry.quality) return;
+  if (current && current.quality >= entry.quality && current.catalogSignature === entry.catalogSignature) return;
   void persistMedicationCatalogSnapshot(
     medication.id || "",
     medication.person_id,
@@ -349,7 +361,8 @@ function persistKnownReference(
       quality: entry.quality,
       match_kind: entry.matchKind,
       reference: entry.reference,
-    }
+    },
+    catalogScopeSTB(medication)
   );
 }
 
@@ -362,7 +375,7 @@ async function ensureReference(
   const cacheKey = catalogCacheKeyFor(medication);
   const current = loadCache();
   const known = knownReference(medication);
-  if (known && !current.entries[cacheKey]) current.entries[cacheKey] = known;
+  if (known) current.entries[cacheKey] = known;
   if (known && referenceIsFresh(known, signature)) {
     persistKnownReference(medication, known);
     return known.reference;
@@ -384,7 +397,8 @@ async function ensureReference(
 
       // Atualização atômica e monotônica: nem uma nova versão do catálogo pode
       // rebaixar uma verdade regulatória confirmada para um candidato sem regra.
-      const previous = loadCache().entries[cacheKey];
+      const prior = loadCache().entries[cacheKey];
+      const previous = prior && catalogReferenceUsableSTB(medication,prior.reference) ? prior : undefined;
       const previousVerified = previous
         ? resolveMedicationRegulatoryVisual(medication, previous.reference).verified
         : false;
@@ -393,7 +407,7 @@ async function ensureReference(
         resolved.reference
       ).verified;
       const catalogChanged = previous?.catalogSignature !== signature;
-      const preservesAuthority = !previousVerified || resolvedVerified;
+      const preservesAuthority = (!previousVerified || resolvedVerified) && (!previous || !catalogPreserveIngredientEvidenceSTB(previous.reference,resolved.reference));
       const mayReplace =
         !previous ||
         (preservesAuthority && (catalogChanged || resolved.quality >= previous.quality));
@@ -423,10 +437,13 @@ async function ensureReference(
         void persistMedicationCatalogSnapshot(
           medication.id || "",
           medication.person_id,
-          snapshot
+          snapshot,
+          catalogScopeSTB(medication)
         );
         return resolved.reference;
       }
+      loadCache().retryAfter[cacheKey] = Date.now() + RETRY_TTL_MS;
+      persistCache();
       return previous.reference;
     } catch {
       loadCache().retryAfter[cacheKey] = Date.now() + RETRY_TTL_MS;
@@ -472,7 +489,7 @@ export type MedicationCatalogIdentity = {
 /** MED-06: surface an evidence conflict; never rewrite the Details regulator. */
 function regulatoryNeedsReviewMED04(medication: Medicamento, reference: MedicationReference | null): boolean {
   if (!reference) return false;
-  const identity = getMedicationCatalogAuthority(medication.nome, reference);
+  const identity = catalogAuthorityForMedicationSTB(medication, reference);
   if (identity.state === "possible_divergence") return true;
   const rules = reference.regulatoryRules || [];
   if (!rules.length) return false;
@@ -491,13 +508,14 @@ function regulatoryNeedsReviewMED04(medication: Medicamento, reference: Medicati
   ).filter(values => values.length);
   if (registered.length && candidates.length &&
     !candidates.some(values => registered.every(token => values.includes(token)))) return true;
+  if (catalogPresentationFitSTB(medication,reference) !== "match") return true;
   return false;
 }
 
 function identityFor(medication: Medicamento, reference: MedicationReference | null): MedicationCatalogIdentity {
-  const authority = getMedicationCatalogAuthority(medication.nome, reference);
+  const authority = catalogAuthorityForMedicationSTB(medication, reference);
   const persisted = snapshotReference(medication)?.reference || null;
-  const savedAuthority = persisted ? getMedicationCatalogAuthority(medication.nome, persisted) : null;
+  const savedAuthority = persisted ? catalogAuthorityForMedicationSTB(medication, persisted) : null;
   const sameVerifiedProduct = Boolean(persisted && medication.catalog_snapshot?.match_kind === "exact" &&
     savedAuthority?.state === "confirmed" &&
     (!reference || normalizeMedicationText(reference.canonicalName) === normalizeMedicationText(persisted.canonicalName)) &&
@@ -534,6 +552,8 @@ export function useMedicationCatalogProfiles(medications: Medicamento[]): {
 
   useEffect(() => {
     void ensureMedicationBatch(latestMedications.current);
+    const refresh = window.setInterval(() => void ensureMedicationBatch(latestMedications.current), RETRY_TTL_MS);
+    return () => window.clearInterval(refresh);
   }, [collectionSignature]);
 
   return useMemo(() => {

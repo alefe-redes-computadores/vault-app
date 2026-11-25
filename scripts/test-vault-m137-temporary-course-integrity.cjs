@@ -89,13 +89,28 @@ const sosOnly = projected({medicamentos:[{...fixtureMed,id:'sos-historico',tipo_
 ok(sosOnly.length===1 && sosOnly[0].logId==='sos-evento' && sosOnly[0].isAvulsa===true &&
   sosOnly[0].scheduleOrigin==='sos' && sosOnly[0].tomada===true,
   'V94: SOS histórico encerrado continua visível, tomado e avulso');
-const effectStart=quick.indexOf('Sempre que o medicamento selecionado mudar');
-const effectEnd=quick.indexOf('// BUSCA',effectStart);
-const quantityEffect=quick.slice(effectStart,effectEnd);
-ok(effectStart>0&&effectEnd>effectStart&&
-  !quantityEffect.includes('setDoseHora(getCurrentTime())')&&
-  quantityEffect.includes('existingScheduledLog?.quantidade'),
-  'mudar horário/slot não força QuickDose a voltar para a hora atual');
+const quickAst=ts.createSourceFile('QuickDoseModal.tsx',quick,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+const quantityEffects=[];
+function visitQuick(n){
+  if(ts.isCallExpression(n)&&n.expression.getText(quickAst)==='useEffect'&&n.arguments.length>=2){
+    const body=n.arguments[0].getText(quickAst);
+    if(body.includes('resolveDefaultDoseQuantity(selectedMed, existingScheduledLog)'))quantityEffects.push(n);
+  }
+  ts.forEachChild(n,visitQuick);
+}
+visitQuick(quickAst);
+ok(quantityEffects.length===1,'um efeito canônico de sugestão de quantidade');
+const quantityEffect=quantityEffects[0].arguments[0].getText(quickAst);
+const quantityDeps=quantityEffects[0].arguments[1].getText(quickAst);
+ok(!/\bsetDose(?:Hora|Date)\s*\(/.test(quantityEffect)&&
+  quantityDeps.includes('existingScheduledLog?.quantidade')&&quantityDeps.includes('doseHora')&&quantityDeps.includes('doseDate')&&
+  quantityEffect.includes('!maySuggestQuickDoseQuantitySTB(draftSessionSTB.current,activePersonId,selectedMed.id)'),
+  'mudar horário/slot não força QuickDose a voltar para a hora atual nem sobrescreve quantidade manual');
+const draft=load('lib/ui/quick-dose-draft-stb.ts');
+const opened=draft.reconcileQuickDoseDraftSTB(null,true,'p','m').session;
+const manual=draft.editQuickDoseQuantitySTB(opened);
+ok(draft.maySuggestQuickDoseQuantitySTB(opened,'p','m')&&!draft.maySuggestQuickDoseQuantitySTB(manual,'p','m'),
+  'sugestão automática e edição manual permanecem distintas');
 
 ok(today.includes('tomada: Boolean(log.tomado_em), ignorada: Boolean(log.ignorado_em)'),'Hoje lê explicitamente tomada e ignorada');
 ok(quick.includes('isTemporaryCoursePlannedDose(existingScheduledLog)'),'QuickDose reconhece slot do período');

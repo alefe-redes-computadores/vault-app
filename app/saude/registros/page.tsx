@@ -39,6 +39,7 @@ import { buildClinicalMonthReport } from "@/lib/clinical-month-report";
 import type { ClinicalDoseSafetyEpisode } from "@/lib/clinical-safety-episodes";
 import { AvatarMedicamento } from "@/components/ui/AvatarMedicamento";
 import {metricIdentityB,metricKindB,formatSleepDurationB,originLabelB} from "@/lib/ui/front-b-clinical-identity";
+import {formatMeasurementTimeSTB,formatRecordedPressureSTB} from "@/lib/health/measurement-presentation-stb";
 import { analisarRegistroSaude } from "@/lib/health-insights";
 import {
   buildClinicalDays,
@@ -335,7 +336,7 @@ export default function RegistrosSaudePage() {
                   setFilter("sintoma");
                   setSearch("");
                 }}
-                className="flex min-h-11 items-center justify-between rounded-xl border border-fuchsia-300/25 bg-fuchsia-300/[.05] px-3 text-xs font-semibold text-fuchsia-200"
+                className={`flex min-h-11 items-center justify-between rounded-xl border border-fuchsia-300/25 bg-fuchsia-300/[.05] px-3 text-xs font-semibold text-fuchsia-200 ${pressurePlans.length===0?"min-[360px]:col-span-2":""}`}
               >
                 <span className="flex items-center gap-2">
                   <HeartPulse size={15} />
@@ -352,7 +353,7 @@ export default function RegistrosSaudePage() {
                   setFilter("medicao");
                   setSearch("");
                 }}
-                className="flex min-h-11 items-center justify-between rounded-xl border border-sky-300/25 bg-sky-300/[.05] px-3 text-xs font-semibold text-sky-200"
+                className={`flex min-h-11 items-center justify-between rounded-xl border border-sky-300/25 bg-sky-300/[.05] px-3 text-xs font-semibold text-sky-200 ${activeSymptomCount===0?"min-[360px]:col-span-2":""}`}
               >
                 <span className="flex items-center gap-2">
                   <Activity size={15} />
@@ -368,7 +369,7 @@ export default function RegistrosSaudePage() {
                 onClick={() =>
                   router.push(preserveReturn("/saude/registros/novo"))
                 }
-                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-sm font-bold text-void"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-sm font-bold text-void min-[360px]:col-span-2"
               >
                 <Plus size={16} />
                 Novo registro
@@ -844,14 +845,16 @@ function EventRow({
             <p className="truncate text-sm font-semibold text-ink-primary">
               {event.title}
             </p>
-            <p className="mt-0.5 truncate text-xs text-ink-muted">
-              {metricKindB(event.record?.tipo)==="sono" && typeof event.record?.duracao_minutos==="number"
+            <p className="mt-0.5 break-words text-xs text-ink-muted">
+              {event.record&&metricKindB(event.record.tipo)==="pressao_arterial"
+                  ? `${formatRecordedPressureSTB(event.record.valor_medicao,event.record.unidade_medida)}${event.record.source?' · '+originLabelB(event.record.source):''}`
+                  : metricKindB(event.record?.tipo)==="sono" && typeof event.record?.duracao_minutos==="number"
                   ? `${formatSleepDurationB(event.record.duracao_minutos)} · ${originLabelB(event.record.source)}`
                   : event.subtitle || meta.label}
             </p>
           </div>
           <span className="shrink-0 font-mono text-[9px] text-ink-muted">
-            {displayDate(event.date)} · {event.time.slice(0, 5)}
+            {displayDate(event.date)} · {event.record?(formatMeasurementTimeSTB(event.record.horario)||"Sem horário"):event.time.slice(0, 5)}
           </span>
         </div>
         {typeof event.intensity === "number" && (

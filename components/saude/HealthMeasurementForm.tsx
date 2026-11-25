@@ -3,6 +3,8 @@ import { useRef, useState } from "react";
 import { Check, Save, X } from "lucide-react";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthTimePicker } from "./HealthTimePicker";
+import { PressureReadingFieldSTB } from "./PressureReadingFieldSTB";
+import { parsePressureDraft } from "@/lib/health/pressure-input";
 import { HealthRelationPicker } from "./HealthRelationPicker";
 import {
   HealthDeviceIcon,
@@ -40,7 +42,6 @@ export function HealthMeasurementForm({
   const [date, setDate] = useState(today),
     [hour, setHour] = useState(time),
     [value, setValue] = useState(""),
-    [second, setSecond] = useState(""),
     [device, setDevice] = useState(""),
     [source, setSource] = useState<"manual" | "samsung_manual">("manual"),
     [notes, setNotes] = useState(""),
@@ -57,6 +58,7 @@ export function HealthMeasurementForm({
   const eligible = devices.filter(
     (d) => d.active && d.capabilities.includes(type)
   );
+  const pressure=type==="pressao_arterial"?parsePressureDraft(value):null;
   let duration: number | null = null;
   if (type === "sono" && startTime && endTime) {
     try {
@@ -83,14 +85,15 @@ export function HealthMeasurementForm({
           type === "sono" && endTime
             ? new Date(`${endDate}T${endTime}`).toISOString()
             : undefined;
+      if(type==="pressao_arterial"&&!pressure)throw new Error("Confira a pressão sistólica e diastólica.");
       await saveHealthMeasurement(personId, {
         id: id.current,
         type,
         value:
           type === "sono"
             ? sleepDuration(start || "", end || "")
-            : decimal(value),
-        second: type === "pressao_arterial" ? decimal(second) : undefined,
+            : pressure ? pressure.systolic : decimal(value),
+        second: pressure?.diastolic,
         date: type === "sono" ? endDate : date,
         time: type === "sono" ? endTime : hour,
         deviceId: device || null,
@@ -160,50 +163,18 @@ export function HealthMeasurementForm({
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-2 text-xs text-ink-muted">
-              <span>
-                {type === "pressao_arterial"
-                  ? "Sistólica"
-                  : `Valor em ${METRICS[type].unit}`}
-              </span>
-              <input
-                autoFocus
-                inputMode="decimal"
-                className={HEALTH_FIELD}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                required
-                placeholder={
-                  type === "pressao_arterial" ? "120" : METRICS[type].unit
-                }
-              />
+          {type==="pressao_arterial"?<PressureReadingFieldSTB value={value} onChange={setValue} disabled={busy} autoFocus/>:<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="min-w-0 space-y-2 text-xs text-ink-muted">
+              <span>Valor em {METRICS[type].unit}</span>
+              <input autoFocus inputMode="decimal" className={HEALTH_FIELD} value={value} onChange={(e)=>setValue(e.target.value)} required disabled={busy} placeholder={METRICS[type].unit}/>
             </label>
-            {type === "pressao_arterial" ? (
-              <label className="space-y-2 text-xs text-ink-muted">
-                <span>Diastólica</span>
-                <input
-                  inputMode="numeric"
-                  className={HEALTH_FIELD}
-                  value={second}
-                  onChange={(e) => setSecond(e.target.value)}
-                  required
-                  placeholder="80"
-                />
-              </label>
-            ) : (
-              <div className="self-end rounded-2xl bg-surface-raised p-3 text-xs text-ink-muted">
-                {type === "caminhada"
-                  ? "Duração observada, sem exigir passos."
-                  : "Valor medido; sem estimativa automática."}
-              </div>
-            )}
-          </div>
+            <div className="self-end rounded-2xl bg-surface-raised p-3 text-xs text-ink-muted">{type==="caminhada"?"Duração observada, sem exigir passos.":"Valor medido; sem estimativa automática."}</div>
+          </div>}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <CustomDatePicker label="Data" value={date} onChange={setDate} />
+            <CustomDatePicker label={type==="pressao_arterial"?"Data da medição":"Data"} value={date} onChange={setDate} maxDate={today} disabled={busy} />
             <div className="space-y-2">
               <p className="text-xs text-ink-muted">Hora real</p>
-              <HealthTimePicker value={hour} onChange={setHour} />
+              <HealthTimePicker value={hour} onChange={setHour} disabled={busy} clearable={false} />
             </div>
           </div>
         </>
@@ -263,7 +234,7 @@ export function HealthMeasurementForm({
         {error}
       </p>
       <button
-        disabled={busy}
+        disabled={busy||(type==="pressao_arterial"&&!pressure)}
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 p-3 text-sm font-semibold text-void disabled:opacity-50"
       >
         <Save size={17} />

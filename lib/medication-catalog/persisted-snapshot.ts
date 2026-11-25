@@ -1,6 +1,7 @@
 import { db, safeUpdateMedicamento } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { MedicationCatalogSnapshot } from "@/lib/types";
+import { catalogScopeSTB } from "@/lib/health/medication-reference-fit-stb";
 
 const writes = new Map<string, Promise<void>>();
 
@@ -16,7 +17,8 @@ function stableSnapshot(value: MedicationCatalogSnapshot | null | undefined): st
 export function persistMedicationCatalogSnapshot(
   medicationId: string,
   personId: string | undefined,
-  snapshot: MedicationCatalogSnapshot
+  snapshot: MedicationCatalogSnapshot,
+  expectedScope?: string
 ): Promise<void> {
   if (!medicationId || !personId) return Promise.resolve();
   const existing = writes.get(medicationId);
@@ -24,7 +26,7 @@ export function persistMedicationCatalogSnapshot(
 
   const task = (async () => {
     const current = await db.medicamentos.get(medicationId);
-    if (!current || current.person_id !== personId) return;
+    if (!current || current.person_id !== personId || (expectedScope && catalogScopeSTB(current) !== expectedScope)) return;
     if (stableSnapshot(current.catalog_snapshot) === stableSnapshot(snapshot)) return;
 
     await safeUpdateMedicamento(medicationId, {

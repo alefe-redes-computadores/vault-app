@@ -5,7 +5,7 @@ const BY_KEY:Record<string,(typeof ICONS)[number]>={activity:Activity,heart:Hear
 type TreatmentLike={id?:unknown;icone?:unknown;icon?:unknown;icon_name?:unknown};
 export function getVaultTreatmentIcon(entity:string|TreatmentLike|null|undefined) {
   const t=entity && typeof entity==='object' ? entity:null;
-  const requested=t ? [t.icone,t.icon_name,t.icon].find(x=>typeof x==='string'&&Boolean(BY_KEY[x.trim().toLowerCase()])):undefined;
+  const requested=t ? [t.icone,t.icon_name,t.icon].find(x=>typeof x==='string'&&Object.prototype.hasOwnProperty.call(BY_KEY,x.trim().toLowerCase())):undefined;
   if(typeof requested==='string')return BY_KEY[requested.trim().toLowerCase()];
   const id=t&&typeof t.id==='string'?t.id.trim():'';
   if(!id)return HeartHandshake; // Neutral fallback; name is deliberately not inspected.

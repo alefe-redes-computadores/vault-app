@@ -75,6 +75,7 @@ import type {
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { contextualDoseQuantity, isTemporaryCoursePlannedDose } from "@/lib/dose-plan-authority";
 import { useAndroidModalViewport } from "@/hooks/useAndroidModalViewport";
+import { reconcileQuickDoseDraftSTB, selectQuickDoseMedicationSTB, editQuickDoseQuantitySTB, isQuickDoseContextSTB, maySuggestQuickDoseQuantitySTB, isValidQuickDoseDateSTB, type QuickDoseDraftSessionSTB } from "@/lib/ui/quick-dose-draft-stb";
 
 // ============================================================
 // TIPOS
@@ -525,6 +526,7 @@ export function QuickDoseModal({
 }: QuickDoseModalProps) {
   const router=useRouter();
   const saveLock=useRef(false);
+  const draftSessionSTB=useRef<QuickDoseDraftSessionSTB|null>(null);
   const extraReasonInputRef=useRef<HTMLInputElement>(null);
   const [portalReady, setPortalReady] = useState(false);
   const { layerStyle, keyboardOpen } = useAndroidModalViewport(isOpen && portalReady);
@@ -874,11 +876,10 @@ export function QuickDoseModal({
 
   useEffect(
     () => {
-      if (
-        !isOpen
-      ) {
-        return;
-      }
+      const transition=reconcileQuickDoseDraftSTB(draftSessionSTB.current,isOpen,activePersonId,preselectedMedicamentoId);
+      draftSessionSTB.current=transition.session;
+      if (transition.reset==="none") return;
+      setDoseQtd(0);
 
       setSearchQuery(
         ""
@@ -899,8 +900,10 @@ export function QuickDoseModal({
       setRegisterAsExtra(false);
       setDoseReason("");
       setExtraReasonErrorM1(false);
-      setDoseDate(today);
-      setDoseHora(getCurrentTime());
+      if (transition.reset==="session") {
+        setDoseDate(today);
+        setDoseHora(getCurrentTime());
+      }
 
       if (
         preselectedMedicamentoId
@@ -912,41 +915,24 @@ export function QuickDoseModal({
         return;
       }
 
-      setDoseMedId(
-        ""
-      );
-
-      setDoseQtd(
-        0
-      );
-
-      setRegisterAsExtra(false);
-      setDoseReason("");
-
-      setDoseHora(
-        getCurrentTime()
-      );
+      setDoseMedId("");
     },
     [
       isOpen,
       preselectedMedicamentoId,
+      activePersonId,
+      today,
     ]
   );
 
-  /*
-   * Sempre que o medicamento selecionado mudar, o modal
-   * recalcula quantidade e horário sugeridos.
-   *
-   * Para medicamento contínuo, prioriza um slot da rotina
-   * ainda pendente.
-   *
-   * Para SOS/esporádico, usa a hora atual.
-   */
+  /* STB-01: suggestions follow the selected slot only before a manual quantity edit.
+   * Date/time are never reset by reactive medication or dose-log updates. */
   useEffect(
     () => {
       if (
         !isOpen ||
-        !selectedMed
+        !selectedMed ||
+        !maySuggestQuickDoseQuantitySTB(draftSessionSTB.current,activePersonId,selectedMed.id)
       ) {
         return;
       }
@@ -960,7 +946,10 @@ export function QuickDoseModal({
     },
     [
       isOpen,
+      activePersonId,
+      preselectedMedicamentoId,
       selectedMed?.id,
+      selectedMed?.estoque_unidade_por_dose,
       doseDate,
       doseHora,
       existingScheduledLog?.id,
@@ -1037,6 +1026,15 @@ export function QuickDoseModal({
         "vibrate"
       );
 
+      if (preselectedMedicamentoId && preselectedMedicamentoId!==medicamento.id) return;
+      if (targetMedicationId!==medicamento.id) {
+        draftSessionSTB.current=selectQuickDoseMedicationSTB(draftSessionSTB.current,medicamento.id);
+        setDoseQtd(0);
+        setRegisterAsExtra(false);
+        setDoseReason("");
+        setExtraReasonErrorM1(false);
+        setLateDoseDecisionOpen(false);
+      }
       setDoseMedId(
         medicamento.id
       );
@@ -1065,6 +1063,7 @@ export function QuickDoseModal({
         "vibrate"
       );
 
+      setAcceptedUnusualQuantity(null);
       setDoseHora(
         horario
       );
@@ -1073,6 +1072,11 @@ export function QuickDoseModal({
         false
       );
     };
+
+  const markQuantityEditedSTB=()=>{
+    draftSessionSTB.current=editQuickDoseQuantitySTB(draftSessionSTB.current);
+    setAcceptedUnusualQuantity(null);
+  };
 
   const handleDecreaseQuantity =
     () => {
@@ -1086,6 +1090,7 @@ export function QuickDoseModal({
         "vibrate"
       );
 
+      markQuantityEditedSTB();
       setDoseQtd(
         (
           current
@@ -1116,6 +1121,7 @@ export function QuickDoseModal({
         "vibrate"
       );
 
+      markQuantityEditedSTB();
       setDoseQtd(
         (
           current
@@ -1244,6 +1250,15 @@ export function QuickDoseModal({
         return;
       }
 
+      if (!isQuickDoseContextSTB(draftSessionSTB.current,activePersonId,selectedMed.id)) {
+        showToast("Confira a pessoa e o medicamento antes de registrar.","error");
+        return;
+      }
+      if (!isValidQuickDoseDateSTB(doseDate) || doseDate>maxScheduleDate) {
+        showToast("Informe uma data válida.","error");
+        return;
+      }
+
       if (selectedMed.tipo_uso === "temporario" && doseMode === "ad-hoc" &&
           (!registerAsExtra || !doseReason.trim())) {
         setExtraReasonErrorM1(true);
@@ -1341,6 +1356,7 @@ export function QuickDoseModal({
         return;
       }
 
+      const savingSessionSTB=draftSessionSTB.current;
       saveLock.current=true;
       setIsSaving(
         true
@@ -1372,6 +1388,7 @@ export function QuickDoseModal({
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("sync:process"));
           }
+          if (draftSessionSTB.current!==savingSessionSTB) return;
           trigger("success");
           showToast(`Dose de ${selectedMed.nome} agendada para ${doseHora}. O estoque não foi alterado.`, "success");
           onSuccess?.();
@@ -1412,7 +1429,7 @@ export function QuickDoseModal({
             tomadoEm:
               requestedStatus ===
                 "taken"
-                ? options?.tomadoEm
+                ? (options?.tomadoEm ?? (doseDate<today ? buildLocalTakenAtIso(doseDate,doseHora) : undefined))
                 : undefined,
           });
         } else {
@@ -1467,6 +1484,7 @@ export function QuickDoseModal({
           );
         }
 
+        if (draftSessionSTB.current!==savingSessionSTB) return;
         trigger(
           "success"
         );
@@ -1498,6 +1516,7 @@ export function QuickDoseModal({
           error
         );
 
+        if (draftSessionSTB.current!==savingSessionSTB) return;
         trigger(
           "error"
         );
@@ -1782,6 +1801,7 @@ export function QuickDoseModal({
                         trigger("vibrate");
                         const suggested = quantitySafetyAssessment.suggestedQuantity;
                         if (suggested !== null) {
+                          markQuantityEditedSTB();
                           setDoseQtd(suggested);
                           setAcceptedUnusualQuantity(null);
                         }
@@ -2616,6 +2636,7 @@ export function QuickDoseModal({
                     (
                       event
                     ) => {
+                      setAcceptedUnusualQuantity(null);
                       setDoseHora(
                         handleTimeMask(
                           event.target.value
@@ -2649,7 +2670,7 @@ export function QuickDoseModal({
                 />
               </div>
 
-              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data</span><CustomDatePicker className="[&_input]:text-xs [&_input]:pl-2 [&_input]:pr-8" value={doseDate} maxDate={maxScheduleDate} disabled={isSaving} onChange={next=>setDoseDate(next||today)} /><span className="mt-1 block text-[9px] text-ink-faint">Horário passado registra a tomada; horário futuro agenda sem baixar o estoque.</span></label>
+              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data</span><CustomDatePicker className="[&_input]:text-xs [&_input]:pl-2 [&_input]:pr-8" value={doseDate} maxDate={maxScheduleDate} disabled={isSaving} onChange={next=>{if(isValidQuickDoseDateSTB(next)&&next<=maxScheduleDate){setAcceptedUnusualQuantity(null);setDoseDate(next);}}} /><span className="mt-1 block text-[9px] text-ink-faint">Horário passado registra a tomada; horário futuro agenda sem baixar o estoque.</span></label>
             </div>
           </div>
 

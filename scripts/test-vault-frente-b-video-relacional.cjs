@@ -167,3 +167,5 @@ function findRegistrationR021(n){if(ts.isVariableDeclaration(n)&&n.name.getText(
 findRegistrationR021(gateAstR021);
 ok(registrationsR021.length===1&&registrationsR021[0]===1,'G-B03 vacina B registrada uma única vez na lista oficial V63');
 console.log(`B_VIDEO_RELACIONAL_PASS=${count}`);
+// STB-01..09: preserve all 67 existing assertions; new suite runs as a hard dependency.
+require('./test-vault-stability-360.cjs');

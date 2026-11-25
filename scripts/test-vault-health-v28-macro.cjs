@@ -23,7 +23,10 @@ assert.doesNotMatch(time, /minuteRef|\.focus\(\)/, 'horário não pode roubar fo
 assert.match(pressureParser, /digits\.length === 5/, 'parser deve aceitar 14682');
 assert.match(pressureParser, /abbreviated \? Number\(left\) \* 10/, 'parser deve aceitar 14\/9');
 assert.match(pressure, /const \[slots,\s*setSlots\]\s*=\s*useState\(\[""\]\)/, 'plano deve iniciar com um slot vazio');
-assert.match(pressure, /Interpretado como/, 'pressão abreviada deve ter feedback');
+assert.match(pressure, /<PressureReadingFieldSTB\b/, 'CareFlow consome o campo canônico de pressão');
+const pressureFieldSTB=read('components/saude/PressureReadingFieldSTB.tsx');
+assert.match(pressureFieldSTB, /Interpretado como/, 'pressão abreviada deve ter feedback');
+assert.match(pressureFieldSTB, /\{parsed\.display\} mmHg/, 'prévia explícita em mmHg');
 assert.match(pressure, /target_route:\s*["']\/saude\/careflow\/pressao\?novo=1["']/, 'lembrete deve abrir fluxo canônico');
 assert.match(newRecord, /router\.push\("\/saude\/careflow\/pressao\?novo=1"\)/, 'atalho genérico deve abrir fluxo canônico');
 assert.match(medical, /reading\.tipo!==['"]pressao_arterial['"]/, 'dossiê deve projetar pressão legada');

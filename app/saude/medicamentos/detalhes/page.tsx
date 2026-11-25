@@ -2410,7 +2410,7 @@ function MedicamentoDetalhesContent() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-28">
+      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail">
         {/* ====================================================
             TOAST
             ==================================================== */}

@@ -5,9 +5,12 @@ import {getLocalTodayISO} from '@/lib/health-utils';
 import type {Medicamento} from '@/lib/types';
 import {exactOfficialProductId,selectVerifiedUseFactsM1,useFactLabels,type MedicationUseFactM1} from '@/lib/medication-catalog/use-evidence-macro1';
 import {readOfficialUseEvidenceM1} from '@/lib/medication-catalog/use-evidence-provider-macro1';
+import {catalogExactPresentationSTB,catalogScopeSTB} from '@/lib/health/medication-reference-fit-stb';
+import type {MedicationReference} from '@/lib/medication-intelligence/types';
 
 export function MedicationOfficialGuidanceMacro1({medication}:{medication:Medicamento}){
- const productId=useMemo(()=>exactOfficialProductId(medication.catalog_snapshot),[medication.catalog_snapshot]);
+ const scope=catalogScopeSTB(medication);
+ const productId=useMemo(()=>{const snapshot=medication.catalog_snapshot;return catalogExactPresentationSTB(medication,snapshot?.reference as MedicationReference|undefined)?exactOfficialProductId(snapshot):null;},[medication.catalog_snapshot,scope]);
  const [result,setResult]=useState<{key:string;rows:MedicationUseFactM1[]|null}|null>(null);
  useEffect(()=>{
   let alive=true;

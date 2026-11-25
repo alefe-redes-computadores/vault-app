@@ -62,36 +62,27 @@ export const healthRemindersRepository = {
   },
 
   async update(reminderId: string, personIdValue: string, changes: UpdateHealthReminderInput) {
-    const current = await db.health_reminders.get(reminderId);
     const personId = requirePersonId(personIdValue);
     const userId = await authenticatedUserId();
-    await assertOwnedPerson(personId, userId);
-    if (!current || current.person_id !== personId || current.user_id !== userId) {
-      throw new Error("Lembrete não encontrado para a pessoa ativa.");
-    }
-
-    const normalized = normalizeHealthReminderInput({
-      ...current,
-      ...changes,
-      person_id: personId,
-    });
-    const row: HealthReminderRule = {
-      ...current,
-      ...normalized,
-      id: current.id,
-      user_id: current.user_id,
-      person_id: personId,
-      created_at: current.created_at,
-      updated_at: now(),
-      synced: false,
-    };
-
-    await db.transaction("rw", [db.health_reminders, db.syncQueue], async () => {
+    const id = await db.transaction("rw", [db.persons, db.health_reminders, db.syncQueue], async () => {
+      await assertOwnedPerson(personId, userId);
+      // STB-08: read inside the write transaction; a concurrent delete cannot resurrect a reminder.
+      const current = await db.health_reminders.get(reminderId);
+      if (!current || current.person_id !== personId || current.user_id !== userId) {
+        throw new Error("Lembrete não encontrado para a pessoa ativa.");
+      }
+      const normalized = normalizeHealthReminderInput({ ...current, ...changes, person_id: personId });
+      const row: HealthReminderRule = {
+        ...current, ...normalized,
+        id: current.id, user_id: current.user_id, person_id: personId,
+        created_at: current.created_at, updated_at: now(), synced: false,
+      };
       await db.health_reminders.put(row);
       await enfileirarOperacao("health_reminders", "update", row, { dispatchSync: false });
+      return row.id;
     });
     solicitarProcessamentoSync();
-    return row.id;
+    return id;
   },
 
   async setPaused(reminderId: string, personId: string, paused: boolean) {
@@ -99,15 +90,14 @@ export const healthRemindersRepository = {
   },
 
   async delete(reminderId: string, personIdValue: string) {
-    const current = await db.health_reminders.get(reminderId);
     const personId = requirePersonId(personIdValue);
     const userId = await authenticatedUserId();
-    await assertOwnedPerson(personId, userId);
-    if (!current || current.person_id !== personId || current.user_id !== userId) {
-      throw new Error("Lembrete não encontrado para a pessoa ativa.");
-    }
-
-    await db.transaction("rw", [db.health_reminders, db.syncQueue], async () => {
+    await db.transaction("rw", [db.persons, db.health_reminders, db.syncQueue], async () => {
+      await assertOwnedPerson(personId, userId);
+      const current = await db.health_reminders.get(reminderId);
+      if (!current || current.person_id !== personId || current.user_id !== userId) {
+        throw new Error("Lembrete não encontrado para a pessoa ativa.");
+      }
       await db.health_reminders.delete(reminderId);
       await enfileirarOperacao("health_reminders", "delete", {
         id: reminderId,

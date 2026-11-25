@@ -4,13 +4,12 @@ import {
   Circle,
   Gauge,
   Scale,
-  HeartPulse,
   Activity,
-  Moon,
-  Footprints,
+  Route,
   Wind,
 } from "lucide-react";
 import type { DeviceKind, HealthMetric } from "@/lib/health-profile/types";
+import { METRIC_IDENTITY_B } from "@/lib/ui/front-b-clinical-identity";
 export function HealthDeviceIcon({
   kind,
   color,
@@ -26,7 +25,7 @@ export function HealthDeviceIcon({
     ring: Circle,
     pressure: Gauge,
     scale: Scale,
-    oximeter: HeartPulse,
+    oximeter: Wind,
     other: Activity,
   }[kind];
   return <Icon size={size} style={{ color, filter: dark ? "drop-shadow(0 0 1px #cbd5e1) drop-shadow(0 0 1px #cbd5e1)" : undefined }} aria-hidden="true" />;
@@ -38,25 +37,17 @@ export function HealthMetricIcon({
   type: HealthMetric;
   size?: number;
 }) {
-  const Icon = {
-    sono: Moon,
-    peso: Scale,
-    pressao_arterial: Gauge,
-    frequencia_cardiaca: HeartPulse,
-    oxigenacao: Wind,
-    caminhada: Footprints,
-    passos: Footprints,
-    hrv_rmssd: HeartPulse,
-  }[type];
+  const Icon = type === "caminhada" ? Route : METRIC_IDENTITY_B[type === "hrv_rmssd" ? "hrv" : type]?.icon ?? Activity;
   return <Icon size={size} aria-hidden="true" />;
 }
+/** Reuse the relational identity palette of the published B; walking duration is distinct from step count. */
 export const METRIC_TONES: Record<HealthMetric, string> = {
-  sono: "text-violet-300",
-  peso: "text-emerald-400",
-  pressao_arterial: "text-rose-300",
-  frequencia_cardiaca: "text-coral",
-  oxigenacao: "text-cyan-300",
+  sono: METRIC_IDENTITY_B.sono.tone,
+  peso: METRIC_IDENTITY_B.peso.tone,
+  pressao_arterial: METRIC_IDENTITY_B.pressao_arterial.tone,
+  frequencia_cardiaca: METRIC_IDENTITY_B.frequencia_cardiaca.tone,
+  oxigenacao: METRIC_IDENTITY_B.oxigenacao.tone,
   caminhada: "text-amber-300",
-  passos: "text-sky-300",
-  hrv_rmssd: "text-violet-300",
+  passos: METRIC_IDENTITY_B.passos.tone,
+  hrv_rmssd: METRIC_IDENTITY_B.hrv.tone,
 };

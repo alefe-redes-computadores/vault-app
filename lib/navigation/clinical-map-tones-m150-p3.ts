@@ -13,6 +13,7 @@ const TONES: Record<string,string> = {
   renovacao: VIOLET, fornecimento: EMERALD,
   'minha-saude': CORAL, registros: CORAL, consultas: BLUE,
   exames: CYAN, cirurgias: VIOLET, hidratacao: CYAN,
+  internacoes: BLUE, reabilitacao: TEAL,
   lembretes: AMBER, rede: BLUE,
   brain: VIOLET, studio: VIOLET, pharmalens: VIOLET,
   ocorrencias: VIOLET, escudo: BLUE, resumo: VIOLET,

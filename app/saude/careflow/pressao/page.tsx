@@ -30,24 +30,15 @@ import { pdfLibraryM2 } from "@/lib/careflow-m2/pdf-library";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { isClockM2, isIsoDateM2 } from "@/lib/careflow-m2/domain";
 import { parsePressureDraft } from "@/lib/health/pressure-input";
+import { PressureReadingFieldSTB } from "@/components/saude/PressureReadingFieldSTB";
+import { formatMeasurementDaySTB,formatMeasurementTimeSTB,formatRecordedPressureSTB } from "@/lib/health/measurement-presentation-stb";
 import { projectPressurePointC3, pressureSourceLabelC3, parsePressureTrendValueC4, type PressureTrendPointC3 } from "@/lib/ui/pressure-trend-presentation-c";
 import { useToast } from "@/components/ToastProvider";
 const input =
   "min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary focus:border-sky-300/50 outline-none";
 const nowClock = () => new Date().toTimeString().slice(0, 5);
 // Apenas exibicao no PDF: data civil sem new Date() nem conversao UTC.
-const pressurePdfDateBR = (raw: string): string =>
-  /^\d{4}-\d{2}-\d{2}$/.test(raw)
-    ? `${raw.slice(8, 10)}/${raw.slice(5, 7)}/${raw.slice(0, 4)}`
-    : raw;
-const validBP = (sys: number, dia: number) =>
-  Number.isInteger(sys) &&
-  Number.isInteger(dia) &&
-  sys >= 30 &&
-  sys <= 300 &&
-  dia >= 20 &&
-  dia <= 200 &&
-  dia < sys;
+const pressurePdfDateBR = formatMeasurementDaySTB;
 export default function PressureCareFlowPage() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -75,8 +66,7 @@ export default function PressureCareFlowPage() {
     [planNote, setPlanNote] = useState("");
   const [editingPlan, setEditingPlan] = useState("");
   const [selectedPlan, setSelectedPlan] = useState(""),
-    [pressureDraft, setPressureDraft] = useState(""),
-    [pressureHint, setPressureHint] = useState("");
+    [pressureDraft, setPressureDraft] = useState("");
   const [date, setDate] = useState(getLocalTodayISO()),
     [time, setTime] = useState(nowClock()),
     [note, setNote] = useState("");
@@ -463,7 +453,7 @@ export default function PressureCareFlowPage() {
       const sys = parsed?.systolic ?? 0,
         dia = parsed?.diastolic ?? 0;
       if (
-        !validBP(sys, dia) ||
+        !parsed ||
         !isIsoDateM2(readingDate) ||
         !isClockM2(readingTime)
       )
@@ -481,7 +471,6 @@ export default function PressureCareFlowPage() {
       });
       if (!scopeStill(scope.uid, scope.pid)) return; // A medição pertence ao titular inicial; nenhum vínculo em outro perfil.
       setPressureDraft("");
-      setPressureHint("");
       setNote("");
       setConsultationId("");
       setSymptomId("");
@@ -619,7 +608,7 @@ export default function PressureCareFlowPage() {
       write("Registros pessoais declarados; nao substituem avaliacao medica.");
       for (const r of measurements)
         write(
-          `${pressurePdfDateBR(String(r.data || ""))} ${r.horario || ""} | ${r.valor_medicao || "sem valor"} | ${
+          `${pressurePdfDateBR(String(r.data || ""))} ${formatMeasurementTimeSTB(r.horario)||"Horário não informado"} | ${formatRecordedPressureSTB(r.valor_medicao,r.unidade_medida)} | ${
             r.observacoes || ""
           }`
         );
@@ -835,48 +824,8 @@ export default function PressureCareFlowPage() {
                 <HeartPulse size={17} className="text-emerald-300" />
                 Registrar pressão
               </h2>
-              <label className="block text-xs text-ink-muted">
-                Pressão arterial (mmHg)
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className={`${input} mt-1`}
-                  value={pressureDraft}
-                  onChange={(e) => {
-                    setPressureDraft(
-                      e.target.value.replace(/[^\d/]/g, "").slice(0, 7)
-                    );
-                    setPressureHint("");
-                  }}
-                  onBlur={() => {
-                    const parsed = parsePressureDraft(pressureDraft);
-                    if (parsed) {
-                      setPressureDraft(parsed.display);
-                      setPressureHint(
-                        parsed.abbreviated
-                          ? `Interpretado como ${parsed.display} mmHg`
-                          : parsed.display + " mmHg"
-                      );
-                    } else if (pressureDraft)
-                      setPressureHint(
-                        "Confira o valor. Exemplo: 120/80 ou 14/9."
-                      );
-                  }}
-                  placeholder="Ex.: 120/80 ou 14/9"
-                />
-                {pressureHint && (
-                  <span
-                    className={`mt-1 block text-[11px] ${
-                      pressureHint.startsWith("Confira")
-                        ? "text-coral"
-                        : "text-emerald-300"
-                    }`}
-                  >
-                    {pressureHint}
-                  </span>
-                )}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+              <PressureReadingFieldSTB value={pressureDraft} onChange={setPressureDraft} disabled={busy}/>
+              <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
                 <CustomDatePicker
                   className="min-w-0 [&>label]:mb-1.5 [&>label]:text-xs [&>label]:font-normal [&>label]:text-ink-muted [&_input]:h-12 [&_input]:py-0"
                   label="Data da medição"
@@ -960,7 +909,7 @@ export default function PressureCareFlowPage() {
               </p>
               <button
                 type="button"
-                disabled={busy || !activePersonId}
+                disabled={busy || !activePersonId || !parsePressureDraft(pressureDraft)}
                 onClick={() => void saveReading()}
                 className="min-h-12 w-full rounded-xl bg-emerald-300 text-sm font-bold text-void disabled:opacity-40"
               >
@@ -1025,8 +974,8 @@ export default function PressureCareFlowPage() {
                   points={chart.diastolic}
                 />
                 {chart.markers.map((p,index)=><g key={`${p.id}-${index}`}>
-                  <circle cx={p.x} cy={p.sysY} r="4" fill="#38bdf8" stroke="currentColor" strokeWidth="0.7"><title>{`Sistólica: ${p.sys}${p.unitConfirmed?' mmHg':''} · ${p.date}`}</title></circle>
-                  <circle cx={p.x} cy={p.diaY} r="4" fill="#34d399" stroke="currentColor" strokeWidth="0.7"><title>{`Diastólica: ${p.dia}${p.unitConfirmed?' mmHg':''} · ${p.date}`}</title></circle>
+                  <circle cx={p.x} cy={p.sysY} r="4" fill="#38bdf8" stroke="currentColor" strokeWidth="0.7"><title>{`Sistólica: ${p.sys}${p.unitConfirmed?' mmHg':''} · ${formatMeasurementDaySTB(p.date)}`}</title></circle>
+                  <circle cx={p.x} cy={p.diaY} r="4" fill="#34d399" stroke="currentColor" strokeWidth="0.7"><title>{`Diastólica: ${p.dia}${p.unitConfirmed?' mmHg':''} · ${formatMeasurementDaySTB(p.date)}`}</title></circle>
                 </g>)}
               </svg>}
               <p className="flex gap-4 text-[10px] text-ink-muted">
@@ -1040,7 +989,7 @@ export default function PressureCareFlowPage() {
                 <ol className="mt-2 space-y-1.5" aria-label="Até três medições recentes: datas, horários, origens, unidades registradas e valores">
                   {trend.slice(-3).map((point, index) => (
                     <li key={point.id || `${point.date}-${point.time || 'na'}-${index}`} className="rounded-lg border border-surface-border/40 px-2 py-2 text-xs text-ink-secondary">
-                      <div className="flex flex-wrap items-center justify-between gap-1"><span>{pressurePdfDateBR(point.date)} · {point.time || 'Horário não informado'}</span><span className="font-semibold tabular-nums text-ink-primary">Sistólica {point.sys}{point.unitConfirmed?' mmHg':''} · diastólica {point.dia}{point.unitConfirmed?' mmHg':''}</span></div>
+                      <div className="flex flex-wrap items-center justify-between gap-1"><span>{pressurePdfDateBR(point.date)} · {formatMeasurementTimeSTB(point.time) || 'Horário não informado'}</span><span className="font-semibold tabular-nums text-ink-primary">Sistólica {point.sys}{point.unitConfirmed?' mmHg':''} · diastólica {point.dia}{point.unitConfirmed?' mmHg':''}</span></div>
                       <p className="mt-1 text-[11px] text-ink-muted">{pressureSourceLabelC3(point.source)}{!point.unitConfirmed?' · Unidade não registrada no evento':''}{point.hasDevice?' · Dispositivo vinculado':''}{point.hasContext?' · Contexto registrado':''}</p>
                       {(point.consultation || point.symptom) && <p className="mt-1 text-[11px] text-ink-muted">{point.consultation ? `Consulta: ${point.consultation}` : ''}{point.consultation && point.symptom ? ' · ' : ''}{point.symptom ? `Sintoma registrado: ${point.symptom}` : ''}</p>}
                       {point.id && <Link href={withReturnTarget(`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(point.id)}`,`/saude/careflow/pressao#careflow-pressao-${encodeURIComponent(point.id)}`)} className="mt-1 inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-emerald-200">Abrir medição original <ChevronRight size={14}/></Link>}
@@ -1087,10 +1036,10 @@ export default function PressureCareFlowPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-ink-muted">
                       {r.data?.split("-").reverse().join("/")} ·{" "}
-                      {r.horario || "Horário não informado"}
+                      {formatMeasurementTimeSTB(r.horario) || "Horário não informado"}
                     </span>
                     <strong className="text-sm text-ink-primary">
-                      {r.valor_medicao || "Sem valor"}
+                      {formatRecordedPressureSTB(r.valor_medicao,r.unidade_medida)}
                     </strong>
                   </div>
                   {(consultation || symptom) && (

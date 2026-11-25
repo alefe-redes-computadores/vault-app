@@ -6,7 +6,7 @@ export type HealthGroupR5 = "intelligence" | "body" | "capture" | "foundation";
 export type HealthIconR5 =
   | "activity" | "flask" | "folder" | "heart" | "thermometer" | "moon" | "droplets"
   | "scan" | "files" | "shield" | "user" | "sparkles" | "pill" | "book" | "chart"
-  | "lock" | "stethoscope" | "building" | "package" | "calendar" | "users";
+  | "lock" | "stethoscope" | "building" | "package" | "calendar" | "users" | "bed" | "rehab";
 export interface HubModuleR5 {
   id: string; title: string; description: string; href: string;
   group: HealthGroupR5; icon: HealthIconR5; keywords: readonly string[];
@@ -33,7 +33,8 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"consultas",title:"Consultas",description:"Agenda e retornos",href:"/saude/consultas",group:"intelligence",icon:"calendar",keywords:["medico","atendimento","consulta"]},
   {id:"exames-clinicos",title:"Exames registrados",description:"Área clínica de exames",href:"/saude/exames",group:"intelligence",icon:"flask",keywords:["exame","pedido","resultado"]},
   {id:"cirurgias",title:"Procedimentos",description:"Cirurgias e histórico",href:"/saude/cirurgias",group:"intelligence",icon:"stethoscope",keywords:["cirurgia","operacao","procedimento"]},
-  {id:"reabilitacao",title:"Reabilitação 360",description:"Programas, equipe e sessões",href:"/saude/reabilitacao",group:"intelligence",icon:"heart",keywords:["reabilitacao","fisioterapia","recuperacao funcional","sessao","terapia ocupacional"]},
+  {id:"internacoes",title:"Internações",description:"Admissões, permanência e alta hospitalar",href:"/saude/internacoes",group:"intelligence",icon:"bed",keywords:["internacao","internacoes","alta hospitalar","admissao hospitalar","hospitalizacao","leito"]},
+  {id:"reabilitacao",title:"Reabilitação",description:"Programas, equipe e sessões clínicas",href:"/saude/reabilitacao",group:"intelligence",icon:"rehab",keywords:["reabilitacao","fisioterapia","recuperacao funcional","sessao","terapia ocupacional","fonoaudiologia","fisiatra","reabilitacao fisica"]},
   {id:"registros",title:"Diário de saúde",description:"Registros e relatos",href:"/saude/registros",group:"body",icon:"book",keywords:["sintomas","humor","diario"]},
   {id:"retiradas",title:"Retiradas",description:"Compromissos e fornecimento",href:"/saude/retiradas",group:"foundation",icon:"package",keywords:["sus","retirada","medicamento"]},
   {id:"renovacao",title:"Receitas e aquisições",description:"Renovação documental",href:"/saude/renovacao",group:"foundation",icon:"files",keywords:["receitas","renovacao","aquisicao"]},

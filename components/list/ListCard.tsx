@@ -125,7 +125,7 @@ export function ListCard({
               ? railSize === "slim"
                 ? (isTight ? "p-2.5 pl-6" : "p-3 pl-6")
                 : railSize === "label"
-                ? (medicationFlow ? (isTight ? "p-2 pl-9" : "p-3 pl-9") : (isTight ? "p-2.5 pl-10" : "p-3 pl-10"))
+                ? (medicationFlow ? (isTight ? "py-1.5 pr-2 pl-9" : "p-3 pl-9") : (isTight ? "p-2.5 pl-10" : "p-3 pl-10"))
                 : (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
               : "p-4 pl-10"
             : isCompact
