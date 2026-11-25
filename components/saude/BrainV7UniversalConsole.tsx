@@ -169,7 +169,7 @@ export function BrainV7UniversalConsole() {
         {clinicalReviewP6?<BrainClinicalReviewMacro3 review={clinicalReviewP6}/>:null}
         <TreatmentContinuityA4 context="brain" maxItems={4}/>
         <section className={section}>
-          <h2 className={title}><HeartPulse size={17} className="text-emerald-300"/>Stability Anchor · seu chão</h2>
+          <h2 className={title}><HeartPulse size={17} className="text-emerald-300"/>Referências pessoais · tratamentos contínuos</h2>
           <p className={`mt-2 ${subtle}`}>Marque voluntariamente até 5 tratamentos contínuos como referência pessoal. Falta de registro NÃO equivale a falta de medicamento, e uma retomada não prova estabilidade farmacológica.</p>
           <div className="mt-3 flex flex-wrap gap-2">{medicines.filter(m=>m.tipo_uso==='continuo'&&m.status!=='descontinuado').map(m=><button key={m.id} type="button" aria-pressed={includedAnchors.includes(m.id)} onClick={()=>toggleAnchor(m.id)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${includedAnchors.includes(m.id)?'border-emerald-300/50 bg-emerald-400/10 text-emerald-200':'border-surface-border bg-surface-raised text-ink-muted'}`}>{includedAnchors.includes(m.id)?'✓ ':''}{m.nome}</button>)}</div>
           {!report.anchors.length&&<p className={`mt-3 ${subtle}`}>Nenhuma base selecionada. Nada será classificado automaticamente pelo nome do medicamento.</p>}
@@ -181,17 +181,17 @@ export function BrainV7UniversalConsole() {
             {a.warnings.map(w=><p key={w} className="mt-2 text-[11px] text-amber-200">{w}</p>)}
           </div>)}
         </section>
-        <section className={section}>
-          <h2 className={title}><Activity size={17} className="text-sky-300"/>Matriz de quatro eixos</h2>
+        <details className={`${section} group`}>
+          <summary className={`${title} min-h-11 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300`}><Activity size={17} className="text-sky-300"/>Matriz de quatro eixos</summary>
           <p className={`mt-2 ${subtle}`}>Cada eixo mostra a última avaliação 0–10 registrada. Não é diagnóstico de depressão, abstinência ou efeito de fabricante.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">{report.axes.map(a=><div key={a.kind} className="rounded-xl border border-surface-border/65 bg-surface-raised/60 p-3"><p className="text-[11px] text-ink-muted">{a.label}</p><p className="mt-1 text-xl font-bold text-ink-primary">{a.value===null?'—':`${a.value}/10`}</p><p className="mt-1 text-[10px] text-ink-muted">{a.observedDays} dia{a.observedDays===1?"":"s"} · {dateBR(a.day)}</p></div>)}</div>
-        </section>
-        <section className={section}>
-          <h2 className={title}><Clock3 size={17} className="text-cyan-300"/>ChronoCircadian · rotina e sono</h2>
+        </details>
+        <details className={`${section} group`}>
+          <summary className={`${title} min-h-11 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300`}><Clock3 size={17} className="text-cyan-300"/>Sono e rotina · registros disponíveis</summary>
           <p className={`mt-2 ${subtle}`}>Sono com horário de início e fim comprovados: {report.sleep.observedDays} dia(s) em 14. Último despertar registrado: {report.sleep.lastWakeAt?new Date(report.sleep.lastWakeAt).toLocaleString('pt-BR'):'sem dados completos'}.</p>
           <p className={`mt-2 ${subtle}`}>Dados de sono enriquecem a análise; não alteram automaticamente horários prescritos ou classificações de atraso.</p>
           {report.lifestyle.length>0&&<div className="mt-3 flex flex-wrap gap-2">{report.lifestyle.slice(0,12).map((x,i)=><span key={`${x.day}-${x.label}-${i}`} className="rounded-full border border-cyan-400/20 bg-cyan-400/[.04] px-2 py-1 text-[11px] text-cyan-200">{x.label} · {dateBR(x.day)}</span>)}</div>}
-        </section>
+        </details>
         <section className={section}>
           <h2 className={title}><ShieldAlert size={17} className="text-amber-300"/>Doses SOS e contexto de segurança</h2>
           <p className={`mt-2 ${subtle}`}>Constam {report.rescue.takenIn24h} registro(s) de doses SOS/extra tomadas nas últimas 24 horas em relação a {new Date(report.rescue.checkedAt).toLocaleString('pt-BR')}.</p>
@@ -199,18 +199,18 @@ export function BrainV7UniversalConsole() {
           <p className="mt-3 text-[11px] leading-relaxed text-amber-200">O VAULT não recomenda novas doses. Intervalos longos não eliminam interações; informe sua equipe de saúde se houver necessidade de doses repetidas ou efeitos inesperados.</p>
         </section>
         <details className={section}>
-          <summary className={`${title} min-h-11 cursor-pointer`}><BookHeart size={17} className="text-violet-300"/>Washout & Memory · histórico de transições</summary>
+          <summary className={`${title} min-h-11 cursor-pointer`}><BookHeart size={17} className="text-violet-300"/>Interrupções e substituições · histórico declarado</summary>
           <p className={`mt-2 ${subtle}`}>Motivos declarados de interrupção e substituições registradas. O app não calcula lavagem farmacológica sem parâmetros clínicos.</p>
           {!report.transitions.length&&<p className={`mt-3 ${subtle}`}>Nenhuma transição documentada.</p>}
           {report.transitions.slice(0,25).map(x=><div key={x.medicationId} className="mt-3 rounded-xl border border-surface-border/60 p-3"><p className="text-xs font-semibold text-ink-primary">{x.medicationName} · {x.label}</p><p className={`mt-1 ${subtle}`}>{dateBR(x.stoppedOn)} {x.replacementName?`· substituição cadastrada: ${x.replacementName}`:''}</p>{x.reason&&<p className={`mt-1 ${subtle}`}>Motivo informado: {short(x.reason)}</p>}</div>)}
         </details>
         <details className={section}>
-          <summary className={`${title} min-h-11 cursor-pointer`}><Package size={17} className="text-emerald-300"/>CareJourney · SUS e particular</summary>
+          <summary className={`${title} min-h-11 cursor-pointer`}><Package size={17} className="text-emerald-300"/>Aquisições de medicamentos · SUS e particular</summary>
           <p className={`mt-2 ${subtle}`}>Compras particulares realizadas com tipo registrado: {report.supply.purchasedEvents}; valor informado: R$ {report.supply.paidTotal.toFixed(2).replace('.',',')}. Aquisições SUS/gratuitas: {report.supply.freeOrSusEvents}. Sem preço: {report.supply.amountUnreportedEvents}.</p>
           <p className={`mt-2 ${subtle}`}>Tratamento compartilhado não vincula automaticamente um medicamento a processos do SUS. Não é calculada economia presumida.</p>
         </details>
         <section className={section}>
-          <h2 className={title}><ShieldCheck size={17} className="text-emerald-300"/>Clinical Context Ledger · justificativas</h2>
+          <h2 className={title}><ShieldCheck size={17} className="text-emerald-300"/>Anotações clínicas · contextos declarados</h2>
           <p className={`mt-2 ${subtle}`}>Registre fatos históricos ou a referência de um documento. Trata-se de anotação pessoal, não de validação do prescritor nem de autorização para alterar/silenciar alertas de dose ou interação.</p>
           <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto">{medicines.slice(0,50).map(m=><button key={m.id} onClick={()=>setSelected(m.id)} type="button" aria-pressed={selected===m.id} className={`min-h-10 rounded-xl border px-2.5 text-xs ${selected===m.id?'border-emerald-300/40 text-emerald-200':'border-surface-border text-ink-muted'}`}>{m.nome}</button>)}</div>
           {selected&&<><div className="mt-3 flex gap-2" role="group" aria-label="Origem da justificativa">{([{id:'relato_pessoal',label:'Relato pessoal'},{id:'documento_referido',label:'Documento referido'}] as const).map(x=><button key={x.id} type="button" onClick={()=>setSource(x.id)} aria-pressed={source===x.id} className={`min-h-11 flex-1 rounded-xl border px-2 text-xs ${source===x.id?'border-violet-300/50 text-violet-200':'border-surface-border text-ink-muted'}`}>{x.label}</button>)}</div>

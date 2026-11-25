@@ -3,7 +3,6 @@
 
 import {
   useMemo,
-  useState,
 } from "react";
 import {
   useRouter,
@@ -61,6 +60,8 @@ import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
 import { projectExamOrdersM2 } from "@/lib/careflow-m2/domain";
 import { buildUnifiedExamWorkspaceR6 } from "@/lib/clinical-unified-r6";
 import { CanonicalExamOrdersM2 } from "@/components/saude/CanonicalExamOrdersM2";
+import { useExamFiltersSessionC7 } from "@/hooks/useExamFiltersSessionC7";
+import { projectExamSummaryStateC4 } from "@/lib/ui/exam-workspace-state-c4";
 
 import type {
   Exame,
@@ -138,24 +139,15 @@ export default function ExamesPage() {
 
   const {events:careflowEvents=[],userId:careflowUserId,activePersonId:careflowPersonId}=useCareFlowM2();
   const careflowOrders=useMemo(()=>projectExamOrdersM2(careflowEvents,careflowUserId||'',careflowPersonId||''),[careflowEvents,careflowUserId,careflowPersonId]);
-  const canonicalCountM2=useLiveQuery(async()=>{
+  const canonicalCountM2Raw=useLiveQuery(async()=>{
     if(!activePersonId||!careflowUserId)return 0;
     const rows=await db.exam_orders.where('person_id').equals(activePersonId).toArray();
     return rows.filter(x=>x.user_id===careflowUserId&&!x.deleted_at).length;
-  },[activePersonId,careflowUserId],0)??0;
-  const [
-    search,
-    setSearch,
-  ] =
-    useState("");
-
-  const [
-    filtroStatus,
-    setFiltroStatus,
-  ] =
-    useState<FiltroStatus>(
-      "todos"
-    );
+  },[activePersonId,careflowUserId]);
+  const canonicalCountM2=canonicalCountM2Raw??0;
+  // FORM-06: preserve search/filter only in this device tab, for this account/person.
+  // Never place a clinical search term in the URL or share another person's filters.
+  const { search, setSearch, filtroStatus, setFiltroStatus } = useExamFiltersSessionC7(careflowUserId, activePersonId);
 
   // ==========================================================
   // PERSON-OWNED RELATIONS
@@ -371,6 +363,7 @@ export default function ExamesPage() {
   const unifiedRows = useMemo(() => buildUnifiedExamWorkspaceR6(
     filteredExames, careflowOrders, search, filtroStatus === "todos"
   ), [filteredExames, careflowOrders, search, filtroStatus]);
+  const examSummaryC4 = projectExamSummaryStateC4(unifiedRows.length, canonicalCountM2Raw, Boolean(search.trim() || filtroStatus !== "todos"));
   const exameStats = useMemo(() => {
     let upcoming = 0, expired = 0;
     for (const exame of examesComStatus) {
@@ -543,15 +536,17 @@ export default function ExamesPage() {
           <button type="button" onClick={()=>router.push(preserveReturn('/saude/exames/pedidos?novo=1'))} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"><Plus size={16}/>Novo pedido</button>
         </section>
                 <section className="space-y-3.5 px-5 pt-4">
-          {activePersonId && (unifiedRows.length>0||canonicalCountM2===0) && (
+          {activePersonId && examSummaryC4.showSummary && (
             <ClinicalListSummary
               icon={ChartNoAxesCombined}
               eyebrow="Acompanhamento"
-              title={unifiedRows.length ? "Exames e pedidos organizados" : "Nenhum exame ou pedido cadastrado"}
-              detail="Situação calculada somente pelas datas registradas"
+              title={examSummaryC4.title}
+              detail={examSummaryC4.description}
               metrics={[{label:"Registros",value:examesComStatus.length},{label:"Próximos",value:exameStats.upcoming,tone:"attention"},{label:"Vencidos",value:exameStats.expired,tone:exameStats.expired?"critical":"neutral"}]}
             />
           )}
+          {activePersonId && examSummaryC4.showLoading && <p role="status" className="rounded-xl border border-surface-border bg-surface p-3 text-xs text-ink-muted">Conferindo pedidos de exames desta pessoa…</p>}
+          {activePersonId && examSummaryC4.showCanonicalNotice && <p role="status" className="rounded-xl border border-sky-300/25 bg-surface p-3 text-xs text-ink-secondary">{examSummaryC4.description}</p>}
           {!activePersonId ? (
             <EmptyState
               icon={
@@ -560,8 +555,7 @@ export default function ExamesPage() {
               title="Nenhuma pessoa ativa"
               description="Selecione uma pessoa no Vault para visualizar seus exames."
             />
-          ) : unifiedRows.length ===
-            0 && canonicalCountM2===0 ? (
+          ) : canonicalCountM2===0 && examSummaryC4.showEmpty ? (
             <EmptyState
               icon={
                 FlaskConical

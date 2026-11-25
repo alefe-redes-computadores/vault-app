@@ -681,7 +681,7 @@ export default function CirurgiasPage() {
         </nav>}
 
         <section className="space-y-3.5 px-5 pt-4">
-          {activePersonId && (
+          {activePersonId && (proximas.length > 0 || historico.length > 0) && (
             <ClinicalListSummary
               icon={CalendarDays}
               eyebrow="Procedimentos"

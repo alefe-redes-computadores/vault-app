@@ -150,6 +150,15 @@ export default function VaultIntelligencePage() {
          <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Evolução do Cérebro</strong><span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">O que mudou, evidências, exemplos e limites de cada capacidade</span></span>
          <ChevronRight size={16} className="shrink-0 text-ink-faint"/>
       </button>
+       <button type="button" onClick={() => router.push(preserveReturn("/saude/brain-v7"))} className="mt-2 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-sky-300/20 bg-surface px-3.5 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
+         <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/10 text-sky-300"><BrainCircuit size={17} aria-hidden="true"/></div>
+         <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Console clínico observacional · Brain V7</strong><span className="mt-1 block text-[11px] leading-relaxed text-ink-muted">Painel e dossiê de saúde; não é outro motor nem substitui os alertas do Cérebro.</span></span>
+         <ChevronRight size={16} className="shrink-0 text-ink-faint" aria-hidden="true"/>
+       </button>
+       <nav aria-label="Ferramentas clínicas relacionadas" className="mt-2 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+         <button type="button" onClick={() => router.push(preserveReturn("/saude/fenix"))} className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2 text-left text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><BrainCircuit size={16} aria-hidden="true"/><span>Fênix · acompanhamento</span><ChevronRight size={14} className="ml-auto shrink-0" aria-hidden="true"/></button>
+         <button type="button" onClick={() => router.push(preserveReturn("/saude/pharmalens"))} className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2 text-left text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><ShieldCheck size={16} aria-hidden="true"/><span>PharmaLens · evidências</span><ChevronRight size={14} className="ml-auto shrink-0" aria-hidden="true"/></button>
+       </nav>
     </section>
 
     <div className="mx-auto mt-3 max-w-2xl">

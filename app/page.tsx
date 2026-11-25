@@ -1793,7 +1793,10 @@ export default function HomePage() {
                     if (!group) return null;
                     if (group.insights.length > 1) return (
                       <HomeBrainEvidenceGroup key={group.key} insights={group.insights}
-                        onOpen={selected => {
+                        verifiedMedicationName={group.insights[0]?.entidadeTipo === "medicamento" && group.insights[0]?.entidadeId
+                           ? medicamentos.find(m => m.id === group.insights[0]?.entidadeId)?.nome ?? null
+                           : null}
+                         onOpen={selected => {
                           trigger("vibrate");
                           setMostrarFontesInteligencia(false);
                           setInsightExplicado(selected);

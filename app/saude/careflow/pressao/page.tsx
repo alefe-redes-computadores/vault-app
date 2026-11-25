@@ -30,6 +30,7 @@ import { pdfLibraryM2 } from "@/lib/careflow-m2/pdf-library";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { isClockM2, isIsoDateM2 } from "@/lib/careflow-m2/domain";
 import { parsePressureDraft } from "@/lib/health/pressure-input";
+import { projectPressurePointC3, pressureSourceLabelC3, parsePressureTrendValueC4, type PressureTrendPointC3 } from "@/lib/ui/pressure-trend-presentation-c";
 import { useToast } from "@/components/ToastProvider";
 const input =
   "min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary focus:border-sky-300/50 outline-none";
@@ -255,17 +256,30 @@ export default function PressureCareFlowPage() {
         .slice(0, 60)
         .reverse()
         .map((r) => {
-          const match = /^\s*(\d+)\s*\/\s*(\d+)/.exec(
-            String(r.valor_medicao || "")
+          const reading = parsePressureTrendValueC4(
+            String(r.valor_medicao || ""), r.unidade_medida
           );
-          return match
-            ? { date: r.data, sys: Number(match[1]), dia: Number(match[2]) }
+          // Resolve a identidade opcional antes dos callbacks: nao inferir vinculos legados.
+          const linkedContext = r.id ? contexts.get(r.id) : undefined;
+          const consultationId = linkedContext?.parent_id;
+          const symptomId = linkedContext?.payload.symptom_id;
+          return reading
+            ? projectPressurePointC3(
+                 r, reading.sys, reading.dia, Boolean(r.id && contexts.has(r.id)),
+                 {
+                   consultation: consultationId
+                     ? ownConsultations.find(c => c.id === consultationId)?.especialidade || null : null,
+                   symptom: symptomId
+                     ? ownSymptoms.find(o => o.id === symptomId)?.nome || null : null,
+                 },
+                 reading.unitConfirmed
+               )
             : null;
         })
-        .filter((r): r is { date: string; sys: number; dia: number } =>
+        .filter((r): r is PressureTrendPointC3 =>
           Boolean(r)
         ),
-    [measurements]
+    [measurements, contexts, ownConsultations, ownSymptoms]
   );
   const chart = useMemo(() => {
     const nums = trend.flatMap((x) => [x.sys, x.dia]),
@@ -960,7 +974,7 @@ export default function PressureCareFlowPage() {
                 )}
             </section>
           )}
-          {trend.length >= 2 && (
+          {trend.length > 0 && (
             <section className="rounded-3xl border border-surface-border bg-surface p-3">
               <h2 className="text-sm font-bold">
                 Tendência registrada · {trend.length} medições
@@ -969,7 +983,7 @@ export default function PressureCareFlowPage() {
                 Linhas de valores informados por você, em ordem cronológica. Sem
                 limite clínico automático.
               </p>
-              <svg
+              {trend.length >= 2 && <svg
                 viewBox="0 0 320 150"
                 role="img"
                 aria-label="Gráfico de evolução de pressão sistólica e diastólica registradas"
@@ -1005,11 +1019,26 @@ export default function PressureCareFlowPage() {
                   strokeLinejoin="round"
                   points={chart.diastolic}
                 />
-              </svg>
+              </svg>}
               <p className="flex gap-4 text-[10px] text-ink-muted">
                 <span className="text-sky-300">● Sistólica</span>
                 <span className="text-emerald-300">● Diastólica</span>
               </p>
+              {/* C2: texto equivalente ao SVG; nunca converte unidades nem infere faixas clínicas. */}
+              <div className="mt-3 rounded-xl border border-surface-border/60 bg-void/30 p-3">
+                <h3 className="text-xs font-semibold text-ink-primary">Valores recentes do gráfico</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Valores registrados, sem diagnóstico automático. A origem, o horário e os vínculos registrados são apresentados abaixo sem gerar informação clínica.</p>
+                <ol className="mt-2 space-y-1.5" aria-label="Até três medições recentes: datas, horários, origens, unidades registradas e valores">
+                  {trend.slice(-3).map((point, index) => (
+                    <li key={point.id || `${point.date}-${point.time || 'na'}-${index}`} className="rounded-lg border border-surface-border/40 px-2 py-2 text-xs text-ink-secondary">
+                      <div className="flex flex-wrap items-center justify-between gap-1"><span>{pressurePdfDateBR(point.date)} · {point.time || 'Horário não informado'}</span><span className="font-semibold tabular-nums text-ink-primary">Sistólica {point.sys}{point.unitConfirmed?' mmHg':''} · diastólica {point.dia}{point.unitConfirmed?' mmHg':''}</span></div>
+                      <p className="mt-1 text-[11px] text-ink-muted">{pressureSourceLabelC3(point.source)}{!point.unitConfirmed?' · Unidade não registrada no evento':''}{point.hasDevice?' · Dispositivo vinculado':''}{point.hasContext?' · Contexto registrado':''}</p>
+                      {(point.consultation || point.symptom) && <p className="mt-1 text-[11px] text-ink-muted">{point.consultation ? `Consulta: ${point.consultation}` : ''}{point.consultation && point.symptom ? ' · ' : ''}{point.symptom ? `Sintoma registrado: ${point.symptom}` : ''}</p>}
+                      {point.id && <Link href={withReturnTarget(`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(point.id)}`,`/saude/careflow/pressao#careflow-pressao-${encodeURIComponent(point.id)}`)} className="mt-1 inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-emerald-200">Abrir medição original <ChevronRight size={14}/></Link>}
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </section>
           )}
           <section className="space-y-2">

@@ -18,7 +18,19 @@ export function ListSearch({ value, onChange, placeholder = "Buscar...", classNa
   const [expanded, setExpanded] = useState(initiallyExpanded || Boolean(value));
   const focusOnExpand=useRef(!initiallyExpanded);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const wasExpandedRef = useRef(expanded);
   const inputId = useId();
+
+  // Restore focus only after a real expanded->collapsed transition, never on initial mount.
+  // The historical M49 Escape clear/collapse policy stays byte-for-byte unchanged.
+  useEffect(() => {
+    const wasExpanded = wasExpandedRef.current;
+    wasExpandedRef.current = expanded;
+    if (expanded || !wasExpanded) return;
+    const frame = window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [expanded]);
 
   useEffect(() => { if (value) setExpanded(true); }, [value]);
   useEffect(() => {
@@ -31,7 +43,7 @@ export function ListSearch({ value, onChange, placeholder = "Buscar...", classNa
     return (
       <div className={`flex shrink-0 justify-end ${className}`}>
         {/* V334_VISIBLE_SEARCH_TRIGGER: discovery without guessing the magnifier. */}
-        <button type="button" onClick={() => { focusOnExpand.current=true; setExpanded(true); }} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-surface-border/60 bg-surface-raised/80 px-3.5 text-ink-secondary shadow-sm transition-all hover:border-ice/40 hover:bg-surface-raised hover:text-ice active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ice/70" aria-label="Abrir busca" aria-expanded={false}>
+        <button ref={triggerRef} type="button" onClick={() => { focusOnExpand.current=true; setExpanded(true); }} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-surface-border/60 bg-surface-raised/80 px-3.5 text-ink-secondary shadow-sm transition-all hover:border-ice/40 hover:bg-surface-raised hover:text-ice active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ice/70" aria-label="Abrir busca" aria-expanded={false}>
           <Search size={15} className="shrink-0" />
           <span className="text-xs font-semibold">Buscar</span>
           {value && <span className="max-w-28 truncate text-[10px] text-ice" title={`Filtro ativo: ${value}`}>Ativo · {value}</span>}

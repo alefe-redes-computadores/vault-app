@@ -4,21 +4,23 @@ import { Activity, AlertCircle, ChevronRight, Pill } from "lucide-react";
 import { useState } from "react";
 import type { HealthInsight } from "@/lib/health-insights";
 import { highestHomeBrainSeverity } from "@/lib/home/brain-evidence-groups";
+import { sharedMedicationTitleC, observationTitleC } from "@/lib/ui/brain-title-presentation-c";
 
 type Props = {
   insights: HealthInsight[];
   onOpen: (insight: HealthInsight) => void;
+  /** Only a name looked up by entityId in a person-scoped medication record may be supplied. */
+  verifiedMedicationName?: string | null;
 };
 
 /** Um cartão por medicamento, todas as observações e evidências continuam individuais. */
-export function HomeBrainEvidenceGroup({ insights, onOpen }: Props) {
+export function HomeBrainEvidenceGroup({ insights, onOpen, verifiedMedicationName }: Props) {
   const [expandedM143,setExpandedM143]=useState(false);
   if (insights.length < 2) return null;
   const primary = highestHomeBrainSeverity(insights);
-  const firstTitle = insights[0].titulo || "Medicamento";
-  const match = firstTitle.match(/^([^:]{1,72}):\s+/);
-  // O título só dá nome ao grupo; o vínculo é sempre pelo entidadeId no agrupador.
-  const medicationLabel = match?.[1] || "Medicamento";
+  // Rótulo é apenas apresentação; identidade e agrupamento continuam pelo entidadeId canônico.
+  // Nome só é usado quando fornecido por consumidor com identidade clínica validada.
+  const medicationLabel = sharedMedicationTitleC(insights.map(insight => insight.titulo || ""), verifiedMedicationName);
   const severity = primary?.gravidadeSeguranca;
   const severe = severity === "critica" || severity === "importante";
   const border = severity === "critica" ? "border-red-400/35 bg-red-400/[0.055]" :
@@ -45,8 +47,7 @@ export function HomeBrainEvidenceGroup({ insights, onOpen }: Props) {
       </div>
       <div className="divide-y divide-surface-border/25">
         {insights.map((insight, index) => {
-          const title = insight.titulo.startsWith(`${medicationLabel}: `)
-            ? insight.titulo.slice(medicationLabel.length + 2) : insight.titulo;
+          const title = observationTitleC(insight.titulo, medicationLabel);
           const severityText = insight.gravidadeSeguranca === "critica" ? "Crítica" :
             insight.gravidadeSeguranca === "importante" ? "Importante" :
             insight.gravidadeSeguranca === "atencao" ? "Atenção" : "Observação";
