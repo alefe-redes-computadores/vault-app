@@ -40,6 +40,7 @@ import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
 import { HealthTrendsExplorer } from "@/components/saude/HealthTrendsExplorer";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
 import { FenixMark } from "@/components/saude/FenixMark";
+import {useForcedFenixRouteB} from "@/components/saude/FenixRouteContextB";
 import {
   HealthDeviceIcon,
   HealthMetricIcon,
@@ -124,8 +125,9 @@ function DeferredHealthSection({id,title,description,badge,icon,children}:{id:st
 export default function MyHealthPage() {
   const data=useHealthProfile();
   const pathname=usePathname();
+  const forceFenix=useForcedFenixRouteB();
   // Normalize harmless trailing slash without turning the Fênix route into the Hub.
-  const isFenix=pathname==="/saude/fenix"||pathname?.replace(/\/+$/,'')==="/saude/fenix";
+  const isFenix=forceFenix||pathname==="/saude/fenix"||pathname?.replace(/\/+$/,'')==="/saude/fenix";
   return isFenix
     ? <HealthDashboard key={data.personId || "none"} data={data}/>
     : <HealthHubRootP4 key={data.personId || "none"} data={data}/>;
@@ -149,7 +151,7 @@ function HealthHubRootP4({data}:{data:ReturnType<typeof useHealthProfile>}){
     if(!["meu-avatar","analises","fontes","indicadores","historico"].includes(id))return;
     trigger("vibrate");router.push(`/saude/fenix?return_to=%2Fsaude%2Fminha-saude#${encodeURIComponent(id)}`);
   };
-  return <main className="min-h-[100dvh] bg-void px-3.5 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 min-[420px]:pt-6 text-ink-primary min-[420px]:px-4 vault-adaptive-tail">
+  return <main className="min-h-[100dvh] bg-void px-3.5 pb-[calc(11rem+env(safe-area-inset-bottom))] pt-5 min-[420px]:pt-6 text-ink-primary min-[420px]:px-4 vault-adaptive-tail">
     <div className="mx-auto max-w-xl space-y-3">
       <header className="flex items-center gap-3">
         <button type="button" onClick={()=>{trigger("vibrate");router.push("/");}} aria-label="Voltar ao início" className="grid size-11 shrink-0 place-items-center rounded-2xl border border-surface-border bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><ArrowLeft size={20}/></button>
@@ -176,7 +178,9 @@ function HealthDashboard({
     { trigger } = useHapticFeedback(),
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
-  const profileOnly = usePathname()==="/saude/fenix";
+  const fenixPath=usePathname();
+  const forcedFenix=useForcedFenixRouteB();
+  const profileOnly = forcedFenix || fenixPath?.replace(/\/+$/, "") === "/saude/fenix";
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
   const [brainSummaryOpen,setBrainSummaryOpen]=useState(false);
   const [selectedInsight,setSelectedInsight]=useState<HealthInsight|null>(null);

@@ -1,4 +1,5 @@
 import type { DoseLog, Medicamento, RegistroSaude } from "@/lib/types";
+import {formatDoseQuantityB,formatSleepDurationB,originLabelB,metricKindB} from "@/lib/clinical-front-b-pure";
 
 export type ClinicalEvent = {
   id: string;
@@ -62,14 +63,16 @@ export function buildClinicalEvents(records: RegistroSaude[], doses: DoseLog[], 
     kind: "record",
     category: recordCategory(item),
     title: item.nome || "Registro de saúde",
-    subtitle: item.valor_medicao || (typeof item.intensidade === "number" ? `Intensidade ${item.intensidade}/10` : undefined),
+    subtitle: metricKindB(item.tipo)==="sono" && typeof item.duracao_minutos==="number"
+      ? [formatSleepDurationB(item.duracao_minutos),originLabelB(item.source)].filter(Boolean).join(" · ")
+      : [item.valor_medicao || (typeof item.intensidade === "number" ? `Intensidade ${item.intensidade}/10` : ""),item.source?originLabelB(item.source):""].filter(Boolean).join(" · "),
     intensity: item.intensidade,
     record: item,
   }));
   const doseEvents: ClinicalEvent[] = doses.filter(item => /^\d{4}-\d{2}-\d{2}$/.test(item.data || "") && Boolean(item.tomado_em || item.ignorado_em)).map(item => {
     const medication = medicationMap.get(item.medicamento_id);
     const origin = item.dose_kind === "extra" ? "Dose extra" : item.dose_kind === "sos" ? "Dose SOS" : item.ignorado_em ? "Dose ignorada" : "Dose programada";
-    return { id: `dose:${item.id || `${item.data}:${item.horario}:${item.medicamento_id}`}`, date: item.data || "", time: eventClock(item.tomado_em || item.ignorado_em, item.horario), kind: "dose", category: "dose", title: medication?.nome || "Medicamento removido", subtitle: `${origin}${item.quantidade ? ` · ${item.quantidade}` : ""}`, dose: item, medication };
+    return { id: `dose:${item.id || `${item.data}:${item.horario}:${item.medicamento_id}`}`, date: item.data || "", time: eventClock(item.tomado_em || item.ignorado_em, item.horario), kind: "dose", category: "dose", title: medication?.nome || "Medicamento removido", subtitle: `${origin}${item.tomado_em && typeof item.quantidade==="number" ? ` · ${formatDoseQuantityB(item.quantidade)}` : ""}`, dose: item, medication };
   });
   return [...recordEvents, ...doseEvents].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
 }

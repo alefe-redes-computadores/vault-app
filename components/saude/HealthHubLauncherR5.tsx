@@ -51,9 +51,9 @@ const IA20_ESSENTIAL_LINKS: ReadonlyArray<{label:string;href:string;icon:LucideI
 
 
 /** Compact family shared semantically with Explorar: one open target and one separate favorite action. */
-function HubModuleTileR5({module,pinned,onOpen,onPin,compact=false,reason}:{module:HubModuleR5;pinned:boolean;onOpen:(m:HubModuleR5)=>void;onPin:(id:string)=>void;compact?:boolean;reason?:string}){
+function HubModuleTileR5({module,pinned,onOpen,onPin,compact=false,reason,spanFull=false}:{module:HubModuleR5;pinned:boolean;onOpen:(m:HubModuleR5)=>void;onPin:(id:string)=>void;compact?:boolean;reason?:string;spanFull?:boolean}){
   const Icon=ICONS[module.icon],tone=TONES[module.group];
-  return <article data-vault-r5-module={module.id} className={`relative flex min-h-[72px] min-w-0 items-stretch overflow-hidden rounded-2xl border shadow-sm ${tone.surface}`}>
+  return <article data-vault-r5-module={module.id} className={`relative flex min-h-[72px] min-w-0 items-stretch overflow-hidden rounded-2xl border shadow-sm ${tone.surface} ${spanFull?"col-span-2 max-[349px]:col-span-1":""}`}>
     <button type="button" onClick={()=>onOpen(module)} aria-label={`Abrir ${module.title}`}
       className="flex min-w-0 flex-1 items-center gap-2 p-2.5 pr-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 motion-reduce:transition-none">
       <span className={`grid size-9 shrink-0 place-items-center rounded-xl border ${tone.icon}`} aria-hidden="true"><Icon size={17}/></span>
@@ -140,7 +140,7 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
       {favorites.length>0?<section aria-label="Módulos fixados" className="space-y-2">
         <div className="flex items-center justify-between gap-2"><div><h3 className="flex items-center gap-1.5 text-[13px] font-semibold"><Star size={15} className="text-amber-300"/>Favoritos</h3><p className="mt-0.5 text-[10px] text-ink-muted">Mesmos favoritos do Explorar</p></div>
           <button type="button" aria-pressed={organizing} onClick={()=>setOrganizing(x=>!x)} className="flex min-h-11 items-center gap-1 rounded-xl border border-surface-border px-3 text-[11px] font-semibold text-ink-secondary"><SlidersHorizontal size={14}/>{organizing?"Concluir":"Organizar"}</button></div>
-        {organizing?<Reorder.Group axis="y" values={current.favorites} onReorder={reorder} className="space-y-2" style={{touchAction:"pan-y"}}>{favorites.map((m,i)=><SortableFavoriteR5 key={m.id} module={m} index={i} count={favorites.length} onOpen={open} onMove={(id,d)=>save({...current,favorites:moveHubFavoriteR5(current.favorites,id,d)})} onUnpin={togglePin}/>)}</Reorder.Group>:<div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favorites.map(m=><HubModuleTileR5 key={m.id} module={m} pinned onOpen={open} onPin={togglePin} compact/>)}</div>}
+        {organizing?<Reorder.Group axis="y" values={current.favorites} onReorder={reorder} className="space-y-2" style={{touchAction:"pan-y"}}>{favorites.map((m,i)=><SortableFavoriteR5 key={m.id} module={m} index={i} count={favorites.length} onOpen={open} onMove={(id,d)=>save({...current,favorites:moveHubFavoriteR5(current.favorites,id,d)})} onUnpin={togglePin}/>)}</Reorder.Group>:<div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favorites.map((m,i)=><HubModuleTileR5 key={m.id} module={m} pinned onOpen={open} onPin={togglePin} compact spanFull={favorites.length%2===1&&i===favorites.length-1}/>)}</div>}
         <span className="sr-only">{reducedMotion?"Movimento reduzido ativado.":"Você também pode reorganizar pelos botões subir e descer."}</span>
       </section>:null}
       {focus.length>0?<section aria-label="Em foco agora" className="space-y-2"><div className="flex items-center gap-2"><BellRing size={16} className="text-sky-300"/><h3 className="text-[13px] font-semibold">Em foco agora</h3></div>

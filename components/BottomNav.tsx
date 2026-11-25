@@ -381,7 +381,7 @@ export function BottomNav() {
                   </p>
                 </div>
 
-                <div className="scrollbar-hide max-h-[60vh] overflow-y-auto px-3 pb-4 pt-1">
+                <div className="scrollbar-hide max-h-[min(65dvh,550px)] overflow-y-auto overscroll-contain px-3 pb-4 pt-1">
                   <div className="grid grid-cols-2 gap-2">
                     {composeOptions.map(
                       (

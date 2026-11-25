@@ -19,7 +19,8 @@ const report=load('lib/clinical-report-360.ts');
 const rehabProjection=load('lib/rehab-m5/projection.ts');
 const vaccination=load('lib/vaccination-a8/types.ts');
 const a9=load('lib/clinical-a9/types.ts');
-const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination,'@/lib/clinical-a9/types':a9});
+const pureB=load('lib/clinical-front-b-pure.ts'); // actual module; unknown runtime dependencies still reject
+const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination,'@/lib/clinical-a9/types':a9,'@/lib/clinical-front-b-pure':pureB});
 const scope=load('lib/m3/medical-scope-p3.ts');
 const timestamp='2026-11-17T11:00:00-03:00';
 const ctx=()=>({userId:'own-a',personId:'person-a',medicamentos:[],doseLogs:[],renovacoes:[],tratamentos:[],
@@ -113,4 +114,23 @@ assert.ok(pharm.includes('currentContextP3')&&pharm.includes('photoRevisionP3')&
 assert.ok(pharm.includes('bitmap?.close();if(requestRevisionP3===photoRevisionP3.current)setBusy(false)'));
 assert.ok(careflowPage.includes("href:'/saude/careflow/modo-medico'")&&dossierPage.includes('href="/saude/careflow/modo-medico"'));
 assert.ok(mainGate.includes('scripts/test-vault-ci360-m3-p3.cjs'));
+// R02 negative: current inventory cannot alter a historical quantity, including PDF input row.
+{
+ const ownB={user_id:'own-a',person_id:'person-a'};
+ const cB=ctx();
+ cB.medicamentos=[{...ownB,id:'med-b',nome:'Medicamento sintético',dosagem:'10 mg',estoque_unidade_medida:'gotas',tipo_uso:'continuo',status:'ativo'}];
+ cB.doseLogs=[{...ownB,id:'dose-b',medicamento_id:'med-b',data:'2026-11-09',horario:'10:00',tomado_em:timestamp,dose_kind:'scheduled',quantidade:5},
+  {...ownB,id:'ignored-b',medicamento_id:'med-b',data:'2026-11-10',horario:'10:00',ignorado_em:timestamp,dose_kind:'scheduled',quantidade:5,motivo:'Quantidade: 5'},
+  {...ownB,medicamento_id:'med-b',data:'2026-11-11',horario:'10:00',tomado_em:timestamp,dose_kind:'scheduled',quantidade:3}];
+ const opts={...args(cB),sections:['doses']};
+ const rowB=report=>report.rows.find(x=>x.sourceId==='dose-b');
+ const first=med.buildMedicalDossierP3(opts), beforeB=rowB(first);
+ assert.ok(beforeB&&beforeB.detail.includes('Quantidade: 5 (unidade não informada)')&&!beforeB.detail.includes('Quantidade: Quantidade'),'Dose histórica com unidade desconhecida explicitada no dossiê');
+ const changedB={...cB,medicamentos:cB.medicamentos.map(m=>({...m,estoque_unidade_medida:'comprimidos'}))};
+ assert.equal(rowB(med.buildMedicalDossierP3({...opts,context:changedB})).detail,beforeB.detail,'mudança de estoque não altera o fato histórico');
+ assert.ok(first.rows.some(x=>x.sourceId==='ignored-b'&&x.detail.includes('Ignorada explicitamente')&&!x.detail.includes('Quantidade registrada: 5')&&x.detail.includes('Motivo informado: Quantidade: 5')),'ignoradas não viram tomadas');
+ assert.ok(first.rows.some(x=>x.sourceId==='med-b:2026-11-11:10:00'&&x.detail.includes('3 (unidade não informada)')),'dose legada sem id mantém quantidade factual sem unidade inferida');
+ const summaryB=med.buildMedicalDossierP3({...opts,mode:'summary'});
+ assert.equal(rowB(summaryB).detail,beforeB.detail,'mesma linha factual para resumo, detalhado e entrada do PDF');
+}
 console.log('M3 P3: segurança por pessoa, relação por ID, doses/retiradas, resumo 30, UX premium, OCR e GPU OK');

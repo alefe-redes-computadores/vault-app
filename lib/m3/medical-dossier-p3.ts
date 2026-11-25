@@ -4,6 +4,7 @@
  */
 import { buildClinicalReport360, validClinicalDay, type Report360Section } from '@/lib/clinical-report-360';
 import type { HealthInsightContext } from '@/lib/health-insights';
+import {formatDoseQuantityB,metricKindB,formatSleepDurationB,originLabelB} from '@/lib/clinical-front-b-pure';
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { BrainV5Alert } from '@/lib/health-intelligence/brain-v5';
 import type { A4ClinicalFact } from '@/lib/treatment-a4/clinical-bridge';
@@ -16,8 +17,8 @@ import {activeFactsA9,A9_PROCEDURE_LABEL,A9_SENSITIVITY_LABEL} from '@/lib/clini
 import type {A9Procedure,A9Sensitivity} from '@/lib/clinical-a9/types';
 import type {A10Fact} from '@/lib/a10/longitudinal';
 /** Guardian4 FIX1: adaptador PURO no próprio dossiê.
- * Os contratos M3 P3/P6 executam esta fonte em VM e aceitam somente as autoridades
- * clínicas preexistentes. Não adicionar import de execução aqui, nem modificar os gates.
+ * Os contratos M3 P3/P6 executam esta fonte em VM. O adaptador B é puro,
+ * sem imports de UI, rede ou persistência; os testes carregam sua implementação real.
  * Esta é apresentação, não um writer; 'source', 'sourceId' e IDs ficam canônicos.
  */
 const medicalUuidG4=/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
@@ -55,6 +56,7 @@ export type MedicalRowP3 = {
   title: string; detail: string; provenance: MedicalProvenanceP3;
   source: string; sourceId: string; registeredAt: string | null;
   relations: string[]; href: string | null;
+  visualB?:{kind:"medication"|"measurement"|"treatment";formato?:string;cores?:string[];metric?:string;color?:string;name?:string;treatmentId?:string};
 };
 export type MedicalDossierP3 = {
   version: 3; mode: MedicalModeP3; personName: string;
@@ -194,9 +196,16 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       for(const id of c.tratamento_ids??[]){const t=treatMap.get(id);if(t)relations.push(`Tratamento vinculado: ${safe(t.nome,100)}`);}
     }
     const medForDose=dose?medMap.get(dose.medicamento_id):undefined;
-    const doseTitle=medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · '+safe(medForDose.dosagem,45):''}`:row.title;
-    add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:row.detail,source:row.source,
+    const doseTitle=medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · Cadastro atual: '+safe(medForDose.dosagem,45):''}`:row.title;
+    const medForRow=row.category==='medications'?medMap.get(row.sourceId):medForDose;
+    const measurementB=reading?metricKindB(reading.tipo):null;
+    const preciseSleep=reading&&measurementB==='sono'&&typeof reading.duracao_minutos==='number'?formatSleepDurationB(reading.duracao_minutos):null;
+    // DoseLog C31 has no historical unit. Only rewrite the canonical taken-quantity field, never the motive.
+    const factualDetailB=row.source==='dose_log'?row.detail.replace(/^(Tomada confirmada · Tipo: [^·]+ · Quantidade: )([0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?)(\s*)(?=·|$)/i,(_full,prefix,quantity,space)=>`${prefix}${formatDoseQuantityB(Number(quantity)).replace(/^Quantidade registrada: /,'')}${space}`):row.detail;
+    const safeDetailB=preciseSleep?`${factualDetailB} · Duração: ${preciseSleep} · ${originLabelB(reading?.source)}`:factualDetailB;
+    add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:safeDetailB,source:row.source,
       sourceId:row.sourceId,registeredAt:null,provenance:row.category==='brain'?'motor':row.category==='symptoms'||row.category==='consultations'?'declarado':'registrado',relations,
+       visualB:medForRow?{kind:'medication',formato:medForRow.formato||medForRow.forma_farmaceutica,cores:medForRow.cores?.length?medForRow.cores:medForRow.cor_principal?[medForRow.cor_principal,medForRow.cor_secundaria||medForRow.cor_principal]:[],name:medForRow.nome}:reading?{kind:'measurement',metric:measurementB||undefined}:undefined,
       href:dose?.id?`/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(dose.id)}`:
        reading?.id?`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(reading.id)}`:
        row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:
@@ -295,6 +304,7 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       `Cadastro atual: ${nice(r.status)}. Início declarado: ${date(r.data_inicio)||'não informado'}. Não é histórico reconstruído de posologia.`,
       source:'tratamento_atual',sourceId:r.id||`cadastro:${safe(r.nome,100)}`,registeredAt:r.updated_at||null,
       provenance:'registrado',relations:(r.medicamento_ids||[]).filter(id=>medMap.has(id)).map(id=>`Medicamento cadastrado: ${safe(medMap.get(id)?.nome,100)}`),
+       visualB:{kind:'treatment',color:r.cor,name:r.nome,treatmentId:r.id},
       href:'/saude/tratamentos'});
   }
   // M5: restore factual rehabilitation records without producing a parallel record writer.

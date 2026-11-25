@@ -35,7 +35,7 @@ const tests=[
   ['CareFlow: exames preservados em grupo funcional',()=>assert.match(src.care,/Registros e evolução',cards:\[areas\[2\],areas\[4\],areas\[5\],areas\[6\]\]/)],
   ['Modo Médico: datas humanas em textos e chips',()=>{assert.match(src.medical,/humanClinicalTextV34X\(row\.detail\)/);assert.match(src.medical,/humanClinicalTextV34X\(link\)/)}],
   ['Modo Médico: PDF humaniza os mesmos vínculos',()=>{assert.match(src.pdf,/humanRowTextV34X/);assert.match(src.pdf,/humanRowTextV34X\(link\)/);assert.match(src.pdf,/humanRowTextV34X\(value\.detail\)/)}],
-  ['Modo Médico: ícone relacional por item',()=>assert.match(src.medical,/<Icon size=\{16\} aria-hidden="true" className=\{`shrink-0/)],
+  ['Modo Médico: ícone relacional por item',()=>{const row=read('components/saude/MedicalDossierRowIconB.tsx');assert.match(src.medical,/<MedicalDossierRowIconB row=\{row\} fallbackIcon=\{Icon\} fallbackTone=\{groupTone\(section\)\}/);assert.match(row,/metricIdentityB\(row\.visualB\?\.metric\)/);assert.match(row,/row\.visualB\?\.kind==="medication"/);assert.match(row,/<MedicationFormatIcon formato=\{row\.visualB\.formato\}/);assert.match(row,/<MetricIcon size=\{17\}/);assert.match(row,/<Fallback size=\{16\}/);assert.match(row,/aria-hidden="true"/)}],
   ['Modo Médico: PDF principal esmeralda',()=>assert.match(src.medical,/createPdf\('download'\)[\s\S]{0,100}bg-emerald-300/)],
   ['Atualizações: Update 360 oficial preservado, sem bloco concorrente',()=>{
     for (const q of ['O que mudou nesta atualização','Execução do GitHub Actions','Cópia temporária para testes','VaultUpdateHistory installedBuild=','checkedLabel','releaseRunGap'])

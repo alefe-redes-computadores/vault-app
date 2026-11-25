@@ -38,6 +38,7 @@ import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { buildClinicalMonthReport } from "@/lib/clinical-month-report";
 import type { ClinicalDoseSafetyEpisode } from "@/lib/clinical-safety-episodes";
 import { AvatarMedicamento } from "@/components/ui/AvatarMedicamento";
+import {metricIdentityB,metricKindB,formatSleepDurationB,originLabelB} from "@/lib/ui/front-b-clinical-identity";
 import { analisarRegistroSaude } from "@/lib/health-insights";
 import {
   buildClinicalDays,
@@ -297,7 +298,7 @@ export default function RegistrosSaudePage() {
           </div>
         </ListPageHeader>
         <section className="space-y-4 px-5 pt-4">
-          <div className="print:hidden">
+          <div className="print:hidden [&_nav]:!grid-cols-3">
             <ClinicalSectionNav
               label="Áreas da linha de cuidado"
               items={[
@@ -815,7 +816,8 @@ function EventRow({
   onOpen: () => void;
 }) {
   const meta = categoryMeta[event.category];
-  const Icon = meta.icon;
+  const metric = event.record ? metricIdentityB(event.record.tipo) : null;
+  const Icon = metric?.icon ?? meta.icon;
   const insight = event.record
     ? analisarRegistroSaude(
         event.record.nome,
@@ -832,7 +834,7 @@ function EventRow({
       className="flex w-full items-start gap-3 border-b border-surface-border/40 px-4 py-3 text-left last:border-0 disabled:cursor-default"
     >
       <div
-        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${meta.tone}`}
+        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${meta.tone} ${metric?.tone??""}`}
       >
         <Icon size={16} />
       </div>
@@ -843,7 +845,9 @@ function EventRow({
               {event.title}
             </p>
             <p className="mt-0.5 truncate text-xs text-ink-muted">
-              {event.subtitle || meta.label}
+              {metricKindB(event.record?.tipo)==="sono" && typeof event.record?.duracao_minutos==="number"
+                  ? `${formatSleepDurationB(event.record.duracao_minutos)} · ${originLabelB(event.record.source)}`
+                  : event.subtitle || meta.label}
             </p>
           </div>
           <span className="shrink-0 font-mono text-[9px] text-ink-muted">

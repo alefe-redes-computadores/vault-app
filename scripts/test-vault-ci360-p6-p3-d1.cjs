@@ -41,9 +41,13 @@ const fakeClinical={
   return {rows,limitations:['Faltas não significam ausência clínica.']};
  }
 };
+const pureB={exports:{}};
+const pureBPath='lib/clinical-front-b-pure.ts';
+const pureBJs=ts.transpileModule(fs.readFileSync(pureBPath,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+vm.runInNewContext(pureBJs,{module:pureB,exports:pureB.exports,require:id=>{throw Error('Dependência não permitida no núcleo B '+id);}}, {filename:pureBPath,timeout:10000});
 vm.runInNewContext(compiled.outputText,{
  exports:m.exports,module:m,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,
- require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;throw Error('Dependência não permitida '+id);}
+ require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;if(id==='@/lib/clinical-front-b-pure')return pureB.exports;throw Error('Dependência não permitida '+id);}
 },{filename:p,timeout:10000});
 const {buildMedicalDossierP3}=m.exports;
 const owner={user_id:'u',person_id:'p'},foreign={user_id:'outro',person_id:'p'};

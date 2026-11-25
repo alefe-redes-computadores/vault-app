@@ -106,7 +106,7 @@ export default function ClinicalMapM150Page() {
   const searching=Boolean(query.trim());
   const total=clinicalDirectoryM150.reduce((n,g)=>n+g.items.length,0)+clinicalAdditionalSectionsM150.reduce((n,g)=>n+g.items.length,0);
   const onNavigate=()=>trigger('vibrate');
-  return <PageTransition><main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] pt-4 text-ink-primary">
+  return <PageTransition><main className="min-h-[100dvh] bg-void pb-[calc(11rem+env(safe-area-inset-bottom))] pt-4 text-ink-primary">
     <div className="mx-auto max-w-2xl space-y-5 px-4">
       <header className="flex items-center gap-3">
         <Link href={returnTo} onClick={onNavigate} aria-label="Voltar à origem do mapa" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/60 bg-surface-raised/50 text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><ArrowLeft size={18}/></Link>
@@ -123,10 +123,10 @@ export default function ClinicalMapM150Page() {
       </div>
       <p role="status" className="text-xs text-ink-muted" aria-live="polite">{searching ? `${entriesCount} resultado${entriesCount===1?'':'s'}` : `${total} acessos clínicos disponíveis · por área`}</p>
 
-      {!searching&&<button type="button" aria-expanded={showAdditional} onClick={()=>setShowAdditional(v=>!v)} className="min-h-11 w-full rounded-xl border border-surface-border px-3 text-left text-xs font-semibold text-ink-primary">{showAdditional?'Recolher outras áreas':'Ver mais 11 áreas de saúde'} <ChevronDown size={15} className="inline-block align-middle"/></button>}
+      {!searching&&<button type="button" aria-expanded={showAdditional} onClick={()=>setShowAdditional(v=>!v)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border border-violet-300/20 bg-surface-raised/65 px-4 py-3 text-left text-xs font-semibold text-ink-primary">{showAdditional?'Recolher outras áreas':'Ver mais 11 áreas de saúde'} <ChevronDown size={15} className="inline-block align-middle"/></button>}
       {!searching&&favoriteEntries.length>0&&<section aria-label="Favoritos" className="space-y-2">
         <h2 className="text-xs font-bold text-amber-200">Favoritos</h2>
-        <div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favoriteEntries.map(module=><Link key={module.id} href={withReturnTarget(module.href,sourceHref)} onClick={()=>trigger('vibrate')} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2 text-xs font-semibold text-ink-primary"><span className="min-w-0 break-words">{module.title}</span><Star size={15} fill="currentColor" className="shrink-0 text-amber-300"/></Link>)}</div>
+        <div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favoriteEntries.map((module,i)=><Link key={module.id} href={withReturnTarget(module.href,sourceHref)} onClick={()=>trigger('vibrate')} className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2 text-xs font-semibold text-ink-primary ${favoriteEntries.length%2===1&&i===favoriteEntries.length-1?"col-span-2 max-[349px]:col-span-1":""}`}><span className="min-w-0 break-words">{module.title}</span><Star size={15} fill="currentColor" className="shrink-0 text-amber-300"/></Link>)}</div>
       </section>}
       {!searching&&focus.length>0&&<section aria-label="Em foco agora" className="space-y-2"><h2 className="text-xs font-bold text-sky-200">Em foco agora</h2>
         <p className="text-[11px] text-ink-muted">Registros e acessos recentes, sem criar tarefas.</p>
@@ -139,8 +139,8 @@ export default function ClinicalMapM150Page() {
         const remaining=searching?[]:defaultItems.filter(item=>!preferred.includes(item.id));
         return <section key={group.id} aria-labelledby={`m150-${group.id}`} className="space-y-2.5">
           <div className="flex items-start gap-2 px-0.5"><span className={`mt-0.5 ${clinicalMapSectionToneM150P5P3(group.id)}`} aria-hidden="true"><Layers3 size={16}/></span><div><h2 id={`m150-${group.id}`} className={`text-sm font-bold ${clinicalMapSectionToneM150P5P3(group.id)}`}>{group.title}</h2><p className="mt-0.5 text-[11px] text-ink-muted">{group.description}</p></div></div>
-          {featured.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{featured.map(entry=>{const module=moduleFor(entry);return <EntryCard key={entry.id} entry={entry} returnHref={sourceHref} large={group.id==='rotina'&&!searching} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/>;})}</div>}
-          {remaining.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{remaining.map(entry=>{const module=moduleFor(entry);return <EntryCard key={entry.id} entry={entry} returnHref={sourceHref} large={false} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/>;})}</div>}
+          {featured.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{featured.map((entry,i)=>{const module=moduleFor(entry);return <div key={entry.id} className={featured.length%2===1&&i===featured.length-1?"col-span-2 max-[349px]:col-span-1":"min-w-0"}><EntryCard entry={entry} returnHref={sourceHref} large={group.id==='rotina'&&!searching} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/></div>;})}</div>}
+          {remaining.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{remaining.map((entry,i)=>{const module=moduleFor(entry);return <div key={entry.id} className={remaining.length%2===1&&i===remaining.length-1?"col-span-2 max-[349px]:col-span-1":"min-w-0"}><EntryCard entry={entry} returnHref={sourceHref} large={false} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/></div>;})}</div>}
         </section>;
       })}
       <p className="pb-3 text-[11px] leading-relaxed text-ink-muted">Este mapa organiza acessos existentes. Análises de Brain, Fênix e PharmaLens não substituem seus registros nem confirmam diagnósticos, receitas, estoque ou aquisições.</p>

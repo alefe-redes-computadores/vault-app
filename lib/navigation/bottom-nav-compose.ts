@@ -1,6 +1,6 @@
 // VAULT M6 — ações contextuais puras da navegação inferior.
 // Opções, ícones e tons sem estado de UI, consulta remota ou operações clínicas.
-import { Plus, type LucideIcon } from "lucide-react";
+import { Plus, Pill, HeartPulse, RefreshCw, Stethoscope, Hospital, MapPin, FlaskConical, CalendarCheck, Scissors, FileText, Activity, Syringe, ClipboardList, Droplets, Bell, PackageCheck, type LucideIcon } from "lucide-react";
 
 export interface ComposeOption {
   id: string;
@@ -13,75 +13,84 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "medicamento",
     label: "Medicamento",
-    icon: Plus,
+    icon: Pill,
     path: "/saude/medicamentos/novo",
   },
   {
     id: "tratamento",
     label: "Tratamento",
-    icon: Plus,
+    icon: HeartPulse,
     path: "/saude/tratamentos/novo",
   },
   {
     id: "renovacao",
     label: "Renovação",
-    icon: Plus,
+    icon: RefreshCw,
     path: "/saude/renovacao/nova",
   },
   {
     id: "medico",
     label: "Médico",
-    icon: Plus,
+    icon: Stethoscope,
     path: "/saude/medicos/novo",
   },
   {
     id: "farmacia",
     label: "Farmácia",
-    icon: Plus,
+    icon: Hospital,
     path: "/saude/farmacias/novo",
   },
   {
     id: "hospital",
     label: "Hospital",
-    icon: Plus,
+    icon: Hospital,
     path: "/saude/hospitais/novo",
   },
   {
     id: "local",
     label: "Posto / Local",
-    icon: Plus,
+    icon: MapPin,
     path: "/saude/locais/novo",
   },
   {
     id: "exame",
     label: "Exame",
-    icon: Plus,
+    icon: FlaskConical,
     path: "/saude/exames/novo",
   },
   {
     id: "consulta",
     label: "Consulta",
-    icon: Plus,
+    icon: CalendarCheck,
     path: "/saude/consultas/nova",
   },
   {
     id: "cirurgia",
     label: "Cirurgia",
-    icon: Plus,
+    icon: Scissors,
     path: "/saude/cirurgias/nova",
   },
   {
     id: "cid",
     label: "CID",
-    icon: Plus,
+    icon: FileText,
     path: "/saude/cids/novo",
   },
   {
     id: "sintoma",
     label: "Sintoma / Medição",
-    icon: Plus,
+    icon: Activity,
     path: "/saude/registros/novo",
   },
+  // B09: destinations use existing canonical editors, never parallel writers.
+  {id:"vacina",label:"Vacinação",icon:Syringe,path:"/saude/vacinas"},
+  {id:"procedimento",label:"Procedimento",icon:ClipboardList,path:"/saude/procedimentos"},
+  {id:"hidratacao",label:"Hidratação",icon:Droplets,path:"/saude/hidratacao"},
+  {id:"lembrete",label:"Lembrete",icon:Bell,path:"/saude/lembretes"},
+  {id:"documento",label:"Documento / Receita",icon:FileText,path:"/saude/documentos/novo"},
+  {id:"retirada",label:"Retirada",icon:PackageCheck,path:"/saude/retiradas/nova"},
+  {id:"alergia",label:"Alergia / Reação",icon:Activity,path:"/saude/reacoes"},
+  {id:"dose-rapida",label:"Dose rápida",icon:Pill,path:"/hoje?action=dose"},
 ];
 
 const SAUDE_DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
