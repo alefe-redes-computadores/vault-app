@@ -2,6 +2,8 @@
 const { withSentryConfig } = require("@sentry/nextjs");
 
 const isCapacitorExport = process.env.CAPACITOR_BUILD === "1";
+// Web estático tem contrato de URL independente do Capacitor.
+const isWebStaticExport = !isCapacitorExport && process.env.VAULT_WEB_STATIC_BUILD === "1";
 
 const nextConfig = {
   ...(isCapacitorExport
@@ -9,7 +11,9 @@ const nextConfig = {
         output: "export",
         trailingSlash: true,
       }
-    : {}),
+    : isWebStaticExport
+      ? { output: "export", trailingSlash: false }
+      : {}),
 
   images: {
     unoptimized: true,

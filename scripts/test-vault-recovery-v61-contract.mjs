@@ -7,7 +7,7 @@ ok(providers.includes("Promise.race")&&providers.includes("15_000"),"pull inicia
 ok(providers.includes("setPullError")&&providers.includes("Tentar novamente"),"falha de pull possui recuperação visível");
 ok(providers.includes("pullUserRef")&&providers.includes("hasPulledRef.current = false"),"troca de sessão reinicia estado do pull");
 ok(layout.includes('serviceWorker.register("/sw.js"'),"Service Worker possui registro explícito");
-ok(sw.includes('await cache.add(OFFLINE_URL)')&&!sw.includes("Promise.allSettled(PRECACHE"),"fallback offline é obrigatório na instalação");
+ok(sw.includes('await cache.add(new Request(new URL(OFFLINE_URL, self.location.origin), { cache: "reload" }))')&&!sw.includes("Promise.allSettled(PRECACHE"),"fallback offline é obrigatório na instalação");
 ok(sw.includes("cache.put(request, response.clone())"),"navegação online alimenta cache offline");
 ok(sw.includes('cache.match(request)')&&sw.includes('cache.match("/")')&&sw.includes("cache.match(OFFLINE_URL)"),"navegação offline usa cadeia de fallback");
 ok(sw.includes('url.pathname.startsWith("/_next/static/")'),"chunks utilizados pelo Next são armazenados");

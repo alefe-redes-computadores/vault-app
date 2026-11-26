@@ -1,5 +1,8 @@
 // app/saude/tratamentos/novo/page.tsx
 "use client";
+import {TreatmentIdentityPickerR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03,type TreatmentVisualChoiceR03} from "@/lib/health-profile/treatment-preferences-r03";
+import {getVaultTreatmentIcon} from "@/lib/health-profile/treatment-icon";
 import {CustomDatePicker} from "@/components/DatePicker";
 
 import {
@@ -88,9 +91,6 @@ import type {
   Medicamento,
 } from "@/lib/types";
 
-import {
-  getClinicalTheme,
-} from "@/lib/health-utils";
 
 // ============================================================
 // ANIMAÇÃO
@@ -370,14 +370,12 @@ export default function NovoTratamentoPage() {
         )
     );
 
-  const theme =
-    getClinicalTheme(
-      nome ||
-        "Novo Tratamento"
-    );
+  const [visualColor, setVisualColor] = useState("#8B5CF6");
+  const [visualSelection,setVisualSelection]=useState<{personId:string;value:TreatmentVisualChoiceR03}|null>(null);
+  const visualIcon=visualSelection?.personId===activePersonId?visualSelection?.value??null:null;
+  const treatmentColor = treatmentColorR03(visualColor);
 
-  const PreviewIcon =
-    theme.icon;
+  const PreviewIcon = getVaultTreatmentIcon({visual_icon:visualIcon});
 
   // ==========================================================
   // SUBMIT
@@ -410,6 +408,7 @@ export default function NovoTratamentoPage() {
         return;
       }
 
+      if(visualIcon===null){setError("Escolha um ícone ou Sem ícone específico na identificação.");trigger("error");return;}
       if (
         !nome.trim()
       ) {
@@ -487,7 +486,8 @@ export default function NovoTratamentoPage() {
               status,
 
               cor:
-                theme.hex,
+                treatmentColor,
+              visual_icon:visualIcon,
 
               observacoes:
                 observacoes.trim() ||
@@ -886,15 +886,17 @@ export default function NovoTratamentoPage() {
             }
             initial="initial"
             animate="animate"
-            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            className="rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300"
             style={{
               borderLeft:
-                `6px solid ${theme.hex}`,
+                `6px solid ${treatmentColor}`,
+              borderColor: `${treatmentColor}55`,
+              borderLeftColor: treatmentColor,
             }}
           >
             <div className="flex items-center gap-4">
               <div
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300" style={{borderColor:`${treatmentColor}55`,backgroundColor:`${treatmentColor}15`,color:treatmentColor}}
               >
                 <PreviewIcon
                   size={
@@ -905,7 +907,7 @@ export default function NovoTratamentoPage() {
 
               <div className="min-w-0 flex-1">
                 <p
-                  className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}
+                  className="font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300" style={{color:treatmentColor}}
                 >
                   IDENTIFICAÇÃO
                 </p>
@@ -914,8 +916,13 @@ export default function NovoTratamentoPage() {
                   {nome ||
                     "A prévia visual aparecerá aqui..."}
                 </h2>
+
               </div>
             </div>
+            <div role="group" aria-label="Cor do tratamento" className="mt-3 flex flex-wrap gap-2">
+              {[["#8B5CF6","Violeta"],["#2563EB","Azul"],["#0D9488","Turquesa"],["#16A34A","Verde"],["#D97706","Âmbar"],["#DC2626","Vermelho"],["#DB2777","Rosa"]].map(([color,label])=><button key={color} type="button" aria-label={label} aria-pressed={treatmentColor===color} onClick={()=>{setVisualColor(color);trigger("vibrate");}} className="grid size-11 shrink-0 place-items-center rounded-xl border-2 bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice" style={{borderColor:treatmentColor===color?color:"transparent"}}><span aria-hidden="true" className="size-6 rounded-full" style={{backgroundColor:color}}/></button>)}
+            </div>
+            <TreatmentIdentityPickerR03 value={visualIcon} color={treatmentColor} onChange={value=>{if(activePersonId)setVisualSelection({personId:activePersonId,value});trigger("vibrate");}}/>
           </motion.div>
 
           {/* ==================================================
@@ -1099,13 +1106,13 @@ export default function NovoTratamentoPage() {
                         currentStatus
                           ? {
                               borderColor:
-                                theme.hex,
+                                treatmentColor,
 
                               color:
-                                theme.hex,
+                                treatmentColor,
 
                               backgroundColor:
-                                `${theme.hex}20`,
+                                `${treatmentColor}20`,
                             }
                           : {}
                       }

@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
 import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
+import {mergeTreatmentRemoteR03} from "@/lib/sync/treatment-visual-transport-r03";
 import { preserveA0Cirurgia, preserveA0Tratamento, preserveA0Hospital } from "@/lib/sync/a0-preserve-local-parity";
 import {documentPullResultP6P3B} from "@/lib/sync/document-pull-guard-p6p3b";
 import { planMedicationTreatmentReconciliationM105 } from "@/lib/sync/medication-treatment-reconciliation-m105";
@@ -308,6 +309,7 @@ async function performPullAllData(userId: string): Promise<void> {
             // mesmo quando não lança exception.
             tableOk = false;
             if (remoteTable === "dose_logs") criticalPullErrors.push(error.message || "Consulta de doses falhou");
+            if (remoteTable === "tratamentos") criticalPullErrors.push("Tratamentos: consulta indisponível");
             if (remoteTable === "surgery_consultation_links_m4") criticalPullErrors.push(error.message || "M4 P2: vínculos de cirurgia indisponíveis");
             if (remoteTable.endsWith("_m5") && remoteTable.startsWith("rehab_")) criticalPullErrors.push(`${remoteTable}: ${error.message || "Reabilitação 360 indisponível"}`);
             if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${error.message || 'Erro de rede'}`);
@@ -333,6 +335,10 @@ async function performPullAllData(userId: string): Promise<void> {
           const rows =
             uniqueById(data);
 
+          if(remoteTable==="tratamentos"){
+            for(const row of rows)await mergeTreatmentRemoteR03(row,userId);
+            return;
+          }
           const rowIds = rows.map(
             (row) => row.id as string
           );
@@ -430,6 +436,7 @@ async function performPullAllData(userId: string): Promise<void> {
 
           tableOk = false;
           if (remoteTable === "dose_logs") criticalPullErrors.push(message);
+          if (remoteTable === "tratamentos") criticalPullErrors.push("Tratamentos: revisão ou persistência requer conferência");
           if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${message}`);
           console.error(
             `❌ [Pull] Erro ao processar ${remoteTable}: ${message}`
@@ -1832,7 +1839,7 @@ async function performPullAllData(userId: string): Promise<void> {
       throw new Error(`M1: importação clínica incompleta: ${clinicalM1PullErrors.join(' · ')}`);
     }
     if (criticalPullErrors.length > 0) {
-      throw new Error(`Falha na importação das doses: ${criticalPullErrors.join(" · ")}`);
+      throw new Error(`Falha na importação de dados clínicos: ${criticalPullErrors.join(" · ")}`);
     }
 
     if(vitalPullFailed)throw new Error("Vital: importação incompleta; registros locais preservados.");

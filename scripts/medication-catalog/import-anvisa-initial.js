@@ -7,9 +7,9 @@ const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
 const { execFileSync } = require("child_process");
-const { TextDecoder } = require("util");
 
-const { createAdminClient } = require("./admin-client");
+const { reconcileOfficialRows } = require("./catalog-integrity-r01.cjs");
+// Keep dry-run module load offline. The initial empty-database writer remains separate.
 
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -110,195 +110,8 @@ function sha256(buffer) {
     .digest("hex");
 }
 
-function decodeBuffer(buffer) {
-  try {
-    return {
-      encoding: "utf-8",
-      text: new TextDecoder(
-        "utf-8",
-        { fatal: true }
-      ).decode(buffer),
-    };
-  } catch {
-    return {
-      encoding: "windows-1252",
-      text: new TextDecoder(
-        "windows-1252"
-      ).decode(buffer),
-    };
-  }
-}
-
-function detectDelimiter(headerLine) {
-  const candidates = [
-    ";",
-    ",",
-    "|",
-    "\t",
-  ];
-
-  let best = ";";
-  let bestCount = -1;
-
-  for (const delimiter of candidates) {
-    let quoted = false;
-    let count = 0;
-
-    for (
-      let i = 0;
-      i < headerLine.length;
-      i += 1
-    ) {
-      const char = headerLine[i];
-
-      if (char === '"') {
-        if (
-          quoted &&
-          headerLine[i + 1] === '"'
-        ) {
-          i += 1;
-          continue;
-        }
-
-        quoted = !quoted;
-        continue;
-      }
-
-      if (
-        !quoted &&
-        char === delimiter
-      ) {
-        count += 1;
-      }
-    }
-
-    if (count > bestCount) {
-      best = delimiter;
-      bestCount = count;
-    }
-  }
-
-  return best;
-}
-
-function parseCsv(text, delimiter) {
-  const rows = [];
-
-  let row = [];
-  let field = "";
-  let quoted = false;
-
-  for (
-    let i = 0;
-    i < text.length;
-    i += 1
-  ) {
-    const char = text[i];
-
-    if (char === '"') {
-      if (
-        quoted &&
-        text[i + 1] === '"'
-      ) {
-        field += '"';
-        i += 1;
-        continue;
-      }
-
-      quoted = !quoted;
-      continue;
-    }
-
-    if (
-      !quoted &&
-      char === delimiter
-    ) {
-      row.push(field.trim());
-      field = "";
-      continue;
-    }
-
-    if (
-      !quoted &&
-      (
-        char === "\n" ||
-        char === "\r"
-      )
-    ) {
-      if (
-        char === "\r" &&
-        text[i + 1] === "\n"
-      ) {
-        i += 1;
-      }
-
-      row.push(field.trim());
-      field = "";
-
-      if (
-        row.some(
-          (value) => value !== ""
-        )
-      ) {
-        rows.push(row);
-      }
-
-      row = [];
-      continue;
-    }
-
-    field += char;
-  }
-
-  if (
-    field !== "" ||
-    row.length
-  ) {
-    row.push(field.trim());
-
-    if (
-      row.some(
-        (value) => value !== ""
-      )
-    ) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
-}
-
-function rowsToObjects(rows) {
-  if (!rows.length) {
-    return [];
-  }
-
-  const headers =
-    rows[0].map(
-      (value) =>
-        value.replace(
-          /^\uFEFF/,
-          ""
-        )
-    );
-
-  return rows
-    .slice(1)
-    .map((row) => {
-      const item = {};
-
-      for (
-        let i = 0;
-        i < headers.length;
-        i += 1
-      ) {
-        item[headers[i]] =
-          row[i] ?? "";
-      }
-
-      return item;
-    });
-}
+// One encoding, delimiter and parser authority for both real consumers.
+const {parseCsv,rowsToObjects,decodeBuffer,detectDelimiter} = require("./build-anvisa-canonical-package.js");
 
 function download(source, tempDir) {
   const destination =
@@ -519,58 +332,20 @@ function buildCanonicalPackage(
       continue;
     }
 
-    const normalizedSubstance =
-      normalizeText(
-        rawSubstance
-      );
-
-    if (!normalizedSubstance) {
-      continue;
-    }
-
-    const code =
-      codes[0];
-
-    if (
-      !substanceCandidates.has(
-        normalizedSubstance
-      )
-    ) {
-      substanceCandidates.set(
-        normalizedSubstance,
-        {
-          canonicalName:
-            rawSubstance,
-          normalizedName:
-            normalizedSubstance,
-          externalIds:
-            new Set(),
-        }
-      );
-    }
-
-    substanceCandidates
-      .get(normalizedSubstance)
-      .externalIds
-      .add(code);
-
-    const relationKey =
-      externalId +
-      "|" +
-      normalizedSubstance;
-
-    relations.set(
-      relationKey,
-      {
-        productExternalId:
-          externalId,
-        substanceNormalizedName:
-          normalizedSubstance,
-        externalSubstanceId:
-          code,
-      }
-    );
+    // Counters only. Never align codes and names by position.
   }
+  const composition = reconcileOfficialRows(consultaRows);
+  for (const item of composition.substances.values()) {
+    substanceCandidates.set(item.normalizedName, {canonicalName:item.canonicalName, normalizedName:item.normalizedName, externalIds:new Set([item.externalId])});
+  }
+  for (const [key,item] of composition.relations) {
+    relations.set(key, {productExternalId:item.productExternalId, substanceNormalizedName:item.substanceNormalizedName, externalSubstanceId:item.substanceExternalId});
+  }
+  diagnostics.compositionComplete = composition.reports.filter(r=>r.status==="complete").length;
+  diagnostics.compositionPartial = composition.reports.filter(r=>r.status==="partial").length;
+  diagnostics.compositionAmbiguous = composition.reports.filter(r=>r.status==="ambiguous").length;
+  diagnostics.compositionInconclusive = composition.reports.filter(r=>r.status==="inconclusive").length;
+  diagnostics.codeDictionaryConflicts = composition.conflicts.length;
 
   for (
     const ids of
@@ -1234,7 +1009,7 @@ async function applyImport(
   canonical
 ) {
   const supabase =
-    createAdminClient();
+    require("./admin-client").createAdminClient();
 
   await assertInitialDatabaseEmpty(
     supabase
@@ -1837,7 +1612,8 @@ async function main() {
   }
 }
 
-main().catch(
+module.exports = { buildCanonicalPackage, parseCsv, rowsToObjects, decodeBuffer, detectDelimiter };
+if (require.main === module) main().catch(
   (error) => {
     console.error(
       "\n❌ IMPORTADOR ABORTADO"

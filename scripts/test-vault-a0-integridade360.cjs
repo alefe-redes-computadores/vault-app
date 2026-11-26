@@ -46,8 +46,10 @@ assert(!sql1.includes('UPDATE storage.buckets'),'preserva flags de publicacao do
 for(const name of ['avatars','clinical-private','saude','documents']) assert(sql1.includes(name),'bucket presente '+name);
 // Provas executáveis: não reintroduzir dados em outros escopos e não desfazer [] explícito.
 const vm=require('node:vm');
+const treatmentMeta={exports:{}};
+vm.runInNewContext(ts.transpileModule(read("lib/health-profile/treatment-preferences-r03.ts"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{module:treatmentMeta,exports:treatmentMeta.exports});
 const exported={exports:{}};
-vm.runInNewContext(ts.transpileModule(guard,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{module:exported,exports:exported.exports});
+vm.runInNewContext(ts.transpileModule(guard,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{module:exported,exports:exported.exports,require:id=>{assert.equal(id,"../health-profile/treatment-preferences-r03");return treatmentMeta.exports;}});
 const {preserveA0Cirurgia,preserveA0Tratamento,preserveA0Hospital}=exported.exports;
 const account='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',person='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const local={user_id:account,person_id:person,tratamento_ids:['t'],cid_ids:['c'],data_inicio:'2021-01-02',condicao:'relatada',medico_ids:['m']};

@@ -1,5 +1,7 @@
 // app/saude/exames/detalhes/page.tsx
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 
@@ -1287,13 +1289,7 @@ function DetalhesExameContent() {
                     (
                       tratamento
                     ) => {
-                      const theme =
-                        getClinicalTheme(
-                          tratamento.nome
-                        );
-
-                      const Icon =
-                        theme.icon;
+                      const color = treatmentColorR03(tratamento.cor);
 
                       return (
                         <button
@@ -1316,11 +1312,9 @@ function DetalhesExameContent() {
                               `/saude/tratamentos/detalhes?id=${tratamento.id}`
                             );
                           }}
-                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80 ${theme.tagClass}`}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80`} style={{borderColor:`${color}55`,backgroundColor:`${color}15`,color}}
                         >
-                          <Icon
-                            size={14}
-                          />
+                          <TreatmentIdentityIconR03 entity={tratamento} size={14}/>
 
                           <span className="text-xs font-medium">
                             {

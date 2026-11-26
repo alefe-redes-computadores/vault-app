@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { db } from "@/lib/db";
+import {mergeTreatmentRemoteR03,refreshTreatmentVisualProjectionR03} from "@/lib/sync/treatment-visual-transport-r03";
 import { supabase } from "@/lib/supabase/client";
 import {vitalTable} from '@/lib/vital/cloud-transport';
 import {mergeCanonicalVitalRealtime} from '@/lib/vital-runtime/canonical';
@@ -90,6 +91,11 @@ export function useSupabaseRealtime(userId?: string) {
           const id = incoming.id || previous.id;
           if (!id) return;
 
+          if(payload.table==="tratamentos"&&payload.eventType!=="DELETE"){
+            if(incoming.user_id===userId&&!disposed){try{await mergeTreatmentRemoteR03(incoming,userId);}catch{console.warn("Tratamentos: revisão visual remota requer conferência no pull.");}}
+            return;
+          }
+
           const localTable = (db as unknown as Record<string, LocalTable>)[config.local];
           if (!localTable) return;
 
@@ -122,13 +128,34 @@ export function useSupabaseRealtime(userId?: string) {
             return;
           }
 
-          await localTable.put(normalize(payload.table, incoming));
+          await localTable.put(normalize(payload.table,incoming));
         }
       )
       .subscribe();
 
+    // Treatment visual projection is not published by the current Realtime configuration.
+    // No extra subscription or broad publication. One bounded foreground refresh at most
+    // every 90 s, with a 120 s active-app cadence; the initial full pull remains canonical.
+    let refreshingVisual=false;
+    let lastVisualAttempt=-Infinity;
+    const refreshVisual=()=>{
+      if(disposed||refreshingVisual||!navigator.onLine||document.visibilityState!=='visible')return;
+      if(performance.now()-lastVisualAttempt<90_000)return;
+      lastVisualAttempt=performance.now();refreshingVisual=true;
+      void refreshTreatmentVisualProjectionR03(supabase,userId,()=>!disposed&&navigator.onLine&&document.visibilityState==='visible')
+        .catch(()=>{if(!disposed)console.warn('Tratamentos: atualização visual pendente.');})
+        .finally(()=>{refreshingVisual=false;});
+    };
+    window.addEventListener('focus',refreshVisual);
+    window.addEventListener('online',refreshVisual);
+    document.addEventListener('visibilitychange',refreshVisual);
+    const visualTimer=window.setInterval(refreshVisual,120_000);
     return () => {
       disposed = true;
+      window.removeEventListener('focus',refreshVisual);
+      window.removeEventListener('online',refreshVisual);
+      document.removeEventListener('visibilitychange',refreshVisual);
+      window.clearInterval(visualTimer);
       void supabase.removeChannel(channel);
     };
   }, [userId]);

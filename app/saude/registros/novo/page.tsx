@@ -1,5 +1,7 @@
 // app/saude/registros/novo/page.tsx
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 import {MOOD_CHOICES,moodContext,type MoodChoice} from "@/lib/health-profile/avatar-body";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {CustomDatePicker} from "@/components/DatePicker";
@@ -1891,29 +1893,17 @@ export default function NovoRegistroSaudePage() {
                   (
                     tratamento
                   ) => {
-                    const tratamentoTheme =
-                      getClinicalTheme(
-                        tratamento.nome
-                      );
 
-                    const TratamentoIcon =
-                      tratamentoTheme.icon;
 
                     return (
                       <div
                         key={
                           tratamento.id
                         }
-                        className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5"
+                        className="flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5" style={{borderColor:`${treatmentColorR03(tratamento.cor)}55`,backgroundColor:`${treatmentColorR03(tratamento.cor)}15`,color:treatmentColorR03(tratamento.cor)}}
                       >
-                        <TratamentoIcon
-                          size={
-                            14
-                          }
-                          className="text-violet-400"
-                        />
-
-                        <span className="max-w-[180px] truncate text-xs font-medium text-violet-300">
+                        <TreatmentIdentityIconR03 entity={tratamento} size={14}/>
+                        <span className="min-w-0 break-words text-xs font-medium">
                           {
                             tratamento.nome
                           }

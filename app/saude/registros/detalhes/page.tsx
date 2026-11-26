@@ -1,5 +1,7 @@
 // app/saude/registros/detalhes/page.tsx
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 import {MOOD_CHOICES,readMoodContext} from "@/lib/health-profile/avatar-body";
 import {HealthRecordSource} from "@/components/saude/HealthRecordSource";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
@@ -1284,13 +1286,7 @@ function DetalhesRegistroSaudeContent() {
                       (
                         tratamento
                       ) => {
-                        const tratamentoTheme =
-                          getClinicalTheme(
-                            tratamento.nome
-                          );
-
-                        const Icon =
-                          tratamentoTheme.icon;
+                        const color = treatmentColorR03(tratamento.cor);
 
                         return (
                           <button
@@ -1315,16 +1311,11 @@ function DetalhesRegistroSaudeContent() {
                                 );
                               }
                             }
-                            className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 transition-colors hover:bg-violet-400/20 active:scale-95"
+                            className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80 active:scale-95" style={{borderColor:`${color}55`,backgroundColor:`${color}15`,color}}
                           >
-                            <Icon
-                              size={
-                                14
-                              }
-                              className="text-violet-400"
-                            />
+                            <TreatmentIdentityIconR03 entity={tratamento} size={14}/>
 
-                            <span className="max-w-[180px] truncate text-xs font-medium text-violet-300">
+                            <span className="min-w-0 break-words text-xs font-medium">
                               {
                                 tratamento.nome
                               }

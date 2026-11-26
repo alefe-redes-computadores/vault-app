@@ -21,14 +21,14 @@ ok(med.includes('navigationP6.kind === "completed" ? null')&&med.includes('exact
 ok(med.includes('data-vault-r4-main-action')&&med.includes('actionLayoutM150P3.primary')&&med.includes('grid-cols-[minmax(0,1fr)_88px]'),'acao canonica fixa no card');
 ok(!med.includes('openMedicationContextP7R3("treatment")')&&med.includes('data-vault-med360-treatment-tags')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('railSize="label"'),'tratamento e tarja regulatoria continuam funcionais');
 ok(sheet.includes('value.controls.map')&&sheet.includes('window.setTimeout(onClose,0)'),'reutiliza controles clinicos sem recriar comandos');
-ok(sheet.includes('value.treatments.map')&&sheet.includes('getVaultTreatmentIcon(t.name)')&&med.includes('safeTreatmentColorP7(t.cor)'),'tratamentos explicitos e cores validas');
+ok(sheet.includes('value.treatments.map')&&sheet.includes('<TreatmentIdentityIconR03 entity={t}')&&med.includes('safeTreatmentColorP7(t.cor)'),'tratamentos explicitos e cores validas');
 ok(sheet.includes('max-h-[min(89dvh,790px)]')&&sheet.includes('safe-area-inset-bottom')&&sheet.includes('Escape'),'Android viewport, Safe Area e teclado');
 ok(sheet.includes('role="dialog"')&&sheet.includes('aria-modal="true"')&&sheet.includes('role="tablist"')&&sheet.includes('aria-selected={tab===id}'),'acessibilidade da gaveta');
 ok(sheet.includes('document.activeElement')&&sheet.includes('original?.focus()')&&sheet.includes('closeRef.current?.focus()'),'foco devolvido ao elemento de origem');
 ok(sheet.includes('Abrir detalhes completos')&&med.includes('detailHref'),'pagina completa nunca desaparece');
 ok(sheet.includes('medicamento')&&sheet.includes('não registra')&&sheet.includes('não confirma'),'contexto nao cria eventos');
 ok(help.includes('Compacto ou Conforto')&&help.includes('Toque no nome ou no menu •••')&&help.includes('Microavisos com contexto')&&help.includes('Conhecimento do catálogo'),'Ajuda atualizada com a jornada');
-ok(med.includes('className="sr-only"')&&med.includes('getVaultTreatmentIcon(t.nome)')&&med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&med.includes('data-vault-med360-treatment-tags'), 'Compacto curto e ícones canonicos de tratamentos');
+ok(med.includes('className="sr-only"')&&med.includes('<TreatmentIdentityIconR03 entity={t}')&&med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&med.includes('data-vault-med360-treatment-tags'), 'Compacto curto e ícones canonicos de tratamentos');
 ok(med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}')&&med.includes('data-vault-compact-medication-meta'),'ambas densidades e metadados legados');
 ok(med.includes('MedicationOperationalStrip today={todayStatus}')&&med.includes('MedicationContextSheetP7R3 value={medicationContextP7R3}')&&med.includes('MedicationActionsSheetR4 value={secondaryActionSheetR4}'),'componentes antigos mantidos para compatibilidade de retorno');
 ok(sheet.includes('grid-cols-5')&&sheet.includes('role="tablist"')&&!sheet.includes('tab==="tratamentos"'),'cinco abas: ficha inclui tratamentos vinculados');

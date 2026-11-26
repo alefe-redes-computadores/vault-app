@@ -15,9 +15,14 @@ for (const path of [
 }
 const pure = 'lib/health-intelligence/medication-treatment-links-p7.ts';
 const mod = new Module(pure,module);
+const identityPath='lib/health-profile/treatment-preferences-r03.ts';
+const identityModule=new Module(identityPath,module);
+identityModule._compile(ts.transpileModule(read(identityPath),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,identityPath);
+mod.require=id=>id==='@/lib/health-profile/treatment-preferences-r03'?identityModule.exports:require(id);
 mod._compile(ts.transpileModule(read(pure), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,pure);
 const {indexMedicationTreatmentsP7:index, safeTreatmentColorP7:safeColor}=mod.exports;
 ok(safeColor('#ab34Cd') === '#AB34CD','cor legitima hexadecimal');
+ok(safeColor('#abc')==='#AABBCC'&&safeColor('#abc')===identityModule.exports.treatmentColorR03('#abc'),'mesma autoridade preserva hex abreviado nos consumidores');
 for (const bad of ['red','url(javascript:1)','var(--x)','#1234','rgb(1,2,3)',' #123456;color:red'])
  ok(safeColor(bad)===null,`cor CSS nao confiavel rejeitada: ${bad}`);
 const mk=(id,extra={})=>({id,user_id:'u',person_id:'p',tratamento_ids:[],...extra});
@@ -45,7 +50,7 @@ ok(index({...input,userId:'other',personId:'p'}).size===0,'outra conta nao receb
 const meds=read('app/saude/medicamentos/page.tsx'),home=read('app/page.tsx'),filters=read('components/hoje/TodayFilterPanel.tsx');
 ok(meds.includes('indexMedicationTreatmentsP7(')&&meds.includes('db.tratamentos.where("[user_id+person_id]")')&&meds.includes('[treatmentOwner.id, activePersonId]'),'query reativa na conta/pessoa');
 ok(meds.includes('med.id ? (treatmentsByMedication.get(med.id) || []) : []'),'ID opcional protegido');
-ok(meds.includes('data-vault-med360-treatment-tags')&&meds.includes('cardTreatments.length > 0')&&meds.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&(meds.includes('getVaultTreatmentIcon(t)') && !meds.includes('getVaultTreatmentIcon(t.nome)')),'etiquetas individuais por tratamento, com limite de densidade');
+ok(meds.includes('data-vault-med360-treatment-tags')&&meds.includes('cardTreatments.length > 0')&&meds.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&(meds.includes('<TreatmentIdentityIconR03 entity={t}') && !meds.includes('getVaultTreatmentIcon(t.nome)')),'etiquetas individuais por tratamento, com limite de densidade');
 ok(meds.includes('safeTreatmentColorP7(t.cor)')&&meds.includes('style={color ? (compactCards ? {color} : {borderColor:`${color}66`,backgroundColor:`${color}12`,color}) : undefined}'),'cores individuais sanitizadas preservadas em compacto e conforto');
 ok(meds.includes('railSize="label"')&&meds.includes('[writing-mode:vertical-rl]'),'tarja R5 inalterada');
 ok(meds.includes('selectedRegulatory.sourceLabel')&&meds.includes('selectedRegulatory.verified'),'fonte e verificacao permanecem no dialogo');

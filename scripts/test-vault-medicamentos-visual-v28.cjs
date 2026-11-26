@@ -23,7 +23,7 @@ ok(!list.includes("<h2 className=\"text-sm font-bold tracking-tight text-ink-pri
 ok(detail.indexOf('id="medicamento-rotina"') < detail.indexOf('id="medicamento-estoque"') && detail.indexOf('id="medicamento-estoque"') < detail.indexOf('id="medicamento-receita"'), "ordem canônica Rotina, Estoque e Receita preservada");
 ok(detail.includes("shortPrescriptionKnowledgeLabel") && detail.includes("stableIngredientKnowledge"), "identidade confirmada reaproveita fatos técnicos estáveis");
 ok(knowledge.includes("humanizeOfficialPresentation") && knowledge.includes("Ver descrição técnica original"), "apresentação oficial ganha leitura humana sem apagar o texto original");
-ok(careHub.includes("getVaultTreatmentIcon") && careHub.includes("safeTreatmentColorP7"), "tratamento vinculado usa nome, ícone e cor relacionais");
+ok(careHub.includes("<TreatmentIdentityIconR03 entity={treatment}") && careHub.includes("safeTreatmentColorP7"), "tratamento vinculado usa nome, ícone e cor relacionais");
 ok(network.includes("humanizeCareLocationKind"), "enum de local de cuidado é traduzido na apresentação");
 ok(!detail.includes("Supply Shield · ver planejamento"), "rótulo técnico Supply Shield não vaza na interface");
 ok(agenda.includes("ChevronDown") && agenda.includes("min-h-11"), "agenda comunica expansão e preserva alvo tátil");

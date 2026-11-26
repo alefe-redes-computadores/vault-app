@@ -1,14 +1,13 @@
 /** M153 P7 — relações explícitas; nenhuma relação é inferida por nome, data ou CID. */
 import type { Medicamento, Tratamento } from "@/lib/types";
+import { normalizeTreatmentColorR03 } from "@/lib/health-profile/treatment-preferences-r03";
 
 type MedicationRefP7 = Pick<Medicamento, "id" | "user_id" | "person_id" | "tratamento_ids">;
 type TreatmentRefP7 = Pick<Tratamento, "id" | "user_id" | "person_id" | "nome" | "cor" | "medicamento_ids">;
 export type MedicationTreatmentChipP7 = { id: string; nome: string; cor: string | null };
 
 export function safeTreatmentColorP7(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const color = value.trim();
-  return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toUpperCase() : null;
+  return normalizeTreatmentColorR03(value);
 }
 
 export function indexMedicationTreatmentsP7(input: {

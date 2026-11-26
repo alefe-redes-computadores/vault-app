@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "ANVISA_CATALOG_LEXICAL_R03_1",
+  "mode": "REVIEW_ONLY",
+  "sources": {
+    "TA_CONSULTA_MEDICAMENTOS.CSV": {
+      "url": "https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV",
+      "header": [
+        "NU_PROCESSO",
+        "CO_TIPO_PRODUTO",
+        "NO_RAZAO_SOCIAL_EMPRESA",
+        "DT_VENCIMENTO_PRODUTO",
+        "VENCIMENTO_MES_ANO",
+        "NU_CNPJ_EMPRESA",
+        "NO_PRODUTO",
+        "VENCIMENTO",
+        "NU_REGISTRO_PRODUTO",
+        "CO_SEQ_PRODUTO",
+        "ST_ROTULO",
+        "CO_SITUACAO_ASSUNTO_DOC",
+        "TP_GRAU",
+        "ORDEM",
+        "DATA_PUBLICACAO",
+        "CO_SEQ_TIPO_CAT_REGULATORIA",
+        "DS_TIPO_CATEGORIA_REGULATORIA",
+        "DS_REFERENCIA",
+        "CO_SEQ_TIPO_PRIORIZACAO",
+        "NO_TIPO_PRIORIZACAO",
+        "DS_PRODUTO_NOTIFICADO",
+        "CO_CATEGORIA_PRODUTO",
+        "TIPO_AUTORIZACAO",
+        "CO_SEQ_NOTIFICACAO",
+        "SINONIMOS",
+        "INDICACOES",
+        "TP_SITUACAO_APRESENTACAO",
+        "DATA_CANCELAMENTO",
+        "DT_INICIO_ANALISE",
+        "CO_ATC",
+        "CO_SUBSTANCIA",
+        "CO_TIPO_CAT_REGULATORIA",
+        "CO_FORMA_FISICA",
+        "CO_RESTRICAO",
+        "CO_TARJA",
+        "CO_SEQ_APRESENTACAO_PRODUTO",
+        "ST_DISPENSA_FRACIONADA",
+        "COMPLEMENTO",
+        "AUTORIZACAO_MEDICAMENTO",
+        "SITUACAO_ASSUNTO",
+        "SUBSTANCIAS_MEDICAMENTOS",
+        "VALIDADE_SITUACAO",
+        "NUMERO_APRESENTACOES",
+        "DATA_ULTIMA_ATUALIZACAO",
+        "DT_CARGA_ETL"
+      ]
+    },
+    "TA_PRECOS_MEDICAMENTOS.csv": {
+      "url": "https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv",
+      "header": [
+        "NU_CNPJ",
+        "NO_RAZAO_SOCIAL",
+        "NU_REGISTRO",
+        "CO_GGREM",
+        "CO_EAN",
+        "NO_PRODUTO",
+        "DS_APRESENTACAO",
+        "DS_CAS",
+        "DS_SUBSTANCIA",
+        "TP_PRODUTO",
+        "TP_LCCT",
+        "ST_REST_HOSP",
+        "ST_CAP",
+        "ST_CONFAZ87",
+        "NU_PF0_INTEIRO",
+        "NU_PF18_INTEIRO"
+      ]
+    },
+    "TA_RESTRICAO_MEDICAMENTO.csv": {
+      "url": "https://dados.anvisa.gov.br/dados/TA_RESTRICAO_MEDICAMENTO.csv",
+      "header": [
+        "NO_PRODUTO",
+        "DS_CATEGORIA_PRODUTO",
+        "NO_PRINICIPIO_ATIVO",
+        "DS_CONCENTRACAO",
+        "DS_DESTINACAO",
+        "DS_FORMA_FISICA",
+        "DS_RESTRICAO_PRESCRICAO",
+        "ST_RESTRITO_HOSPITAL",
+        "DS_RESTRICAO_USO"
+      ]
+    },
+    "DADOS_ABERTOS_MEDICAMENTOS.csv": {
+      "url": "https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv",
+      "header": null
+    },
+    "Documentacao_e_Dicionario_de_Dados_MEDICAMENTOS.pdf": {
+      "url": "https://dados.anvisa.gov.br/dados/Documentacao_e_Dicionario_de_Dados_MEDICAMENTOS.pdf",
+      "header": null
+    },
+    "TA_PRECOS_MEDICAMENTOS-Dicionario.pdf": {
+      "url": "https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS%20-%20Dicionario%20de%20Dados.pdf",
+      "header": null
+    },
+    "Documentacao_e_Dicionario_Restricao_Medicamento_V1.pdf": {
+      "url": "https://dados.anvisa.gov.br/dados/Documentacao_e_Dicionario_Restricao_Medicamento_V1.pdf",
+      "header": null
+    }
+  }
+}

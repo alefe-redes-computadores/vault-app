@@ -87,7 +87,7 @@ ok(stock.medicationStockUnitLabelM143(2,'gotas')==='gotas','estoque duas gotas')
 ok(stock.medicationStockUnitLabelM143(10,'ml')==='ml','ml nao recebe plural inventado');
 ok(stock.medicationStockUnitLabelM143(10,'embalagem personalizada')==='embalagem personalizada','unidade desconhecida preservada');
 const supply=read('app/saude/fornecimento/page.tsx');
-ok(supply.includes('color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:getClinicalTheme(t.nome).hex'),'fornecimento herda tema canonico quando cor nao informada');
+ok(supply.includes('const color=treatmentColorR03(t.cor)')&&supply.includes('treatment ? treatmentColorR03(treatment.cor) : theme.hex')&&supply.includes('TreatmentIdentityIconR03'),'fornecimento herda cor explícita ou fallback visual compartilhado sem classificar por nome');
 const brain=read('components/home/HomeBrainEvidenceGroup.tsx');
 ok(brain.includes('expandedM143')&&brain.includes('aria-expanded={expandedM143}'),'Brain recolhe evidencias longas sem perder acesso');
 ok(brain.includes('insights.map((insight, index)'),'Brain preserva todos os sinais originais');

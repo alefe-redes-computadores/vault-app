@@ -8,12 +8,13 @@ for (const marker of [
   "ClinicalListSummary",
   'badgeLabel="CUIDADO CONECTADO"',
   "treatmentCommand",
-  "getVaultTreatmentIcon",
+  "TreatmentIdentityIconR03",
   "treatmentColor",
   "withReturnTarget",
   "content-visibility:auto",
 ]) assert(treatments.includes(marker), `V190 treatment command missing: ${marker}`);
 
+assert(treatments.includes("<TreatmentIdentityIconR03 entity={tratamento}"), "rendered treatment identity must use canonical owned entity");
 assert.equal((treatments.match(/useMedicamentos\(\)/g) || []).length, 1, "treatment list must have one medication subscription");
 assert(treatments.includes("analisarTratamento"), "treatment insight must remain");
 assert(treatments.includes("gastoPorMedicamento"), "acquisition history must remain");

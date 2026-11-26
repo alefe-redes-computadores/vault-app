@@ -1,0 +1,2 @@
+'use strict';
+const fs=require('node:fs'),crypto=require('node:crypto'),g=require('./build-anvisa-canonical-package.js');const b=fs.readFileSync(process.argv[2]),d=g.decodeBuffer(b),t=d.text.replace(/^\uFEFF/,'');const result=g.inspectCsv(t,g.detectDelimiter(t.slice(0,t.search(/\r?\n/))));console.log(JSON.stringify({sha256:crypto.createHash('sha256').update(b).digest('hex'),encoding:d.encoding,bytes:b.length,...result}));

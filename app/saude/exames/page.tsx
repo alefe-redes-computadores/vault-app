@@ -1,5 +1,7 @@
 // app/saude/exames/page.tsx
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 
 import {
   useMemo,
@@ -28,7 +30,6 @@ import {
   useHapticFeedback,
 } from "@/lib/haptics";
 import {
-  getClinicalTheme,
   getDaysUntil,
 } from "@/lib/health-utils";
 
@@ -808,26 +809,16 @@ export default function ExamesPage() {
                           (
                             tratamento
                           ) => {
-                            const theme =
-                              getClinicalTheme(
-                                tratamento.nome
-                              );
-
-                            const Icon =
-                              theme.icon;
+                            const color = treatmentColorR03(tratamento.cor);
 
                             return (
                               <span
                                 key={
                                   tratamento.id
                                 }
-                                className={`inline-flex max-w-[120px] items-center gap-0.5 truncate rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide ${theme.tagClass}`}
+                                className={`inline-flex max-w-[120px] items-center gap-0.5 truncate rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide`} style={{borderColor:`${color}55`,backgroundColor:`${color}15`,color}}
                               >
-                                <Icon
-                                  size={
-                                    9
-                                  }
-                                />
+                                <TreatmentIdentityIconR03 entity={tratamento} size={9}/>
 
                                 {
                                   tratamento.nome

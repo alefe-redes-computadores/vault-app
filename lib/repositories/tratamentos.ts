@@ -1,3 +1,4 @@
+import {makeVisualIntentR03,type VisualIntentR03} from "@/lib/health-profile/treatment-preferences-r03";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/tratamentos.ts
 
@@ -32,6 +33,11 @@ type CreateTratamentoBase =
     | "created_at"
     | "updated_at"
     | "synced"
+    | "visual_icon_updated_at"
+    | "visual_icon_revision"
+    | "visual_icon_operation_id"
+    | "visual_identity_pending"
+    | "visual_legacy_choice"
   >;
 
 export type CreateTratamentoInput =
@@ -67,6 +73,11 @@ type UpdateTratamentoBase =
       | "created_at"
       | "updated_at"
       | "synced"
+      | "visual_icon_updated_at"
+    | "visual_icon_revision"
+    | "visual_icon_operation_id"
+    | "visual_identity_pending"
+    | "visual_legacy_choice"
     >
   >;
 
@@ -87,6 +98,8 @@ export type UpdateTratamentoInput =
      */
     medicamento_ids?:
       string[];
+    /** Revision observed when the user selected a new icon. */
+    expected_visual_icon_revision?: number;
   };
 
 export type TratamentoUpdateResult = {
@@ -572,6 +585,10 @@ async function putMedicamentoAndQueue(
 // REPOSITORY
 // ============================================================
 
+async function enqueueVisualIdentityR03(id:string,user_id:string,person_id:string,intent:VisualIntentR03){
+  await enfileirarOperacao("tratamento_visual_identity","update",{id,user_id,person_id,...intent},{dispatchSync:false});
+}
+
 export const tratamentosRepository = {
   // ==========================================================
   // LIST
@@ -664,6 +681,10 @@ export const tratamentosRepository = {
     const userId =
       await getAuthenticatedUserId();
 
+    if(data.visual_icon!==undefined){
+      const owner=await db.persons.get(personId);
+      if(owner?.user_id!==userId)throw new Error("Pessoa não pertence à conta autenticada.");
+    }
     const now =
       nowIso();
 
@@ -694,10 +715,12 @@ export const tratamentosRepository = {
         _medicamentoIds,
       id:
         _inputId,
+      visual_icon: visualChoice,
       ...tratamentoData
     } =
       data;
 
+    for(const field of ['visual_icon_revision','visual_icon_updated_at','visual_icon_operation_id','visual_identity_pending','visual_legacy_choice'] as const)delete (tratamentoData as Record<string,unknown>)[field];
     const tratamentoCompleto:
       Tratamento = {
       ...tratamentoData,
@@ -739,6 +762,8 @@ export const tratamentosRepository = {
         false,
     };
 
+    if(visualChoice!==undefined)tratamentoCompleto.visual_identity_pending=makeVisualIntentR03(tratamentoCompleto,visualChoice,0,crypto.randomUUID());
+
     const medicamentosDescontinuados:
       Medicamento[] = [];
 
@@ -748,8 +773,10 @@ export const tratamentosRepository = {
         db.tratamentos,
         db.medicamentos,
         db.syncQueue,
+        db.persons,
       ],
       async () => {
+        if(data.visual_icon!==undefined&&(await db.persons.get(personId))?.user_id!==userId)throw new Error("Pessoa não pertence à conta autenticada.");
         await db.tratamentos.add(
           tratamentoCompleto
         );
@@ -763,6 +790,8 @@ export const tratamentosRepository = {
               false,
           }
         );
+
+        if(tratamentoCompleto.visual_identity_pending)await enqueueVisualIdentityR03(tratamentoId,userId,personId,tratamentoCompleto.visual_identity_pending);
 
         for (
           const medicamento of
@@ -937,10 +966,13 @@ export const tratamentosRepository = {
     const {
       medicamento_ids:
         _medicamentoIds,
+      expected_visual_icon_revision,
+      visual_icon: visualChoice,
       ...tratamentoChanges
     } =
       data;
 
+    for(const field of ['visual_icon_revision','visual_icon_updated_at','visual_icon_operation_id','visual_identity_pending','visual_legacy_choice'] as const)delete (tratamentoChanges as Record<string,unknown>)[field];
     const now =
       nowIso();
 
@@ -1004,10 +1036,16 @@ export const tratamentosRepository = {
         db.syncQueue,
       ],
       async () => {
+        let visualIntent:VisualIntentR03|undefined;
+        if(visualChoice!==undefined){
+          const live=await db.tratamentos.get(safeId);
+          if(!live||live.user_id!==userId||live.person_id!==safePersonId||expected_visual_icon_revision===undefined)throw new Error("Identidade visual alterada; reabra o tratamento.");
+          visualIntent=makeVisualIntentR03(live,visualChoice,expected_visual_icon_revision,crypto.randomUUID());
+        }
         const updated =
           await db.tratamentos.update(
             safeId,
-            payload
+            {...payload,...(visualIntent?{visual_identity_pending:visualIntent}:{})}
           );
 
         if (
@@ -1043,6 +1081,8 @@ export const tratamentosRepository = {
               false,
           }
         );
+
+        if(visualIntent)await enqueueVisualIdentityR03(safeId,userId,safePersonId,visualIntent);
 
         if (
           medicamentosDesejadosIds !==
@@ -1248,6 +1288,19 @@ export const tratamentosRepository = {
 
       medicamentosDescontinuados,
     };
+  },
+
+  /** Visual intent has its own durable queue key; clinical state is untouched. */
+  async updateVisualIdentity(id:string,personId:string,value:unknown,expectedRevision:number):Promise<void>{
+    const safeId=requireTratamentoId(id),pid=requirePersonId(personId),uid=await getAuthenticatedUserId();
+    await db.transaction("rw",[db.tratamentos,db.syncQueue],async()=>{
+      const current=await db.tratamentos.get(safeId);
+      if(!current||current.user_id!==uid||current.person_id!==pid)throw new Error("Tratamento fora da pessoa autenticada.");
+      const intent=makeVisualIntentR03(current,value,expectedRevision,crypto.randomUUID());
+      await db.tratamentos.update(safeId,{visual_identity_pending:intent});
+      await enqueueVisualIdentityR03(safeId,uid,pid,intent);
+    });
+    solicitarProcessamentoSync();
   },
 
   // ==========================================================
@@ -1681,6 +1734,7 @@ export const tratamentosRepository = {
           );
         }
 
+        await db.syncQueue.where("chave").equals(`tratamento_visual_identity:${safeId}`).delete();
         await db.tratamentos.delete(
           safeId
         );

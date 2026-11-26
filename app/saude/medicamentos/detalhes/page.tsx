@@ -29,7 +29,7 @@ import { MedicationDetailCareHubM148 } from "@/components/saude/MedicationDetail
 import { MedicationKnowledgePanelM153P4 } from "@/components/saude/MedicationKnowledgePanelM153P4";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
 import { countLabel, humanizeStockUnit, shortPrescriptionKnowledgeLabel } from "@/lib/medications/visual-copy";
-import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 import { buildMedicationDetailHubM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
 import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
@@ -2880,14 +2880,14 @@ function MedicamentoDetalhesContent() {
                           tratamento:
                             Tratamento
                         ) => (
-                          (() => { const TreatmentIcon = getVaultTreatmentIcon(tratamento); const color = safeTreatmentColorP7(tratamento.cor); return <span
+                          (() => { const color = safeTreatmentColorP7(tratamento.cor); return <span
                             key={
                               tratamento.id
                             }
                             className="inline-flex items-center gap-1 rounded-full border border-surface-border bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ink-muted"
                             style={color ? {borderColor:`${color}66`,backgroundColor:`${color}12`,color} : undefined}
                           >
-                            <TreatmentIcon size={10}/>
+                            <TreatmentIdentityIconR03 entity={tratamento} size={10}/>
                             {
                               tratamento.nome
                             }

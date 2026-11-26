@@ -1,3 +1,4 @@
+import {preserveTreatmentVisualR03} from "../health-profile/treatment-preferences-r03";
 /**
  * VAULT A0 — Preservação de vínculos locais históricos durante cutover aditivo.
  * Escopo: somente campos que não existiam no Postgres anterior à Macro1.
@@ -26,6 +27,6 @@ function mergeMissing(row: Row, local: Row | undefined, fields: readonly string[
 export const preserveA0Cirurgia = (row: Row, local?: Row): Row =>
   mergeMissing(row, local, ['tratamento_ids','cid_ids'], true);
 export const preserveA0Tratamento = (row: Row, local?: Row): Row =>
-  mergeMissing(row, local, ['data_inicio','condicao'], true);
+  preserveTreatmentVisualR03(mergeMissing(row, local, ['data_inicio','condicao'], true),local);
 export const preserveA0Hospital = (row: Row, local?: Row): Row =>
   mergeMissing(row, local, ['medico_ids'], false);

@@ -2,6 +2,8 @@
 "use client";
 
 import {useAuth} from "@/hooks/useAuth";
+import {TreatmentIdentityIconR03,TreatmentIdentityEditorR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {useHealthSupply} from "@/hooks/useHealthSupply";
 import {treatmentCareContext} from "@/lib/treatment-care-context";
@@ -822,9 +824,7 @@ function TratamentoContent() {
   // TEMA
   // ==========================================================
 
-  const theme = getClinicalTheme(tratamento.nome);
-
-  const IconComp = theme.icon;
+  const treatmentColor = treatmentColorR03(tratamento.cor);
 
   // ==========================================================
   // RENDER
@@ -832,7 +832,7 @@ function TratamentoContent() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] vault-adaptive-tail">
         <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -853,7 +853,7 @@ function TratamentoContent() {
 
               <div className="min-w-0">
                 <p
-                  className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}
+                  className="font-mono text-[11px] uppercase tracking-[0.28em]" style={{color:treatmentColor}}
                 >
                   Painel Clínico
                 </p>
@@ -990,22 +990,24 @@ function TratamentoContent() {
             variants={fadeUp}
             initial="initial"
             animate="animate"
-            className={`relative overflow-hidden rounded-[20px] border bg-surface p-4 shadow-sm ${theme.borderClass}`}
+            className="relative overflow-hidden rounded-[20px] border bg-surface p-4 shadow-sm"
             style={{
-              borderLeft: `6px solid ${theme.hex}`,
+              borderLeft: `6px solid ${treatmentColor}`,
+              borderColor: `${treatmentColor}55`,
+              borderLeftColor: treatmentColor,
             }}
           >
             <div
-              className={`pointer-events-none absolute -bottom-8 -right-8 z-0 opacity-[0.03] ${theme.textClass}`}
+              className="pointer-events-none absolute -bottom-8 -right-8 z-0 opacity-[0.03]"
             >
-              <IconComp size={180} />
+              <TreatmentIdentityIconR03 entity={tratamento} size={180}/>
             </div>
 
             <div className="relative z-10 flex items-start gap-3">
               <div
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm" style={{borderColor:`${treatmentColor}55`,backgroundColor:`${treatmentColor}15`}}
               >
-                <IconComp size={22} />
+                <TreatmentIdentityIconR03 entity={tratamento} size={22}/>
               </div>
 
               <div className="min-w-0 pt-1">
@@ -1033,6 +1035,7 @@ function TratamentoContent() {
               </div>
             </div>
 
+            <TreatmentIdentityEditorR03 entity={tratamento}/>
             {cidsVinculados.length > 0 && (
               <div className="relative z-10 mt-4 rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
@@ -1150,9 +1153,9 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          <TreatmentCareLinks context={careContext} color={theme.hex} onNavigate={href=>router.push(href)} loading={supply.loading}/>
+          <TreatmentCareLinks context={careContext} color={treatmentColor} onNavigate={href=>router.push(href)} loading={supply.loading}/>
 
-          <TreatmentVisitBrief dossier={careDossier} color={theme.hex} onNavigate={href=>router.push(href)}/>
+          <TreatmentVisitBrief dossier={careDossier} color={treatmentColor} onNavigate={href=>router.push(href)}/>
           <TreatmentSymptomTimeline dossier={careDossier} onNavigate={href=>router.push(href)}/>
 
           {tratamentoInsight && tratamentoInsight.alertas.length > 0 && (
