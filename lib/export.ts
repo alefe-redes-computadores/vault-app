@@ -133,12 +133,16 @@ export async function exportAllData(userId: string): Promise<string> {
       const vitalEntries=await Promise.all(VITAL_TABLES.map(async name=>[name,(await db.table(name).where('user_id').equals(userId).toArray()).filter(r=>r.user_id===userId&&ownedPeople.has(r.person_id))] as const));
       const queue = await db.syncQueue.toArray();
       const a1Entries=await Promise.all((["a1_treatment_phases","a1_prescription_links","a1_supply_locations"] as const).map(async name=>[name,(await db.table(name).where("user_id").equals(userId).toArray()).filter(r=>r.user_id===userId&&ownedPeople.has(r.person_id))] as const));
-      const clinicalQueue=queue.filter(q=>(MACRO02_CLINICAL_BACKUP_TABLES as readonly string[]).includes(q.table)&&q.payload.user_id===userId);
+      const clinicalCandidates=queue.filter(q=>(MACRO02_CLINICAL_BACKUP_TABLES as readonly string[]).includes(q.table));
+      const clinicalQueue=clinicalCandidates.filter(q=>q.payload?.user_id===userId);
+      // Do not export an unowned payload (possible foreign data). Record that
+      // the file cannot prove full queue scope, without exposing its contents.
+      const omittedUnowned=clinicalCandidates.filter(q=>typeof q.payload?.user_id!=='string'||!q.payload.user_id).length;
       const recovery = validateMacro02Backup({userId,persons,medications:medicamentos,doses:doseLogs.map(row=>({...row})),acquisitions:renovacoes.map(row=>({...row})),withdrawals:retiradas.map(row=>({...row})),queue});
       const data = {
         ...Object.fromEntries(vitalEntries),
         ...Object.fromEntries(a1Entries),
-        macro02_clinical_outbox: {version:1,user_id:userId,mode:"evidence_only_no_replay",rows:clinicalQueue},
+        macro02_clinical_outbox: {version:1,user_id:userId,mode:"evidence_only_no_replay",omitted_unowned_count:omittedUnowned,rows:clinicalQueue},
         macro02_recovery: recovery,
         export_date: new Date().toISOString(),
         version: "3.0",

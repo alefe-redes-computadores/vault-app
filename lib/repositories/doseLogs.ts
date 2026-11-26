@@ -654,7 +654,7 @@ function legacyQuantityInStockUnit(
  * separate row outbox, never a Premium envelope or a fallback after RPC. */
 async function commitDormantLegacyDose(request:Omit<ClinicalWriteRequest,'expected'> & {expected?:DoseSnapshot|null},existing:DoseLog|undefined,medication:Medicamento):Promise<string>{
  const id=request.identity;
- if(hasPremiumEvidence(existing)||medication.estoque_ciclo_id!=null)throw Error('Evidência Premium presente; revisão necessária antes de escrever pelo legado.');
+ if(hasPremiumEvidence(existing)||(medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true)))throw Error('Evidência Premium presente; revisão necessária antes de escrever pelo legado.');
  const current=premiumSnapshot(existing);
  if(request.expected!==undefined&&(Boolean(current)!==Boolean(request.expected)||current&&request.expected&&!verifyDoseSnapshotAck(request.expected,current)))throw Error('Dose alterada desde a revisão.');
  if(request.status==='clear'&&!existing?.id)throw Error('Não existe registro de dose para desmarcar.');
@@ -688,7 +688,7 @@ async function commitDormantLegacyDose(request:Omit<ClinicalWriteRequest,'expect
   const next=balance-delta;
   await db.medicamentos.update(id.medicamento_id,{estoque_quantidade:next,estoque_data_referencia:getLocalTodayISO(),updated_at:timestamp,synced:false});
   const saved=await db.medicamentos.get(id.medicamento_id);
-  if(!saved||saved.user_id!==id.user_id||saved.person_id!==id.person_id||saved.estoque_quantidade!==next||saved.estoque_ciclo_id!=null)throw Error('Saldo legado não confirmado.');
+  if(!saved||saved.user_id!==id.user_id||saved.person_id!==id.person_id||saved.estoque_quantidade!==next||(saved.estoque_ciclo_id!=null||('macro02_stock_managed' in saved&&saved.macro02_stock_managed===true)))throw Error('Saldo legado não confirmado.');
   await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});
   const stockQueue=await db.syncQueue.where('chave').equals(`medicamentos:${id.medicamento_id}`).first();
   if(!stockQueue||stockQueue.operation==='delete'||stockQueue.payload.user_id!==id.user_id||stockQueue.payload.person_id!==id.person_id||stockQueue.payload.estoque_quantidade!==next||stockQueue.payload.updated_at!==timestamp||stockQueue.payload.macro02_atomic!==undefined)throw Error('Fila legada não confirmou o saldo.');
@@ -1087,7 +1087,7 @@ export const doseLogsRepository = {
         .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id && row.dose_kind !== "sos" && row.dose_kind !== "extra");
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
         !row.tomado_em && !row.ignorado_em);
-      if(medication.estoque_ciclo_id!=null||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
+      if((medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true))||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
       const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
       if (oldBySlot.size !== oldPending.length) throw new Error("Há agendamentos duplicados no período. Revise-os antes de continuar.");
       // Não converter tomadas/ignoradas históricas em slots novos nem reaplicar consumo.
@@ -1161,7 +1161,7 @@ export const doseLogsRepository = {
         safePersonId,
         user.id
       );
-      if(medicamento.estoque_ciclo_id!=null)throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
+      if((medicamento.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamento&&medicamento.macro02_stock_managed===true)))throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
       const existing = await getDoseLogForSlot(
         safeMedicamentoId,
         safePersonId,

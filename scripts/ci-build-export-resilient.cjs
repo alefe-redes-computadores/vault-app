@@ -21,9 +21,10 @@ function pause(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function executeBuild() {
+function executeBuild(script = "build:export") {
+  if (!["build:export", "build"].includes(script)) throw new Error("Script de build inválido");
   return new Promise((resolve) => {
-    const child = spawn("npm", ["run", "build:export"], {
+    const child = spawn("npm", ["run", script], {
       cwd: process.cwd(),
       env: process.env,
       stdio: ["inherit", "pipe", "pipe"],
@@ -63,15 +64,16 @@ async function runWithFontRetry({
   wait = pause,
   write = (message) => process.stdout.write(message + "\n"),
   maxAttempts = MAX_ATTEMPTS,
+  label = "exportação Android",
 } = {}) {
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 5) {
     throw new Error("Quantidade de tentativas inválida");
   }
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    write(`M57: exportação Android ${attempt}/${maxAttempts} (fontes preservadas)`);
+    write(`M57: ${label} ${attempt}/${maxAttempts} (fontes preservadas)`);
     const result = await execute();
     if (result.code === 0) {
-      write(`M57: exportação aprovada na tentativa ${attempt}`);
+      write(`M57: ${label} aprovada na tentativa ${attempt}`);
       return 0;
     }
     if (!isTransientGoogleFontError(result.output || "")) {
@@ -89,7 +91,7 @@ async function runWithFontRetry({
   return 1;
 }
 
-module.exports = { isTransientGoogleFontError, runWithFontRetry, MAX_ATTEMPTS };
+module.exports = { isTransientGoogleFontError, runWithFontRetry, MAX_ATTEMPTS, executeBuild };
 
 if (require.main === module) {
   runWithFontRetry().then((exitCode) => {

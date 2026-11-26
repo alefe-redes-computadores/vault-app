@@ -314,6 +314,10 @@ export async function enfileirarOperacao(
     return;
   }
 
+  if(['doseLogs','medicamentos','renovacoes','retiradas'].includes(tabela)){
+    const owner=payloadNovo.user_id;
+    if(typeof owner!=='string'||!owner||existente.payload?.user_id!==owner)throw Error('Fila clínica com identidade conflitante; nenhuma intenção foi mesclada.');
+  }
   if(atomic)throw Error("Intenção acoplada imutável já existe; não será mesclada.");
   const operacaoAnterior =
     existente.operation as

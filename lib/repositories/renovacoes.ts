@@ -1239,7 +1239,7 @@ export const renovacoesRepository = {
         const movesStock=!somenteReceita&&typeof quantidade==='number'&&quantidade>0&&Boolean(dataAquisicao);
         const scope={user_id:userId,person_id:personId,medicationId:medicamentoId};
         const beforeStock=observedStockContext(currentMedication,scope),pendingQueue=await db.syncQueue.toArray();
-        if(authority.writer==='legacy'&&currentMedication.estoque_ciclo_id!=null)throw Error('Ciclo Premium existente; revisão necessária.');
+        if(authority.writer==='legacy'&&(currentMedication.estoque_ciclo_id!=null||('macro02_stock_managed' in currentMedication&&currentMedication.macro02_stock_managed===true)))throw Error('Ciclo Premium existente; revisão necessária.');
         const premiumStock=movesStock&&authority.writer==='premium';
         const position=premiumStock?nextAtomicPosition(pendingQueue,beforeStock,currentMedication.updated_at??null):null;
         if(premiumStock&&receiptWithdrawal&&pendingQueue.some(q=>q.table==='retiradas'&&q.payload.id===receiptWithdrawal.id))throw Error('A retirada anterior aguarda sincronização. Preserve a fila antes de confirmar recebimento.');
@@ -1586,7 +1586,7 @@ export const renovacoesRepository = {
         const fresh=await db.renovacoes.get(safeId);
         if(!fresh||fresh.user_id!==userId||fresh.person_id!==safePersonId||fresh.updated_at!==atual.updated_at)throw Error('Aquisição alterada. Revise novamente.');
         const source=await db.medicamentos.get(fresh.medicamento_id);
-        if(!source||source.user_id!==userId||source.person_id!==safePersonId||source.estoque_ciclo_id!=null)throw Error('Aquisição vinculada a estoque incompatível.');
+        if(!source||source.user_id!==userId||source.person_id!==safePersonId||(source.estoque_ciclo_id!=null||('macro02_stock_managed' in source&&source.macro02_stock_managed===true)))throw Error('Aquisição vinculada a estoque incompatível.');
         // A1 is the single prescription-version ledger: do not mutate a linked
         // prescription into an acquisition or move its historical date/medicine.
         const a1Relations=await db.a1_prescription_links.where("person_id").equals(safePersonId)
@@ -1644,7 +1644,7 @@ export const renovacoesRepository = {
         );
 
         const medicamentoAtual = await db.medicamentos.get(renovacaoAtualizada.medicamento_id);
-        if (!medicamentoAtual || medicamentoAtual.user_id!==userId || medicamentoAtual.person_id !== safePersonId || medicamentoAtual.estoque_ciclo_id!=null) throw new Error("Medicamento da renovação não encontrado para reconciliar retirada.");
+        if (!medicamentoAtual || medicamentoAtual.user_id!==userId || medicamentoAtual.person_id !== safePersonId || (medicamentoAtual.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamentoAtual&&medicamentoAtual.macro02_stock_managed===true))) throw new Error("Medicamento da renovação não encontrado para reconciliar retirada.");
         await reconcileScheduledRetiradaFromRenovacao(renovacaoAtualizada, medicamentoAtual);
         await authority.assertCurrent();
       }
@@ -1711,7 +1711,7 @@ export const renovacoesRepository = {
         const fresh=await db.renovacoes.get(safeId);
         if(!fresh||fresh.user_id!==userId||fresh.person_id!==safePersonId||fresh.updated_at!==renovacao.updated_at)throw Error('Aquisição alterada. Revise novamente.');
         const source=await db.medicamentos.get(fresh.medicamento_id);
-        if(!source||source.user_id!==userId||source.person_id!==safePersonId||source.estoque_ciclo_id!=null)throw Error('Aquisição vinculada a estoque incompatível.');
+        if(!source||source.user_id!==userId||source.person_id!==safePersonId||(source.estoque_ciclo_id!=null||('macro02_stock_managed' in source&&source.macro02_stock_managed===true)))throw Error('Aquisição vinculada a estoque incompatível.');
         const linked=await db.retiradas.where("renovacao_realizada_id").equals(safeId).toArray();
         if(linked.some(r=>r.person_id===safePersonId&&r.user_id===userId))throw new Error("Este recebimento está vinculado a uma retirada e ao estoque. A exclusão precisa de estorno.");
         await detachOrDeleteRetiradaFromRenovacao(renovacao);

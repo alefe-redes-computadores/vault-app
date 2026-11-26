@@ -9,6 +9,7 @@ export function countMacro02Pending(rows:readonly PendingItem[],accountId:string
  let legacy=0,premium=0,unclassified=0;
  for(const row of rows){
   if(!['doseLogs','medicamentos','renovacoes','retiradas'].includes(row.table))continue;
+  if(!row.payload||typeof row.payload!=='object'||Array.isArray(row.payload)){unclassified++;continue;}
   if(typeof row.payload.user_id!=='string'||!row.payload.user_id){unclassified++;continue;}
   if(row.payload.user_id!==accountId)continue;
   if(row.payload.macro02_atomic!==undefined){try{const intent=intentFromQueue(row);if(!intent||intent.stockBefore.user_id!==accountId)throw Error('scope');premium++;}catch{unclassified++;}continue;}

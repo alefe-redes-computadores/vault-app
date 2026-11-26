@@ -15,7 +15,7 @@ export function validateMacro02Backup(input:{userId:string;persons:readonly Scop
  const doses=new Map(input.doses.filter(r=>owned(r as ScopedRow)).map(r=>[String(r.id),r]));
  const acq=new Map(input.acquisitions.filter(r=>owned(r as ScopedRow)).map(r=>[String(r.id),r]));
  for(const row of input.doses){if(row.user_id!==userId)continue;const protectedFact=['unidade_dose','unidade_dose_rotulo','fonte_unidade','estoque_movimento','farmaco_snapshot'].some(k=>row[k]!=null);if(!protectedFact)continue;const med=meds.get(String(row.medicamento_id));if(!owned(row as ScopedRow)||!med||med.person_id!==row.person_id||!verifyDoseSnapshotAck(row as DoseSnapshot,row as DoseSnapshot))throw Error('Fato histórico protegido inválido no backup.');}
- const queue=input.queue.filter(r=>r.payload.user_id===userId&&r.payload.macro02_atomic!==undefined);
+ const queue=input.queue.filter(r=>r.payload&&r.payload.user_id===userId&&r.payload.macro02_atomic!==undefined);
  const scopes=new Map<string,{user_id:string;person_id:string;medicationId:string}>();const ops=new Set<string>();
  for(const q of queue){const i=intentFromQueue(q)!;const s=i.stockBefore;if(!persons.has(s.person_id)||!meds.has(s.medicationId)||ops.has(i.operationId))throw Error('Intenção sem escopo ou duplicada no backup.');ops.add(i.operationId);scopes.set(s.medicationId,s);}
  for(const scope of scopes.values()){

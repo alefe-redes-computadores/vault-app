@@ -1,5 +1,7 @@
 import {inspectClinicalBackupEvidence} from '@/lib/dose-premium/clinical-backup-evidence';
 import {db} from '@/lib/db';
+import {supabase} from '@/lib/supabase/client';
+import {Macro02RecoveryStageDB,restoreMacro02StageEmpty,removeMacro02RecoveryStage} from '@/lib/sync/macro02-recovery-stage';
 import {getLocalFirstAuthUser} from '@/lib/supabase/local-auth';
 import {enfileirarOperacao,solicitarProcessamentoSync} from '@/lib/sync/enfileirarOperacao';
 import {classifyMacro02RecoveryFile,planMacro02QueueRecovery,readMacro02RecoveryFile} from '@/lib/dose-premium/backup-recovery';
@@ -34,4 +36,37 @@ export async function recoverMacro02Pending(uid:string,pending:readonly PendingI
   await authority.assertCurrent();return missing.length;
  });
  if(count)solicitarProcessamentoSync();return count;
+}
+
+/** Staging is deliberately separate from the operational DB. The authenticated
+ * R2 read is evidence only, and expires normally. No grant is reused for replay. */
+async function withMacro02RecoverySession<T>(uid:string,run:(assertSession:()=>void)=>Promise<T>):Promise<T>{
+ if(!uid||typeof window==='undefined')throw Error('Conta não confirmada.');
+ let invalidated=false;
+ const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
+  if(event!=='INITIAL_SESSION'||session?.user.id!==uid)invalidated=true;
+ });
+ const assertSession=()=>{if(invalidated)throw Error('Sessão mudou; operação de cópia isolada cancelada.');};
+ try{const auth=await getLocalFirstAuthUser();if(auth.error||auth.data.user?.id!==uid)throw Error('Conta não confirmada.');assertSession();return await run(assertSession);}
+ finally{subscription.unsubscribe();}
+}
+export async function stageMacro02Backup(file:File,uid:string){
+ if(file.size>25*1024*1024)throw Error('Backup maior que 25 MB; preserve o arquivo para revisão assistida.');
+ return withMacro02RecoverySession(uid,async assertSession=>{
+  const bytes=await file.arrayBuffer();const sourceSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+  const value:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+  const parsed=readMacro02RecoveryFile(value,uid);assertSession();
+  const ledger=await macro02Authority().readLedger(uid,parsed.pending);assertSession();
+  const stageDB=new Macro02RecoveryStageDB();try{return await restoreMacro02StageEmpty(stageDB,{value,uid,ledger,fence:ledger.fence_id,sourceSha256,assertSession});}finally{stageDB.close();}
+ });
+}
+export async function getMacro02StagedSummary(uid:string){
+ return withMacro02RecoverySession(uid,async assertSession=>{
+  const stageDB=new Macro02RecoveryStageDB();try{const value=await stageDB.evidence.get(uid);assertSession();return value?{rows:value.rows,queue:value.queue,issues:value.issues.length,outboxScopeComplete:value.outboxScopeComplete,confirmed:value.confirmed.length,needsReview:value.needsReview}:null;}finally{stageDB.close();}
+ });
+}
+export async function clearMacro02StagedBackup(uid:string){
+ return withMacro02RecoverySession(uid,async assertSession=>{
+  const stageDB=new Macro02RecoveryStageDB();try{await removeMacro02RecoveryStage(stageDB,uid,assertSession);}finally{stageDB.close();}
+ });
 }

@@ -460,7 +460,7 @@ export const medicamentosRepository = {
     await authority.assertCurrent();
     if(authority.writer!=='legacy')throw Error('MACRO02_CREATE_CUTOVER_NOT_CERTIFIED');
     const person=await db.persons.get(data.person_id);
-    if(!person||person.user_id!==user.id||payload.estoque_ciclo_id!=null)throw Error('Pessoa ou estoque incompatível com a release dormente.');
+    if(!person||person.user_id!==user.id||(payload.estoque_ciclo_id!=null||('macro02_stock_managed' in payload&&payload.macro02_stock_managed===true)))throw Error('Pessoa ou estoque incompatível com a release dormente.');
     const createdId =
       await safeAddMedicamento(
         payload
@@ -515,11 +515,11 @@ export const medicamentosRepository = {
       await authority.assertCurrent();
       const previous=await db.medicamentos.get(id);if(!previous||previous.user_id!==userId||previous.person_id!==personId)throw Error('Estoque fora da pessoa ativa.');
       if(authority.writer==='legacy'){
-        if(previous.estoque_ciclo_id!=null)throw Error('Ciclo Premium existente; revisão necessária.');
+        if((previous.estoque_ciclo_id!=null||('macro02_stock_managed' in previous&&previous.macro02_stock_managed===true)))throw Error('Ciclo Premium existente; revisão necessária.');
         assertCountSnapshot(previous,expected);
         const timestamp=new Date().toISOString();
         await safeUpdateMedicamento(id,{estoque_quantidade:count,estoque_data_referencia:getLocalTodayISO(),updated_at:timestamp});
-        const saved=await db.medicamentos.get(id);if(!saved||saved.user_id!==userId||saved.person_id!==personId||saved.estoque_quantidade!==count||saved.estoque_ciclo_id!=null)throw Error('Contagem legada não confirmada.');
+        const saved=await db.medicamentos.get(id);if(!saved||saved.user_id!==userId||saved.person_id!==personId||saved.estoque_quantidade!==count||(saved.estoque_ciclo_id!=null||('macro02_stock_managed' in saved&&saved.macro02_stock_managed===true)))throw Error('Contagem legada não confirmada.');
         await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});
         const pending=await db.syncQueue.where('chave').equals(`medicamentos:${id}`).first();
         if(!pending||pending.operation==='delete'||pending.payload.user_id!==userId||pending.payload.person_id!==personId||pending.payload.estoque_quantidade!==count||pending.payload.updated_at!==timestamp||pending.payload.macro02_atomic!==undefined)throw Error('Contagem sem confirmação na fila local.');
@@ -632,7 +632,7 @@ export const medicamentosRepository = {
       const ordinary=queue.filter(q=>q.payload.user_id===scope.user_id&&q.payload.person_id===scope.person_id&&q.payload.macro02_atomic===undefined&&(q.table==='medicamentos'?q.payload.id===id:q.payload.medicamento_id===id));
       const newLocal=ordinary.some(q=>q.table==='medicamentos'&&q.operation==='add')&&!latest.estoque_ciclo_id;
       const before=observedStockContext(latest,scope);
-      if(authority.writer==='legacy'&&latest.estoque_ciclo_id!=null&&stockFieldsChanged(latest,{...latest,...payload}))throw Error('Ciclo Premium existente; revisão necessária.');
+      if(authority.writer==='legacy'&&(latest.estoque_ciclo_id!=null||('macro02_stock_managed' in latest&&latest.macro02_stock_managed===true))&&stockFieldsChanged(latest,{...latest,...payload}))throw Error('Ciclo Premium existente; revisão necessária.');
       await safeUpdateMedicamento(id,payload);
       const saved=await db.medicamentos.get(id);if(!saved||saved.user_id!==current.user_id||saved.person_id!==personId)throw Error('Medicamento não confirmado localmente.');
       if(authority.writer==='premium'&&stockFieldsChanged(latest,saved)&&!newLocal){

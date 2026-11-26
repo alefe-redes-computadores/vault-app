@@ -1,13 +1,16 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript');
 require('fake-indexeddb/auto'); const Dexie=require('dexie').default;
-const db=new Dexie('v203-access');db.version(1).stores({medicamentos:'id,person_id,user_id',retiradas:'id,person_id,medicamento_id,renovacao_origem_id',syncQueue:'id'});
+// Browser lifecycle double only; execute the real dormant authority and Dexie.
+global.window=new EventTarget();global.document=Object.assign(new EventTarget(),{visibilityState:'visible'});
+const authEvents=[];const supabase={auth:{onAuthStateChange:fn=>{authEvents.push(fn);return {data:{subscription:{unsubscribe(){}}}};}}};
+const db=new Dexie('v203-access');db.version(1).stores({medicamentos:'id,person_id,user_id',retiradas:'id,person_id,medicamento_id,renovacao_origem_id',syncQueue:'id,chave',renovacoes:'id,user_id,person_id',farmacias:'id',locais:'id'});
 let fail=false;const cache=new Map();
 function load(file){const f=path.resolve(file);if(cache.has(f))return cache.get(f).exports;const m=new Module(f,module);m.paths=Module._nodeModulePaths(path.dirname(f));cache.set(f,m);m.require=n=>{
 if(n==='@/lib/db')return {db};
 if(n==='@/lib/health-supply/resolve-withdrawal')return {loadSupplyWithdrawal:async()=>({})};
 if(n==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:'u'}}})};
-if(n==='@/lib/supabase/client')return {};
-if(n==='@/lib/sync/enfileirarOperacao')return {solicitarProcessamentoSync:()=>{},enfileirarOperacao:async(table,action,row)=>{if(fail)throw Error('queue failed');await db.syncQueue.add({id:crypto.randomUUID(),table,action,row})}};
+if(n==='@/lib/supabase/client')return {supabase};
+if(n==='@/lib/sync/enfileirarOperacao')return {solicitarProcessamentoSync:()=>{},enfileirarOperacao:async(table,action,row)=>{if(fail)throw Error('queue failed');await db.syncQueue.add({id:crypto.randomUUID(),chave:table+':'+row.id,table,operation:action,payload:row})}};
 return n.startsWith('@/')?load(n.slice(2)+'.ts'):n.startsWith('.')?load(path.resolve(path.dirname(f),n)+'.ts'):require(n)};
 m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,f);return m.exports;}
 (async()=>{

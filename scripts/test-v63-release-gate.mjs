@@ -579,6 +579,7 @@ const contracts = [
   "scripts/test-vault-macro02-host-review-p4.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-ingress.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-premium-closure.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-restore-staging.cjs", // isolated recovery and actual dormant Dexie writer
   "scripts/test-vault-macro02-stability-reconciliation.cjs", // Separate CAS and clinical ACK dispatch
   "scripts/test-vault-macro02-stock-chain-recovery.cjs", // Evolution Macro02: shared stock chain and recovery
   "scripts/test-vault-macro02-stock-cycle.cjs", // Evolution Macro02: cumulative clinical and UX vaccine

@@ -1,10 +1,10 @@
 "use client";
 // VAULT_RECOVERY_CENTER_V68
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P13DeviceDoseAudit } from "@/components/saude/P13DeviceDoseAudit";
 import { useRouter } from "next/navigation";
-import {inspectMacro02Backup} from "@/lib/sync/macro02-backup-recovery";
+import {inspectMacro02Backup,stageMacro02Backup,getMacro02StagedSummary,clearMacro02StagedBackup} from "@/lib/sync/macro02-backup-recovery";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -64,11 +64,27 @@ export default function RecoveryCenterPage() {
   const [result, setResult] = useState<string | null>(null);
   const [backupBusy,setBackupBusy]=useState(false);
   const [backupResult,setBackupResult]=useState<string|null>(null);
-  useEffect(()=>{setBackupResult(null);},[user?.id]);
+  const activeUid=useRef(user?.id);activeUid.current=user?.id;
+  const [staged,setStaged]=useState<Awaited<ReturnType<typeof getMacro02StagedSummary>>>(null);
+  const [confirmStageRemoval,setConfirmStageRemoval]=useState(false);
+  useEffect(()=>{let current=true;setBackupResult(null);setStaged(null);setConfirmStageRemoval(false);
+    if(user?.id)void getMacro02StagedSummary(user.id).then(value=>{if(current)setStaged(value);}).catch(()=>{});
+    return ()=>{current=false;};
+  },[user?.id]);
+  async function stageFile(file:File){
+    const uid=user?.id;if(!uid||backupBusy)return;setBackupBusy(true);setBackupResult(null);
+    try{const staged=await stageMacro02Backup(file,uid);if(activeUid.current===uid){setStaged(staged);setBackupResult('Cópia isolada preservada. Nenhum fato foi inserido na base ativa, nenhuma dose foi recalculada e nenhuma operação foi reenviada.');}}
+    catch(e){if(activeUid.current===uid)setBackupResult(e instanceof Error?e.message:'Não foi possível preparar a cópia isolada.');}finally{setBackupBusy(false);}
+  }
+  async function clearStage(){
+    const uid=user?.id;if(!uid||!confirmStageRemoval||backupBusy)return;setBackupBusy(true);
+    try{await clearMacro02StagedBackup(uid);if(activeUid.current===uid){setStaged(null);setBackupResult('Somente a cópia isolada foi removida. A base ativa e o arquivo original não foram alterados.');}}
+    catch(e){if(activeUid.current===uid)setBackupResult(e instanceof Error?e.message:'Não foi possível remover a cópia isolada.');}finally{setConfirmStageRemoval(false);setBackupBusy(false);}
+  }
   async function reviewFile(file:File){
-    if(!user||backupBusy)return;setBackupBusy(true);setBackupResult(null);
-    try{const review=await inspectMacro02Backup(file,user.id);setBackupResult((review.pendingCount?`${review.pendingCount} intenção(ões) conferida(s): ${review.confirmed} com recibo íntegro e ${review.needsReview} precisam de revisão de estado remoto. Nenhuma operação foi reenviada nem restaurada.`:'Backup conferido: não contém intenções Premium pendentes. Nenhum dado foi restaurado.')+(review.outbox.complete?` Fila original preservada no arquivo: ${review.outbox.legacy} legada(s), ${review.outbox.premium} Premium, ${review.outbox.unclassified} ambígua(s), ${review.outbox.dependency} dependência(s).`:' Esta cópia não comprova a integralidade da fila legada.'));}
-    catch(e){setBackupResult(e instanceof Error?e.message:'Não foi possível conferir o backup.');}finally{setBackupBusy(false);}
+    const uid=user?.id;if(!uid||backupBusy)return;setBackupBusy(true);setBackupResult(null);
+    try{const review=await inspectMacro02Backup(file,uid);if(activeUid.current!==uid)return;setBackupResult((review.pendingCount?`${review.pendingCount} intenção(ões) conferida(s): ${review.confirmed} com recibo íntegro e ${review.needsReview} precisam de revisão de estado remoto. Nenhuma operação foi reenviada nem restaurada.`:'Backup conferido: não contém intenções Premium pendentes. Nenhum dado foi restaurado.')+(review.outbox.complete?` Fila original preservada no arquivo: ${review.outbox.legacy} legada(s), ${review.outbox.premium} Premium, ${review.outbox.unclassified} ambígua(s), ${review.outbox.dependency} dependência(s).${review.outbox.scopeComplete?'':' Escopo integral da fila não comprovado.'}`:' Esta cópia não comprova a integralidade da fila legada.'));}
+    catch(e){if(activeUid.current===uid)setBackupResult(e instanceof Error?e.message:'Não foi possível conferir o backup.');}finally{setBackupBusy(false);}
   }
 
   useEffect(() => {
@@ -241,6 +257,16 @@ export default function RecoveryCenterPage() {
             {backupBusy?'Conferindo…':'Conferir backup de doses'}
             <input type="file" accept="application/json,.json" className="sr-only" aria-label="Selecionar backup de doses" disabled={!user||backupBusy||syncBusy} onChange={e=>{const f=e.currentTarget.files?.[0];e.currentTarget.value='';if(f)void reviewFile(f);}}/>
           </label>
+          <div className="mt-4 rounded-2xl border border-surface-border p-3">
+            <p className="text-xs font-semibold">Cópia isolada para recuperação assistida</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Cria uma segunda cópia clínica neste aparelho, separada da base ativa e sem sincronização. Não é restauração definitiva. Guarde o arquivo original. Requer conexão para conferência dos recibos.</p>
+            {!staged?<label className="mt-3 flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-ice/20 px-3 text-xs text-ice focus-within:ring-2 focus-within:ring-ice">
+              Preparar cópia isolada
+              <input type="file" accept="application/json,.json" className="sr-only" disabled={!user||backupBusy||syncBusy||!isOnline} onChange={e=>{const f=e.currentTarget.files?.[0];e.currentTarget.value='';if(f)void stageFile(f);}}/>
+            </label>:<div className="mt-3 text-xs text-ink-muted"><p>{staged.rows} registros · {staged.queue} intenções originais · {staged.confirmed} recibos confirmados · {staged.issues} referências a revisar.</p><p className="mt-1">Envio e restauração ativa bloqueados até revisão.</p>{!staged.outboxScopeComplete&&<p className="mt-1 text-amber-300">Escopo integral da fila não comprovado. Preserve o dispositivo original, se disponível.</p>}
+              {confirmStageRemoval?<div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={backupBusy} onClick={()=>void clearStage()} className="rounded-xl border border-amber-400/30 px-3 py-2 text-amber-300">Confirmar remoção da cópia isolada</button><button type="button" onClick={()=>setConfirmStageRemoval(false)} className="rounded-xl px-3 py-2">Cancelar</button></div>:<button type="button" disabled={backupBusy} onClick={()=>setConfirmStageRemoval(true)} className="mt-3 rounded-xl border border-surface-border px-3 py-2">Remover somente cópia isolada</button>}
+            </div>}
+          </div>
           {backupResult&&<p role="status" className="mt-3 rounded-2xl bg-void p-3 text-xs leading-relaxed text-ink-muted">{backupResult}</p>}
         </section>
 
