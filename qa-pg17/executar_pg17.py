@@ -45,12 +45,10 @@ try:
  query('EXPAND',SQL/'01-expansao-inativa.sql',atomic=True)
  query('EXPAND_COMPAT',HERE/'expand-tests.sql')
  query('WRITERS',SQL/'02-escritores-inativos.sql',atomic=True)
- query('ROLES_AND_CUTOVER',HERE/'role-tests.sql')
- query('MAINTENANCE_AND_CASCADE',HERE/'maintenance-tests.sql')
- query('R4_DIRECTED',HERE/'pg-directed.sql',atomic=True)
- multi=run_multi([psql,'-X'],{**env,'PGUSER':'postgres'},logs);(logs/'PG_MULTI.json').write_text(json.dumps(multi,indent=2));status['PG_MULTI']=0
- query('R4_ADJUSTMENT',HERE/'pg-r3.sql')
- legacy=run_legacy_race([psql,'-X'],{**env,'PGUSER':'postgres'},logs);(logs/'PG_LEGACY_RACE.json').write_text(json.dumps(legacy,indent=2));status['PG_LEGACY_RACE']=0
+ query('COMPLEMENT',HERE/'01-complemento-dormente-PROPOSTA.sql',atomic=True)
+ query('CAPABILITY_LEDGER_LEGACY',HERE/'capability-tests.sql')
+ query('COMPLEMENT_ROLLBACK',HERE/'02-rollback-REVIEW-ONLY.sql',atomic=True)
+ query('ROLLBACK_ASSERT',HERE/'rollback-tests.sql')
 except Exception as e:
  status['ERROR']=str(e); print('FAIL',e,flush=True)
 finally:
@@ -58,6 +56,7 @@ finally:
   try:run('PG_STOP',[pg_ctl,'-D',str(cluster),'-m','fast','-w','stop'])
   except Exception as e:status['STOP_ERROR']=str(e)
  status['sql_sha256']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in SQL.glob('0[12]*.sql')}
+ status['complement_sha256']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in HERE.glob('*REVIEW-ONLY.sql')} | {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in HERE.glob('*PROPOSTA.sql')}
  status['fixture']=os.environ.get('M02_FIXTURE_MODE','synthetic')+', managed-role simulation, not full production schema clone';(logs/'STATUS.json').write_text(json.dumps(status,indent=2))
  dest=Path(os.environ.get('M02_EVIDENCE_DIR',str(Path.home()/'storage/downloads'))).expanduser();dest=dest if dest.is_dir() else Path.home();out=dest/('MACRO02-PG17-'+work.name+'.zip')
  with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
