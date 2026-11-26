@@ -84,3 +84,7 @@ ok(t.includes('cycle.acquiredAt')&&t.includes('cycle.startedAt')&&t.includes('cy
 ok(t.includes('não se vincula automaticamente')&&t.includes('não demonstra causalidade'),'nunca atribui fabricante ou causalidade por OCR');
 ok(g.includes('"scripts/test-vault-ci360-p3-longitudinal.cjs",\n  "scripts/test-vault-ci360-p4-pharmalens.cjs",'),'P4 integrada após P3, sem remover contratos');
 console.log(`CI360 P4 — ${count} verificações comportamentais, fonte e privacidade aprovadas`);
+
+// R03 catalog integrity: the existing V63 registration remains exactly once.
+require("node:child_process").execFileSync(process.execPath,["scripts/test-vault-pharmalens-catalog-integrity-r01.cjs"],{stdio:"inherit"});
+require("node:child_process").execFileSync(process.execPath,["scripts/test-vault-pharmalens-knowledge-authority-r03.cjs"],{stdio:"inherit"});

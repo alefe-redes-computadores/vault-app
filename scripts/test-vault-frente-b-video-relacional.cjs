@@ -13,7 +13,7 @@ ok(identity.includes('formatDoseQuantityB')&&timeline.includes('formatDoseQuanti
 ok(identity.includes('formatSleepDurationB')&&records.includes('originLabelB(event.record.source)'),'sono legível e origem explícita');
 ok(records.includes('metricIdentityB(event.record.tipo)')&&medical.includes('<MedicalDossierRowIconB row={row}')&&get('components/saude/MedicalDossierRowIconB.tsx').includes('metricIdentityB(row.visualB?.metric)'),'ambos consumidores usam tipo real');
 ok(medical.includes('<MedicalDossierRowIconB row={row}')&&get('components/saude/MedicalDossierRowIconB.tsx').includes('<MedicationFormatIcon formato={row.visualB.formato}')&&dossier.includes('visualB:medForRow'),'dossiê usa forma/cor por ID no consumidor real');
-ok(get('components/saude/MedicalDossierRowIconB.tsx').includes('getVaultTreatmentIcon')&&dossier.includes("visualB:{kind:'treatment'"),'tratamento usa autoridade A (somente leitura)');
+ok(get('components/saude/MedicalDossierRowIconB.tsx').includes('TreatmentIdentityIconR03')&&dossier.includes("visualB:{kind:'treatment'"),'tratamento usa autoridade A (somente leitura)');
 ok(compose.includes('id:"vacina"')&&compose.includes('id:"procedimento"')&&compose.includes('id:"documento"')&&compose.includes('id:"alergia"')&&compose.includes('id:"dose-rapida"'),'destinos canônicos e encaminhamentos no Adicionar');
 ok(!compose.slice(compose.indexOf('const SAUDE_COMPOSE_OPTIONS'),compose.indexOf('const SAUDE_DOCUMENTOS_COMPOSE_OPTIONS')).includes('icon: Plus,'),'menu saúde sem 12 ícones genéricos');
 ok(modal.includes('overscroll-contain')&&modal.includes('querySelectorAll<HTMLButtonElement>'),'foco e rolagem preservados');
@@ -43,7 +43,8 @@ const medicationIcon=Object.assign(function MedicationIcon(){},{displayName:'Med
 const treatmentResolverPath='lib/health-profile/treatment-icon.ts';
 const treatmentResolverJs=ts.transpileModule(get(treatmentResolverPath),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const treatmentResolver=new Module('published-treatment-resolver-a',module);
-treatmentResolver.require=id=>{if(id==='lucide-react')return iconMock;throw Error('Unexpected A resolver dependency '+id)};
+const treatmentMeta=new Module('treatment-meta-r03',module);treatmentMeta._compile(ts.transpileModule(get('lib/health-profile/treatment-preferences-r03.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,'treatment-meta-r03');
+treatmentResolver.require=id=>{if(id==='lucide-react')return iconMock;if(id==='./treatment-preferences-r03')return treatmentMeta.exports;throw Error('Unexpected A resolver dependency '+id)};
 treatmentResolver._compile(treatmentResolverJs,'published-treatment-resolver-a');
 const resolveTreatmentA=treatmentResolver.exports.getVaultTreatmentIcon;
 
@@ -51,7 +52,9 @@ const iconSource=get('components/saude/MedicalDossierRowIconB.tsx');
 const iconJs=ts.transpileModule(iconSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
 const mIcon=new Module('medical-row-icon-b',module);
 let treatmentArgB;
-mIcon.require=id=>id==='react/jsx-runtime'?{jsx:jsxRender,jsxs:jsxRender,Fragment:'fragment'}:id==='@/components/saude/MedicationFormatIcon'?{MedicationFormatIcon:medicationIcon}:id==='@/lib/health-profile/treatment-icon'?{getVaultTreatmentIcon:(entity)=>{treatmentArgB=entity;return resolveTreatmentA(entity);}}:id==='@/lib/ui/front-b-clinical-identity'?h:id==='lucide-react'?iconMock:require(id);
+const TreatmentIdentityBoundaryR03=({entity,style,...props})=>{treatmentArgB=entity;return jsxRender(resolveTreatmentA(entity),{...props,style});};
+const renderDossierChildR03=(type,props)=>type===TreatmentIdentityBoundaryR03?type(props):jsxRender(type,props);
+mIcon.require=id=>id==='react/jsx-runtime'?{jsx:renderDossierChildR03,jsxs:renderDossierChildR03,Fragment:'fragment'}:id==='@/components/saude/MedicationFormatIcon'?{MedicationFormatIcon:medicationIcon}:id==='@/components/saude/TreatmentIdentityR03'?{TreatmentIdentityIconR03:TreatmentIdentityBoundaryR03}:id==='@/lib/ui/front-b-clinical-identity'?h:id==='lucide-react'?iconMock:require(id);
 mIcon._compile(iconJs,'medical-row-icon-b');
 const medicalIcon=mIcon.exports.MedicalDossierRowIconB;
 const medEl=medicalIcon({row:{title:'Med',visualB:{kind:'medication',formato:'gota',cores:['#123456']}},fallbackIcon:iconMock.Pill,fallbackTone:'text-muted'});
@@ -68,7 +71,7 @@ ok(treatmentArgB?.id===undefined,'tratamento sem ID mantém fallback neutro da A
 const stableTreatment=medicalIcon({row:{title:'Nome alterado',visualB:{kind:'treatment',name:'Outro',treatmentId:'treatment-real-id'}},fallbackIcon:iconMock.Pill,fallbackTone:'text-muted'});
 const neutralTreatment=medicalIcon({row:{title:'Dor',visualB:{kind:'treatment',name:'Dor'}},fallbackIcon:iconMock.Pill,fallbackTone:'text-muted'});
 ok(treatmentEl.props.children.type===resolveTreatmentA({id:'treatment-real-id'})&&stableTreatment.props.children.type===treatmentEl.props.children.type,'consumidor B usa resolvedor A real e identidade estável ao renomear');
-ok(neutralTreatment.props.children.type===iconMock.HeartHandshake,'nome sem ID não produz classificação clínica');
+ok(neutralTreatment.props.children.type===iconMock.CircleHelp,'nome sem ID não produz classificação clínica');
 // Evaluate the actual EventRow consumer with synthetic user-owned records, without a DOM or network.
 const recordsForTest=records.replace('function EventRow({','export function EventRow({');
 ok(recordsForTest!==records,'consumer EventRow exported only inside the test runtime');
@@ -169,3 +172,5 @@ ok(registrationsR021.length===1&&registrationsR021[0]===1,'G-B03 vacina B regist
 console.log(`B_VIDEO_RELACIONAL_PASS=${count}`);
 // STB-01..09: preserve all 67 existing assertions; new suite runs as a hard dependency.
 require('./test-vault-stability-360.cjs');
+require('node:child_process').execFileSync(process.execPath,['scripts/test-vault-stability-r03.cjs'],{stdio:'inherit'});
+require('node:child_process').execFileSync(process.execPath,['scripts/test-vault-stb11-cas-transport-r03.cjs'],{stdio:'inherit'});

@@ -1,5 +1,7 @@
 // app/saude/cirurgias/novo/page.tsx
 "use client";
+import {treatmentColorR03,type TreatmentVisualChoiceR03} from "@/lib/health-profile/treatment-preferences-r03";
+import {TreatmentIdentityIconR03,TreatmentIdentityPickerR03} from "@/components/saude/TreatmentIdentityR03";
 import { SurgeryBodyFields } from "@/components/saude/SurgeryBodyFields";
 import { type SurgeryBody } from "@/lib/surgery-body";
 
@@ -310,52 +312,7 @@ function isValidTime(
   );
 }
 
-function getTratamentoIcon(
-  nome: string
-) {
-  const normalized =
-    nome.toLowerCase();
 
-  if (
-    normalized.includes(
-      "tdah"
-    )
-  ) {
-    return Brain;
-  }
-
-  if (
-    normalized.includes(
-      "dor"
-    ) ||
-    normalized.includes(
-      "neuropática"
-    )
-  ) {
-    return Flame;
-  }
-
-  if (
-    normalized.includes(
-      "depress"
-    )
-  ) {
-    return HeartPulse;
-  }
-
-  if (
-    normalized.includes(
-      "ansied"
-    ) ||
-    normalized.includes(
-      "ansiolítico"
-    )
-  ) {
-    return ShieldAlert;
-  }
-
-  return Activity;
-}
 
 // ============================================================
 // PAGE
@@ -615,6 +572,9 @@ export default function NovaCirurgiaPage() {
   ] =
     useState("");
 
+  const [quickTreatmentChoice,setQuickTreatmentChoice]=useState<{personId:string;value:TreatmentVisualChoiceR03}|null>(null);
+  const quickTreatmentIcon=quickTreatmentChoice?.personId===activePersonId?quickTreatmentChoice?.value??null:null;
+
   const [
     isSavingTratamento,
     setIsSavingTratamento,
@@ -775,6 +735,7 @@ export default function NovaCirurgiaPage() {
 
       if (
         !nome ||
+        !quickTreatmentIcon ||
         isSavingTratamento
       ) {
         return;
@@ -808,6 +769,7 @@ export default function NovaCirurgiaPage() {
           await tratamentosRepository.create(
             {
               nome,
+              visual_icon:quickTreatmentIcon,
 
               status:
                 "ativo",
@@ -843,6 +805,7 @@ export default function NovaCirurgiaPage() {
         setNewTratamentoName(
           ""
         );
+        setQuickTreatmentChoice(null);
       } catch (
         error
       ) {
@@ -1304,26 +1267,17 @@ export default function NovaCirurgiaPage() {
                       return null;
                     }
 
-                    const IconComp =
-                      getTratamentoIcon(
-                        tratamento.nome
-                      );
+
 
                     return (
                       <div
                         key={
                           tratamentoId
                         }
-                        className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5"
+                        className="flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5" style={{borderColor:`${treatmentColorR03(tratamento.cor)}55`,backgroundColor:`${treatmentColorR03(tratamento.cor)}15`,color:treatmentColorR03(tratamento.cor)}}
                       >
-                        <IconComp
-                          size={
-                            14
-                          }
-                          className="text-violet-400"
-                        />
-
-                        <span className="text-xs font-medium text-violet-300">
+                        <TreatmentIdentityIconR03 entity={tratamento} size={14}/>
+                        <span className="min-w-0 break-words text-xs font-medium">
                           {
                             tratamento.nome
                           }
@@ -2432,6 +2386,7 @@ export default function NovaCirurgiaPage() {
               }
               autoFocus
             />
+            <TreatmentIdentityPickerR03 value={quickTreatmentIcon} color={treatmentColorR03(null)} disabled={isSavingTratamento||!activePersonId} onChange={value=>{if(activePersonId)setQuickTreatmentChoice({personId:activePersonId,value});trigger("vibrate");}}/>
 
             <Button
               variant="primary"
@@ -2441,6 +2396,7 @@ export default function NovaCirurgiaPage() {
               }
               disabled={
                 !newTratamentoName.trim() ||
+                !quickTreatmentIcon ||
                 isSavingTratamento ||
                 !activePersonId
               }

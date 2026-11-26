@@ -3,7 +3,7 @@
 import { Activity, CalendarClock, ChevronDown, ChevronRight, ClipboardList, FileText, Factory, Package, ShieldCheck } from "lucide-react";
 import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
 import type { MedicationDetailHubViewM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
-import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 
 /** M148 P2: a compact relational entrance. The original clinical sections stay authoritative. */
@@ -36,7 +36,7 @@ export function MedicationDetailCareHubM148({ view, treatments = [], hasRoutine,
         className="group flex min-h-16 w-full items-start gap-2.5 rounded-2xl border border-surface-border/65 bg-void/25 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 active:bg-surface-raised/70"
         aria-label={`Abrir ${title}: ${summary}`}>
         <Icon size={17} aria-hidden="true" className={`mt-0.5 shrink-0 ${tone}`}/>
-        <span className="min-w-0 flex-1"><strong className="block text-xs font-bold text-ink-primary">{title}</strong><span className="mt-0.5 block text-[11px] font-medium leading-snug text-ink-secondary">{summary}</span>{id === (hasRoutine ? "medicamento-rotina" : "medicamento-agora") && treatments.length ? <span className="mt-1.5 flex flex-wrap gap-1.5">{treatments.slice(0,3).map(treatment => { const TreatmentIcon = getVaultTreatmentIcon(treatment); const color = safeTreatmentColorP7(treatment.cor); return <span key={treatment.id || treatment.nome} className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-lg border px-2 text-[10px] font-semibold" style={color ? {borderColor:`${color}66`,backgroundColor:`${color}12`,color} : undefined}><TreatmentIcon size={12}/><span className="truncate">{treatment.nome}</span></span>;})}</span> : <span className="mt-1 block text-[11px] leading-relaxed text-ink-muted">{detail}</span>}</span>
+        <span className="min-w-0 flex-1"><strong className="block text-xs font-bold text-ink-primary">{title}</strong><span className="mt-0.5 block text-[11px] font-medium leading-snug text-ink-secondary">{summary}</span>{id === (hasRoutine ? "medicamento-rotina" : "medicamento-agora") && treatments.length ? <span className="mt-1.5 flex flex-wrap gap-1.5">{treatments.slice(0,3).map(treatment => { const color = safeTreatmentColorP7(treatment.cor); return <span key={treatment.id || treatment.nome} className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-lg border px-2 text-[10px] font-semibold" style={color ? {borderColor:`${color}66`,backgroundColor:`${color}12`,color} : undefined}><TreatmentIdentityIconR03 entity={treatment} size={12}/><span className="truncate">{treatment.nome}</span></span>;})}</span> : <span className="mt-1 block text-[11px] leading-relaxed text-ink-muted">{detail}</span>}</span>
         <ChevronRight size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-ink-faint"/>
       </button>)}
     </div>

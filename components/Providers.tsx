@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import {TreatmentIdentityProviderR03} from "@/components/saude/TreatmentIdentityR03";
 import {VaultAdaptiveFooterR03} from "@/components/VaultAdaptiveFooterR03";
 const ContextualHelp = dynamic(() => import("@/components/help/ContextualHelp").then(module => module.ContextualHelp));
 import { isVaultNative } from "@/lib/native-runtime";
@@ -1381,6 +1382,7 @@ export function Providers({
       <VaultUpdateReconciler />
       <GlobalSyncIssueAlert />
       <ContextualHelp userId={user.id} personId={activePersonId} />
+        <TreatmentIdentityProviderR03>
         <div className="min-h-screen pb-24 vault-app-shell-r03">
           <VaultAdaptiveFooterR03 />
           <Suspense
@@ -1401,6 +1403,7 @@ export function Providers({
             <BottomNav />
           </Suspense>
         </div>
+        </TreatmentIdentityProviderR03>
       </HealthIntelligenceProvider>
       </ErrorBoundary>
   );

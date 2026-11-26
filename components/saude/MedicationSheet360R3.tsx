@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { catalogPackagesForMedicationUXR4 } from "@/lib/medications/catalog-packaging-ux-r4";
 import { ArrowUpRight, Brain, CalendarClock, ChevronRight, Clock3, Factory, FileCheck2, FilePenLine, History, Layers3, Package, Pill, Repeat2, ShieldCheck, ShoppingBag, X } from "lucide-react";
 
@@ -133,9 +133,8 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
           <section className="space-y-2 border-t border-surface-border/40 pt-3" aria-label="Tratamentos vinculados">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-primary"><Brain size={16} className="text-ink-muted"/>Tratamentos vinculados</h3>
           {value.treatments.length ? value.treatments.map((t,i)=>{
-            const TreatmentIcon = getVaultTreatmentIcon(t);
             return <div key={`${t.id||"noid"}-${i}`} className={rowClass}>
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-surface-border/50 bg-surface" style={t.color?{color:t.color}:undefined}><TreatmentIcon size={16}/></span>
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-surface-border/50 bg-surface" style={t.color?{color:t.color}:undefined}><TreatmentIdentityIconR03 entity={t} size={16}/></span>
             <span className="min-w-0 flex-1 break-words text-xs font-semibold text-ink-primary">{t.name}</span>
             {t.id && <button type="button" onClick={()=>navigate(`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id!)}`)} className="grid size-11 shrink-0 place-items-center rounded-lg border border-surface-border/60" aria-label={`Abrir tratamento ${t.name}`}><ChevronRight size={17}/></button>}
           </div>;}):<p className="rounded-xl border border-surface-border/40 bg-surface/35 p-3 text-xs text-ink-muted">Nenhum tratamento explicitamente vinculado a este medicamento.</p>}

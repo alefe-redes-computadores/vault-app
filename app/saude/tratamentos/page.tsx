@@ -61,7 +61,6 @@ import type {
 
 import {
   formatCurrency,
-  getClinicalTheme,
 } from "@/lib/health-utils";
 
 import {
@@ -77,7 +76,8 @@ import {
 } from "@/components/list";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
-import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
+import { treatmentColorR03 } from "@/lib/health-profile/treatment-preferences-r03";
 import { inspectTreatmentMedicationLinks } from "@/lib/health-intelligence/treatment-link-review";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 
@@ -899,10 +899,7 @@ function TratamentoListContent() {
                 }
                 const treatmentId = tratamento.id;
 
-                const theme = getClinicalTheme(tratamento.nome);
-
-                const IconComp = getVaultTreatmentIcon(tratamento);
-                const treatmentColor = getTreatmentColor(tratamento, theme.hex);
+                const treatmentColor = treatmentColorR03(tratamento.cor);
 
                 return (
                   <ListCard
@@ -932,11 +929,7 @@ function TratamentoListContent() {
                     density="compact"
                     className="[content-visibility:auto] [contain-intrinsic-size:148px]"
                     icon={
-                      <IconComp
-                        size={
-                          22
-                        }
-                      />
+                      <TreatmentIdentityIconR03 entity={tratamento} size={22}/>
                     }
                   >
                     {/* ==========================================

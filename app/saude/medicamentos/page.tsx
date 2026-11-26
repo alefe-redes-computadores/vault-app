@@ -141,7 +141,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components/saude/MedicationActionsSheetR4";
 import { MedicationSheet360R3, type Medication360Value, type Medication360Tab } from "@/components/saude/MedicationSheet360R3";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
-import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
@@ -1552,13 +1552,12 @@ export default function MedicamentosListPage() {
                 )}
               {Boolean(cardTreatments.length > 0) && <div data-vault-med360-treatment-tags className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0">
                 {cardTreatments.slice(0,compactCards ? 2 : 3).map(t=>{
-                  const TreatmentIcon = getVaultTreatmentIcon(t);
                   const color = safeTreatmentColorP7(t.cor);
                   return <button key={t.id || t.nome} type="button" data-vault-r5-context="tratamento"
                     onClick={event=>{event.preventDefault();event.stopPropagation();trigger("vibrate");if(t.id) router.push(`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id)}`);else openMedicationSheet360("ficha");}}
                     aria-label={`Abrir tratamento ${t.nome}`} className={`pointer-events-auto relative z-20 inline-flex min-h-6 max-w-full items-center gap-1 text-[10px] font-semibold ${compactCards ? "min-h-6 border-0 bg-transparent px-0" : "min-h-7 rounded-lg border border-surface-border/50 bg-surface/40 px-2"}`}
                     style={color ? (compactCards ? {color} : {borderColor:`${color}66`,backgroundColor:`${color}12`,color}) : undefined}>
-                    <TreatmentIcon size={12} aria-hidden="true"/><span className="min-w-0 max-w-full whitespace-normal break-words">{t.nome}</span>
+                    <TreatmentIdentityIconR03 entity={t} size={12}/><span className="min-w-0 max-w-full whitespace-normal break-words">{t.nome}</span>
                   </button>;
                 })}
                 {!compactCards && cardTreatments.length>3&&<button type="button" data-vault-r5-context="mais-tratamentos" aria-label={`Conferir todos os ${cardTreatments.length} tratamentos vinculados de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center text-[10px] text-ink-secondary underline underline-offset-2">+{cardTreatments.length-3} tratamentos na gaveta</button>}

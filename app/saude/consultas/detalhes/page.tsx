@@ -1,5 +1,6 @@
 // app/saude/consultas/detalhes/page.tsx
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
 import {safeClinicalReturnM150} from "@/lib/navigation/clinical-return-m150";
 import {ClinicalReverseProcedureA9} from '@/components/saude/ClinicalReverseProcedureA9';
 import {ConsultationRelationsViewP6} from "@/components/saude/ConsultationRelationsViewP6";
@@ -1355,7 +1356,8 @@ function DetalhesConsultaContent() {
                       }
                       className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/40 bg-surface-raised p-3 text-left transition-colors hover:border-violet-400/30"
                     >
-                      <div className="min-w-0">
+                      <TreatmentIdentityIconR03 entity={tratamento} size={18} className="shrink-0"/>
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink-primary">
                           {
                             tratamento.nome

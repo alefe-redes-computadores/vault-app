@@ -1,0 +1,50 @@
+name: VAULT Stability — prova estática Android isolada
+on:
+  push:
+    branches: ['vault/stability360-preview-20261126']
+permissions:
+  contents: read
+concurrency:
+  group: vault-stability-static-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-export:
+    if: github.ref == 'refs/heads/vault/stability360-preview-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Export Android, sem publicar APK ou PWA
+        shell: bash
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          CAPACITOR_BUILD: '1'
+          NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: android
+          VAULT_WEB_STATIC_BUILD: '0'
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+          node scripts/ci-build-export-resilient.cjs
+          node scripts/verify-static-release-stability.cjs android | tee "$RUNNER_TEMP/static-android-report.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Static-Android-Preview
+          path: out/
+          if-no-files-found: error
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Static-Android-Evidence
+          path: ${{ runner.temp }}/static-android-report.txt
+          if-no-files-found: error
+          retention-days: 7

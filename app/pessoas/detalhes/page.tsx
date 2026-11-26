@@ -1,5 +1,7 @@
 // app/pessoas/detalhes/page.tsx
 "use client";
+import {TreatmentIdentityIconR03,TreatmentIdentityProviderR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 
 import {
   useEffect,
@@ -97,56 +99,7 @@ import type {
 // HELPERS
 // ============================================================
 
-function getTratamentoIcon(
-  nome:
-    string
-) {
-  const normalized =
-    (
-      nome ||
-      ""
-    ).toLowerCase();
 
-  if (
-    normalized.includes(
-      "tdah"
-    )
-  ) {
-    return Brain;
-  }
-
-  if (
-    normalized.includes(
-      "dor"
-    ) ||
-    normalized.includes(
-      "neuropática"
-    )
-  ) {
-    return Flame;
-  }
-
-  if (
-    normalized.includes(
-      "depress"
-    )
-  ) {
-    return HeartPulse;
-  }
-
-  if (
-    normalized.includes(
-      "ansied"
-    ) ||
-    normalized.includes(
-      "ansiolítico"
-    )
-  ) {
-    return ShieldAlert;
-  }
-
-  return Activity;
-}
 
 function getStatusColor(
   status:
@@ -1443,6 +1396,7 @@ export default function PessoaDetalhesPage() {
                 title="Tratamentos em andamento"
               />
 
+              <TreatmentIdentityProviderR03 personId={validatedPersonId??null}>
               <div className="space-y-2">
                 {tratamentosAtivos
                   .slice(
@@ -1453,14 +1407,7 @@ export default function PessoaDetalhesPage() {
                     (
                       tratamento
                     ) => {
-                      const Icon =
-                        getTratamentoIcon(
-                          tratamento.nome
-                        );
-
-                      const cor =
-                        tratamento.cor ||
-                        "#8B5CF6";
+                      const cor = treatmentColorR03(tratamento.cor);
 
                       return (
                         <button
@@ -1491,12 +1438,7 @@ export default function PessoaDetalhesPage() {
                                   cor,
                               }}
                             >
-                              <Icon
-                                size={
-                                  16
-                                }
-                                aria-hidden="true"
-                              />
+                              <TreatmentIdentityIconR03 entity={tratamento} size={16}/>
                             </div>
 
                             <span className="truncate text-sm font-medium text-ink-primary">
@@ -1547,6 +1489,7 @@ export default function PessoaDetalhesPage() {
                   </button>
                 )}
               </div>
+              </TreatmentIdentityProviderR03>
             </motion.div>
           )}
 

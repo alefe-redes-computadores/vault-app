@@ -1,5 +1,7 @@
 // app/saude/cids/detalhes/page.tsx
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
+import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 import {safeClinicalReturnM150} from "@/lib/navigation/clinical-return-m150";
 
 import {
@@ -1910,13 +1912,7 @@ function CidDetalhesContent() {
                   (
                     tratamento
                   ) => {
-                    const tratamentoTheme =
-                      getClinicalTheme(
-                        tratamento.nome
-                      );
-
-                    const TratamentoIcon =
-                      tratamentoTheme.icon;
+                    const color = treatmentColorR03(tratamento.cor);
 
                     return (
                       <button
@@ -1943,13 +1939,9 @@ function CidDetalhesContent() {
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${tratamentoTheme.bgClass} ${tratamentoTheme.textClass} ${tratamentoTheme.borderClass}`}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border`} style={{borderColor:`${color}55`,backgroundColor:`${color}15`,color}}
                           >
-                            <TratamentoIcon
-                              size={
-                                18
-                              }
-                            />
+                            <TreatmentIdentityIconR03 entity={tratamento} size={18}/>
                           </div>
 
                           <div className="min-w-0">

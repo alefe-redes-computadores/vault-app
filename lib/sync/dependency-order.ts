@@ -3,6 +3,7 @@ import type { SyncQueueItem } from "@/lib/types";
 export type SyncEntityKey = `${SyncQueueItem["table"]}:${string}`;
 
 const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, SyncQueueItem["table"]]>>> = {
+  tratamento_visual_identity: [["id","tratamentos"]],
   medicamentos: [
     ["farmacia_id", "farmacias"],
     ["medico_id", "medicos"],

@@ -32,7 +32,7 @@ ok(help.includes('returnTo')&&help.includes('router.push(returnTo)')&&read('comp
 ok(med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}')&&med.includes('className="min-h-0"')&&med.includes('grid-cols-[minmax(0,1fr)_88px]')&&med.includes('data-vault-r4-main-action')&&!med.includes('!actionLayoutM150P3.primary && <ChevronRight'),'CTA lateral fixa de R4 sem perder minima nem detalhe');
 ok(med.includes('tone="amber"')&&med.includes('border-sky-400/35')&&med.includes('border-amber-400/35'),'acoes semanticamente diferentes');
 ok(!read('components/saude/MedicationRestockAction.tsx').includes('createMedication('),'nada de estoque ficticio na UI');
-ok(med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)') && (med.includes('getVaultTreatmentIcon(t)') && !med.includes('getVaultTreatmentIcon(t.nome)')) && !med.includes('cardTreatments.map(t=>`${t.nome} (${t.status})`'), 'etiquetas individuais usam vínculos reais sem status inferido');
+ok(med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)') && (med.includes('<TreatmentIdentityIconR03 entity={t}') && !med.includes('getVaultTreatmentIcon(t.nome)')) && !med.includes('cardTreatments.map(t=>`${t.nome} (${t.status})`'), 'etiquetas individuais usam vínculos reais sem status inferido');
 const recovery=read('scripts/test-vault-m153-p6-visual-recovery.cjs');
 ok(recovery.includes('openMedicationContextP7R3')&&recovery.includes('routineContextP7R3')&&recovery.includes('medicamentoLigado'), 'regressao P6 preserva semantica da nova UI');
 const mod=new Module(paths[9],module);

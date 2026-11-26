@@ -2,6 +2,7 @@
 
 "use client";
 
+import {syncTreatmentVisualIntentR03,finalizeTreatmentVisualIntentR03,TreatmentVisualConflictR03} from "@/lib/sync/treatment-visual-transport-r03";
 import { resolveConsultaSyncPayloadP0 } from "@/lib/sync/consulta-payload-authority";
 import {
   useCallback,
@@ -5299,6 +5300,7 @@ export function useSyncQueue() {
         SyncQueueItem
     ): Promise<boolean> => {
       if(vitalTable(item.table))return finalizeCanonicalVital(item);
+      if(item.table==="tratamento_visual_identity")return finalizeTreatmentVisualIntentR03(item);
       if (
         !item.id
       ) {
@@ -5444,6 +5446,12 @@ export function useSyncQueue() {
           );
           return;
 
+        case "tratamento_visual_identity":
+          {
+          const parent=await db.syncQueue.where('chave').equals(`tratamentos:${item.payload.id}`).first();
+          if(parent?.operation==='add')throw new SyncDependencyDeferredError('Identidade visual aguarda criação do tratamento.');
+          return syncTreatmentVisualIntentR03(item,requireSupabase());
+          }
         case "tratamentos":
           await syncTratamento(
             item
@@ -5793,6 +5801,7 @@ export function useSyncQueue() {
                   "documents",
 
                   "tratamentos",
+                  "tratamento_visual_identity",
                   "a1_treatment_phases",
                   "medicamentos",
 
@@ -5952,11 +5961,9 @@ export function useSyncQueue() {
                     }
                   }
 
-                  await syncItem(
-                    item
-                  );
+                  const atomicFinalized=await syncItem(item);
 
-                  const finalized =
+                  const finalized = atomicFinalized===true ||
                     await finalizeQueueItem(
                       item
                     );
@@ -5980,6 +5987,15 @@ export function useSyncQueue() {
                   error:
                     unknown
                 ) {
+                  if(error instanceof TreatmentVisualConflictR03){
+                    result.failed++;
+                    await db.transaction('rw',db.syncQueue,async()=>{
+                      const current=item.id?await db.syncQueue.get(item.id):undefined;
+                      if(current&&current.payload.operation===item.payload.operation&&item.id)await db.syncQueue.update(item.id,buildSyncFailureUpdate(MAX_RETRIES,error.message));
+                    });
+                    addLog(error.message,"error");
+                    continue;
+                  }
                   if (error instanceof SyncDependencyDeferredError) {
                     result.processed--;
                     addLog(error.message, "info");

@@ -1,14 +1,12 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { getClinicalTheme } from "@/lib/health-utils";
-import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
+import { treatmentColorR03 } from "@/lib/health-profile/treatment-preferences-r03";
 import type { Tratamento } from "@/lib/types";
 
 function treatmentColor(treatment: Tratamento): string {
-  return /^#[0-9a-f]{6}$/i.test(treatment.cor || "")
-    ? treatment.cor!
-    : getClinicalTheme(treatment.nome).hex;
+  return treatmentColorR03(treatment.cor);
 }
 
 function statusLabel(status?: string): string {
@@ -27,7 +25,6 @@ export function TreatmentRelationOption({
   selected: boolean;
 }) {
   const color = treatmentColor(treatment);
-  const Icon = getVaultTreatmentIcon(treatment);
 
   return (
     <div className="flex min-w-0 w-full items-center gap-3">
@@ -35,7 +32,7 @@ export function TreatmentRelationOption({
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-surface-raised"
         style={{ borderColor: `${color}55`, color }}
       >
-        <Icon size={18} />
+        <TreatmentIdentityIconR03 entity={treatment} size={18}/>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block break-words text-sm font-semibold leading-snug text-ink-primary">

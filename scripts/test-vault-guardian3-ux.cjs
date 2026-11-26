@@ -50,7 +50,7 @@ const parent = read('app/saude/minha-saude/page.tsx');
 ok(parent.includes('<HealthMeasurementForm') && parent.includes('onClose={() => setPanel(null)}'), 'pai apenas fecha formulário; não duplica toast');
 const consultation = read(files[4]);
 ok(!consultation.includes('violet-400') && !consultation.includes('violet-300'), 'consultas sem violeta fora do Brain');
-ok(consultation.includes('text-rose-300') && consultation.includes('border-emerald-400/25'), 'cores semânticas tratamento/hospital');
+ok(consultation.includes('TreatmentIdentityIconR03 entity={tratamento}') && consultation.includes('treatmentColorR03(tratamento.cor)') && consultation.includes('text-rose-300') && consultation.includes('border-emerald-400/30'), 'cores semânticas tratamento/hospital');
 const links = read(files[5]);
 ok(links.includes('const civilDateR5=') && links.includes('const match=/^(\\d{4})-(\\d{2})-(\\d{2})(?:T.*)?$/.exec(value);'), 'formatação civil sem UTC');
 ok(links.includes('{civilDateR5(e.payload.date)}') && links.includes('doctorOwnerId!==userId'), 'data BR preservando isolamento do médico');

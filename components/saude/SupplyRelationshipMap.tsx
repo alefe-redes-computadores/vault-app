@@ -1,4 +1,5 @@
 "use client";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
 import Link from "next/link";
 import { ChevronRight, FileHeart, Network, PackageCheck, Pill, Stethoscope, Truck } from "lucide-react";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
@@ -11,7 +12,7 @@ export function SupplyRelationshipMap({value}:{value:SupplyRelationshipMapProjec
     <div className="flex items-start gap-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-300/10 text-violet-200"><Network size={17}/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Mapa relacional</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">Tratamentos, medicamentos, processo e evidências permanecem navegáveis nos dois sentidos.</span></span><span className="rounded-full border border-violet-300/20 px-2 py-1 font-mono text-[11px] text-violet-200">{relationCount}</span></div>
     <div className="mt-3 grid grid-cols-1 gap-2 min-[580px]:grid-cols-[1fr_auto_1fr]">
       <div className="space-y-2"><p className="text-[11px] font-bold uppercase tracking-wider text-ink-faint">Cuidado vinculado</p>
-        {value.treatments.map(item=><Link key={item.id} href={`/saude/tratamentos/detalhes?id=${encodeURIComponent(item.id)}`} className={node}><Stethoscope size={16} className="shrink-0 text-violet-200"/><span className="min-w-0 flex-1"><strong className="block break-words text-xs text-ink-primary">{item.name}</strong><span className="text-[11px] text-ink-muted">{item.status==="ativo"?"Em andamento":"Histórico"}</span></span><ChevronRight size={14}/></Link>)}
+        {value.treatments.map(item=><Link key={item.id} href={`/saude/tratamentos/detalhes?id=${encodeURIComponent(item.id)}`} className={node}><TreatmentIdentityIconR03 entity={item} size={16} className="shrink-0"/><span className="min-w-0 flex-1"><strong className="block break-words text-xs text-ink-primary">{item.name}</strong><span className="text-[11px] text-ink-muted">{item.status==="ativo"?"Em andamento":"Histórico"}</span></span><ChevronRight size={14}/></Link>)}
         {value.medications.map(item=><Link key={item.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(item.id)}`} className={node}><MedicationFormatIcon formato={item.format} cores={item.colors} size={22}/><span className="min-w-0 flex-1"><strong className="block break-words text-xs text-ink-primary">{item.name}</strong><span className="text-[11px] text-ink-muted">{item.dosage}</span></span><ChevronRight size={14}/></Link>)}
         {!value.treatments.length&&!value.medications.length?<p className="rounded-xl border border-dashed border-surface-border p-3 text-[11px] text-ink-muted">Nenhum tratamento ou medicamento disponível neste vínculo.</p>:null}
       </div>

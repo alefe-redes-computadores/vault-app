@@ -1,6 +1,8 @@
 // components/saude/SeletorTratamentoModal.tsx
 "use client";
+import {TreatmentIdentityIconR03,TreatmentIdentityPickerR03} from "@/components/saude/TreatmentIdentityR03";
 
+import {treatmentColorR03,type TreatmentVisualChoiceR03} from "@/lib/health-profile/treatment-preferences-r03";
 import {
   useState,
 } from "react";
@@ -55,57 +57,7 @@ interface Props {
 // ÍCONE
 // ============================================================
 
-export function getTratamentoIcon(
-  nome: string
-) {
-  const normalized =
-    (
-      nome ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
 
-  if (
-    normalized.includes(
-      "tdah"
-    )
-  ) {
-    return Brain;
-  }
-
-  if (
-    normalized.includes(
-      "dor"
-    ) ||
-    normalized.includes(
-      "neuropática"
-    )
-  ) {
-    return Flame;
-  }
-
-  if (
-    normalized.includes(
-      "depress"
-    )
-  ) {
-    return HeartPulse;
-  }
-
-  if (
-    normalized.includes(
-      "ansied"
-    ) ||
-    normalized.includes(
-      "ansiolítico"
-    )
-  ) {
-    return ShieldAlert;
-  }
-
-  return Activity;
-}
 
 // ============================================================
 // COMPONENT
@@ -139,6 +91,8 @@ export function SeletorTratamentoModal({
       ""
     );
 
+  const [visualChoice,setVisualChoice]=useState<{personId:string;value:TreatmentVisualChoiceR03}|null>(null);
+  const visualIcon=visualChoice?.personId===personId?visualChoice?.value??null:null;
   const [
     isSaving,
     setIsSaving,
@@ -188,6 +142,7 @@ export function SeletorTratamentoModal({
       if (
         !safePersonId ||
         !safeName ||
+        !visualIcon ||
         isSaving
       ) {
         if (
@@ -217,6 +172,7 @@ export function SeletorTratamentoModal({
 
             nome:
               safeName,
+            visual_icon:visualIcon,
 
             status:
               "ativo",
@@ -242,6 +198,7 @@ export function SeletorTratamentoModal({
         setNewName(
           ""
         );
+        setVisualChoice(null);
       } catch (
         error
       ) {
@@ -349,6 +306,7 @@ export function SeletorTratamentoModal({
               }
             />
 
+            <TreatmentIdentityPickerR03 value={visualIcon} color={treatmentColorR03(null)} disabled={isSaving||!personId} onChange={value=>{setVisualChoice({personId,value});trigger("vibrate");}}/>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -368,6 +326,7 @@ export function SeletorTratamentoModal({
                     setNewName(
                       ""
                     );
+                    setVisualChoice(null);
                   }
                 }
                 className="rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-sm font-semibold text-ink-muted disabled:opacity-50"
@@ -379,7 +338,7 @@ export function SeletorTratamentoModal({
                 type="button"
                 disabled={
                   isSaving ||
-                  !newName.trim()
+                  !newName.trim() || !visualIcon
                 }
                 onClick={
                   handleCreate
@@ -425,10 +384,7 @@ export function SeletorTratamentoModal({
                         tratamento.id
                       );
 
-                    const IconComp =
-                      getTratamentoIcon(
-                        tratamento.nome
-                      );
+
 
                     return (
                       <button
@@ -455,11 +411,7 @@ export function SeletorTratamentoModal({
                               : "bg-surface text-ink-muted"
                           }`}
                         >
-                          <IconComp
-                            size={
-                              16
-                            }
-                          />
+                          <TreatmentIdentityIconR03 entity={tratamento} size={16}/>
                         </div>
 
                         <span

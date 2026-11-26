@@ -10,7 +10,8 @@ const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 const { TextDecoder } = require("util");
 
-const TLS_VERIFICATION_BYPASSED = true;
+const TLS_VERIFICATION_BYPASSED = false;
+const { reconcileOfficialRows } = require("./catalog-integrity-r01.cjs");
 
 const SOURCES = {
   consulta: {
@@ -63,10 +64,18 @@ function decodeBuffer(buffer) {
       text: new TextDecoder("utf-8", { fatal: true }).decode(buffer),
     };
   } catch {
-    return {
-      encoding: "windows-1252",
-      text: new TextDecoder("windows-1252").decode(buffer),
-    };
+    // Explicit CP1252 mapping: some Node/ICU builds treat this label as Latin-1.
+    // Reject undefined CP1252 bytes instead of manufacturing replacement characters.
+    const cp1252 = [0x20ac, null, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021,
+      0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, null, 0x017d, null,
+      null, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014,
+      0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, null, 0x017e, 0x0178];
+    const text = buffer.toString("latin1").replace(/[\x80-\x9f]/g, c => {
+      const cp = cp1252[c.charCodeAt(0) - 0x80];
+      if (cp === null) throw new Error("Byte indefinido em CP1252: 0x" + c.charCodeAt(0).toString(16));
+      return String.fromCodePoint(cp);
+    });
+    return { encoding: "windows-1252", text };
   }
 }
 
@@ -106,80 +115,75 @@ function detectDelimiter(headerLine) {
   return best;
 }
 
-function parseCsv(text, delimiter) {
-  const rows = [];
-  let row = [];
-  let field = "";
-  let quoted = false;
-
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-
-    if (char === '"') {
-      if (quoted && text[i + 1] === '"') {
-        field += '"';
-        i += 1;
-        continue;
-      }
-
-      quoted = !quoted;
+// R03: CSV state machine. A quote opens a quoted field only at its start.
+// Quotes in unquoted fields are literal (also Python csv.reader semantics).
+// Never pad, truncate, infer a delimiter from data rows or discard bad rows.
+function scanCsv(text, delimiter, onRow) {
+  let row=[], field='', state='start', line=1, startLine=1, startOffset=0, literalQuotes=0, records=0;
+  const emit=(endOffset)=>{
+    row.push(field); records++;
+    onRow(row,{startLine,endLine:line,startOffset,endOffset,record:records});
+    row=[];field='';state='start';
+  };
+  const error=(message,offset)=>{const e=new Error(`${message}; linha física ${line}, registro ${records+1}`);e.csv={line,startLine,startOffset,offset,record:records+1};throw e;};
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(state==='quoted'){
+      if(c==='"'){if(text[i+1]==='"'){field+='"';i++;}else state='closed';}
+      else {field+=c;if(c==='\r'){if(text[i+1]==='\n'){field+='\n';i++;}line++;}else if(c==='\n')line++;}
       continue;
     }
-
-    if (!quoted && char === delimiter) {
-      row.push(field.trim());
-      field = "";
-      continue;
+    if(c===delimiter){row.push(field);field='';state='start';continue;}
+    if(c==='\r'||c==='\n'){
+      emit(i);if(c==='\r'&&text[i+1]==='\n')i++;line++;startLine=line;startOffset=i+1;continue;
     }
-
-    if (!quoted && (char === "\n" || char === "\r")) {
-      if (char === "\r" && text[i + 1] === "\n") {
-        i += 1;
-      }
-
-      row.push(field.trim());
-      field = "";
-
-      if (row.some((value) => value !== "")) {
-        rows.push(row);
-      }
-
-      row = [];
-      continue;
-    }
-
-    field += char;
+    if(state==='closed')error('CSV contém caractere após fechamento de aspas',i);
+    if(c==='"'&&state==='start'){state='quoted';continue;}
+    if(c==='"')literalQuotes++;
+    field+=c;state='bare';
   }
-
-  if (field !== "" || row.length > 0) {
-    row.push(field.trim());
-
-    if (row.some((value) => value !== "")) {
-      rows.push(row);
-    }
-  }
-
+  if(state==='quoted')error('CSV com aspas não encerradas',text.length);
+  if(state!=='start'||row.length||field.length)emit(text.length);
+  return {records,literalQuotes,physicalLines:line};
+}
+const csvLocation=new WeakMap();
+function parseCsv(text,delimiter){
+  const rows=[];
+  scanCsv(text,delimiter,(raw,loc)=>{const row=raw.map(v=>v.trim());if(loc.startOffset===loc.endOffset)return;csvLocation.set(row,loc);rows.push(row);});
   return rows;
 }
-
-function rowsToObjects(rows) {
-  if (!rows.length) {
-    return [];
+function rowsToObjects(rows){
+  if(!rows.length)return [];
+  const headers=rows[0].map(v=>v.replace(/^\uFEFF/,''));
+  if(new Set(headers).size!==headers.length||headers.some(h=>!h)||headers.includes('__pharmalensSourceLine'))throw Error('Cabeçalho CSV inválido/duplicado');
+  const output=[];
+  for(let n=1;n<rows.length;n++){
+    const row=rows[n],loc=csvLocation.get(row);
+    if(row.length!==headers.length)throw Error(`Linha CSV com cardinalidade incompatível: linha física ${loc?.startLine??n+1}, esperado=${headers.length}, recebido=${row.length}`);
+    if(row.every(v=>v===''))continue;
+    const item=Object.create(null);for(let i=0;i<headers.length;i++)item[headers[i]]=row[i];
+    Object.defineProperty(item,'__pharmalensSourceLine',{value:loc?.startLine??n+1,enumerable:false});output.push(item);
   }
-
-  const headers = rows[0].map(
-    (value) => value.replace(/^\uFEFF/, "")
-  );
-
-  return rows.slice(1).map((row) => {
-    const item = {};
-
-    for (let i = 0; i < headers.length; i += 1) {
-      item[headers[i]] = row[i] ?? "";
-    }
-
-    return item;
-  });
+  return output;
+}
+// Full source diagnostics, without materializing the catalog. Digest includes
+// every parsed field and record, including physically empty records.
+function inspectCsv(text,delimiter){
+  const digest=crypto.createHash('sha256'), widths=Object.create(null), examples=[];
+  let header=null,invalid=0,blank=0,allEmpty=0,good=0,stats=null,syntaxError=null;
+  const sample=(raw,loc,reason)=>{if(examples.length<12)examples.push({...loc,reason,width:raw.length,rawExcerpt:text.slice(loc.startOffset,Math.min(loc.endOffset,loc.startOffset+1600))});};
+  try{stats=scanCsv(text,delimiter,(raw,loc)=>{
+    // csv.reader represents a physically blank line as [] rather than [''].
+    const physicalBlank=loc.startOffset===loc.endOffset;
+    digest.update(JSON.stringify(physicalBlank?[]:raw)+'\n');
+    if(physicalBlank){blank++;return;}
+    if(header===null){header=raw.map(v=>v.trim().replace(/^\uFEFF/,''));return;}
+    widths[raw.length]=(widths[raw.length]||0)+1;
+    if(raw.length!==header.length){invalid++;sample(raw,loc,'width_mismatch');return;}
+    if(raw.every(x=>!x.trim()))allEmpty++;else good++;
+  });}catch(e){syntaxError=e.message;if(e.csv&&examples.length<12)examples.push({...e.csv,reason:'syntax',rawExcerpt:text.slice(e.csv.startOffset,Math.min(e.csv.offset+1,e.csv.startOffset+1600))});}
+  const validHeader=Boolean(header?.length&&header.every(Boolean)&&new Set(header).size===header.length&&!header.includes('__pharmalensSourceLine'));
+  return {header,widths,invalid,blank,allEmpty,good,stats,syntaxError,examples,digest:digest.digest('hex'),valid:validHeader&&!syntaxError&&!invalid&&good>0};
 }
 
 function sha256(buffer) {
@@ -197,7 +201,9 @@ function downloadSource(source, tempDir) {
   execFileSync(
     "curl",
     [
-      "-k",
+      "--disable",
+      "--proto", "=https",
+      "--proto-redir", "=https",
       "-L",
       "--fail",
       "--silent",
@@ -221,7 +227,7 @@ function downloadSource(source, tempDir) {
 }
 
 function loadCsv(source, tempDir) {
-  const downloaded = downloadSource(source, tempDir);
+  const downloaded = process.env.PHARMALENS_SOURCE_DIR ? path.join(process.env.PHARMALENS_SOURCE_DIR, source.label) : downloadSource(source, tempDir);
   const buffer = fs.readFileSync(downloaded);
   const decoded = decodeBuffer(buffer);
   const text = decoded.text.replace(/^\uFEFF/, "");
@@ -232,14 +238,16 @@ function loadCsv(source, tempDir) {
   }
 
   const delimiter = detectDelimiter(text.slice(0, firstBreak));
-  const parsed = parseCsv(text, delimiter);
+  let rows;
+  try { rows = rowsToObjects(parseCsv(text, delimiter)); }
+  catch (error) { throw new Error(source.label + ": " + error.message); }
 
   return {
     source,
     hash: sha256(buffer),
     bytes: buffer.length,
     encoding: decoded.encoding,
-    rows: rowsToObjects(parsed),
+    rows,
   };
 }
 
@@ -333,36 +341,16 @@ function buildConsultaPackage(rows) {
       continue;
     }
 
-    const substanceCode = substanceCodes[0];
-    const normalizedSubstance = normalizeText(rawSubstance);
-
-    if (!normalizedSubstance) {
-      continue;
-    }
-
-    const substanceKey = substanceCode + "|" + normalizedSubstance;
-
-    if (!safeSubstances.has(substanceKey)) {
-      safeSubstances.set(substanceKey, {
-        externalId: substanceCode,
-        canonicalName: rawSubstance,
-        normalizedName: normalizedSubstance,
-      });
-    }
-
-    const relationKey = productId + "|" + substanceKey;
-
-    if (!safeRelations.has(relationKey)) {
-      safeRelations.set(relationKey, {
-        productExternalId: productId,
-        substanceExternalId: substanceCode,
-        substanceNormalizedName: normalizedSubstance,
-        confidence: "high",
-      });
-
-      diagnostics.safeSingleSubstanceRelations += 1;
-    }
+    // Contadores históricos acima; a autoridade de composição trabalha sobre todas as linhas.
   }
+  const composition = reconcileOfficialRows(rows);
+  for (const [key,value] of composition.substances) safeSubstances.set(key,value);
+  for (const [key,value] of composition.relations) safeRelations.set(key,value);
+  diagnostics.safeSingleSubstanceRelations = composition.reports.filter(r=>r.status==="complete"&&r.codes.length===1).length;
+  diagnostics.associationComplete = composition.reports.filter(r=>r.status==="complete"&&r.codes.length>1).length;
+  diagnostics.associationPartial = composition.reports.filter(r=>r.status==="partial").length;
+  diagnostics.associationAmbiguous = composition.reports.filter(r=>r.status==="ambiguous").length;
+  diagnostics.associationInconclusive = composition.reports.filter(r=>r.status==="inconclusive").length;
 
   return {
     products,
@@ -370,6 +358,7 @@ function buildConsultaPackage(rows) {
     productNameToIds,
     safeSubstances,
     safeRelations,
+    composition,
     diagnostics,
   };
 }
@@ -538,6 +527,7 @@ function main() {
   console.log("🚫 NÃO GRAVA NO SUPABASE.");
   console.log("🚫 NÃO ALTERA DEXIE.");
   console.log("🚫 NÃO ALINHA MÚLTIPLOS CO_SUBSTANCIA POR POSIÇÃO.");
+  console.log("Associações completas exigem resolução individual e conjunto textual concordante.");
   console.log("🚫 NÃO CONVERTE AUTOMATICAMENTE A/B EM TIPO_RECEITA DO VAULT.");
   console.log("🔐 TLS verificado: " + (TLS_VERIFICATION_BYPASSED ? "NÃO — BYPASS TEMPORÁRIO" : "SIM"));
   console.log("");
@@ -651,14 +641,16 @@ function main() {
     console.log("\n============================================================");
     console.log("✅ Pacote canônico 4D7 construído em memória.");
     console.log("🧾 Nenhum dado persistido.");
-    console.log("🔐 Importação real continua BLOQUEADA pelo TLS em bypass.");
+    console.log("🔐 Importação real permanece bloqueada: revisão Guardian e aplicação separadas.");
+    console.log("Diagnóstico de associações: "+JSON.stringify(consultaPackage.diagnostics));
     console.log("🧠 Relações farmacológicas ambíguas continuam fora do pacote seguro.");
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
-try {
+module.exports = { SOURCES, loadCsv, buildConsultaPackage, mapPresentations, mapRegulatoryEvidence, parseCsv, rowsToObjects, scanCsv, inspectCsv, detectDelimiter, decodeBuffer };
+if (require.main === module) try {
   main();
 } catch (error) {
   console.error("\n❌ Falha no gerador canônico:");

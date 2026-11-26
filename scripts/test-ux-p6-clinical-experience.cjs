@@ -18,7 +18,7 @@ const checks={
  'Ações continuam navegáveis e maiores':med.includes('Ações do medicamento')&&med.includes('router.push(careAction.href)')&&med.includes('min-h-10 max-w-full'),
  'Registro SOS mesmo sem saldo mantém aviso':med.includes('(!isEstoqueZerado || isSOS)')&&med.includes('Saldo registrado zerado'),
  'SUS e comprado continuam distintos':med.includes('routeMode={supplyRoute?.mode}')&&med.includes('routeLabels={supplyRoute?.labels}')&&med.includes('acquisitionType={med.tipo_aquisicao}')&&provenance.includes("input.routeMode === 'hybrid'")&&provenance.includes("input.acquisitionType === 'comprado'")&&provenance.includes("input.acquisitionType === 'sus'")&&provenance.includes('nenhuma comprova o fornecedor atual'),
- 'Relações de tratamento preservadas':treatment.includes('getVaultTreatmentIcon')&&treatment.includes('<MedicationFormatIcon'),
+ 'Relações de tratamento preservadas':treatment.includes('<TreatmentIdentityIconR03 entity={tratamento}')&&treatment.includes('<MedicationFormatIcon'),
  'Tratamento expõe filtro ativo':treatment.includes('activeCount={filtroStatus === "todos" ? 0 : 1}'),
  'Aquisição mantém modalidade isolada':purchase.includes('<MedicationEventBoundary mode="acquisition"/>'),
  'Aquisição não presume unidade por caixa':purchase.includes('<MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>')&&guide.includes('Não presuma que 1 caixa equivale a 1 unidade'),

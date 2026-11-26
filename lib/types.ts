@@ -742,6 +742,7 @@ export interface SyncQueueItem {
     | "cards"
     | "instituicoes"
     | "tratamentos"
+    | "tratamento_visual_identity"
     | "cids"
     | "anexos_clinicos"
     | "settings"
@@ -1525,6 +1526,12 @@ export interface Tratamento {
   data_inicio?: string;
   status: "ativo" | "concluido" | "suspenso";
   cor?: string;
+  visual_icon?: import("@/lib/health-profile/treatment-preferences-r03").TreatmentVisualChoiceR03 | null;
+  visual_icon_updated_at?: string | null;
+  visual_icon_revision?: number;
+  visual_icon_operation_id?: string | null;
+  visual_legacy_choice?: import("@/lib/health-profile/treatment-preferences-r03").TreatmentVisualChoiceR03;
+  visual_identity_pending?: import("@/lib/health-profile/treatment-preferences-r03").VisualIntentR03 | null;
   observacoes?: string;
   created_at: string;
   updated_at: string;

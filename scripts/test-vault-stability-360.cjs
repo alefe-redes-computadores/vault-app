@@ -57,7 +57,7 @@ const iconCacheSTB=new Map();const iconSTB=new Proxy({}, {get:(_,name)=>{if(!ico
 const identitySTB=load('lib/ui/front-b-clinical-identity.ts',{'lucide-react':iconSTB,'@/lib/clinical-front-b-pure':identityPure});
 const neutralTreatment=()=>iconSTB.HeartHandshake;
 const medIcon=()=>null;
-const dossierRowSTB=load('components/saude/MedicalDossierRowIconB.tsx',{'react/jsx-runtime':jsxRuntime,'@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:medIcon},'@/lib/health-profile/treatment-icon':{getVaultTreatmentIcon:neutralTreatment},'@/lib/ui/front-b-clinical-identity':identitySTB}).MedicalDossierRowIconB;
+const dossierRowSTB=load('components/saude/MedicalDossierRowIconB.tsx',{'react/jsx-runtime':jsxRuntime,'@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:medIcon},'@/components/saude/TreatmentIdentityR03':{TreatmentIdentityIconR03:neutralTreatment},'@/lib/ui/front-b-clinical-identity':identitySTB}).MedicalDossierRowIconB;
 const recordsPathSTB='app/saude/registros/page.tsx';
 const recordsSourceSTB=read(recordsPathSTB).replace('function EventRow({','export function EventRow({');
 const unknownDepsSTB=new Proxy({}, {get:()=>()=>null});
@@ -106,10 +106,11 @@ check('10 CLONAZEPAM ambiguous manufacturers can preserve independent substance'
 check('10 partial association mutation is caught',()=>assert.notEqual(Cat.compareStrengthSTB(Cat.declaredStrengthSTB('10mg/ml'),Cat.declaredStrengthSTB('2mg+10mg/ml')),'match'));
 
 // STB-11 and STB-12: real consumers; rendering with controlled React/Lucide boundaries.
-const treatmentSTB=load('lib/health-profile/treatment-icon.ts',{'lucide-react':iconSTB}).getVaultTreatmentIcon;
-check('11 explicit icon wins, and renaming cannot alter fallback',()=>{assert.equal(treatmentSTB({id:'x',icone:'brain',nome:'a'}),iconSTB.Brain);assert.equal(treatmentSTB({id:'x',nome:'a'}),treatmentSTB({id:'x',nome:'b'}));assert.equal(treatmentSTB({nome:'unknown'}),iconSTB.HeartHandshake)});
+const treatmentAuthorityR03=load('lib/health-profile/treatment-preferences-r03.ts');
+const treatmentSTB=load('lib/health-profile/treatment-icon.ts',{'lucide-react':iconSTB,'./treatment-preferences-r03':treatmentAuthorityR03}).getVaultTreatmentIcon;
+check('11 explicit icon wins, and renaming cannot alter fallback',()=>{assert.equal(treatmentSTB({id:'x',icone:'brain',nome:'a'}),iconSTB.Brain);assert.equal(treatmentSTB({id:'x',nome:'a'}),treatmentSTB({id:'x',nome:'b'}));assert.equal(treatmentSTB({nome:'unknown'}),iconSTB.CircleHelp)});
 check('11 invalid inherited icon keys cannot become components',()=>{for(const k of ['constructor','__proto__','toString'])assert.equal(treatmentSTB({id:'x',icone:k}),treatmentSTB({id:'x'}))});
-check('11 explicit distinct visual identities remain distinct despite colliding fallback IDs',()=>{let first=null,second=null;const seen=new Map();for(let i=0;i<30;i++){const id='fixture-'+i,icon=treatmentSTB({id});if(seen.has(icon)){first=seen.get(icon);second=id;break;}seen.set(icon,id)}assert(first&&second);assert.equal(treatmentSTB({id:first}),treatmentSTB({id:second}));assert.notEqual(treatmentSTB({id:first,icone:'brain'}),treatmentSTB({id:second,icone:'target'}))});
+check('11 unknown identity stays neutral and explicit distinct identities are preserved',()=>{for(let i=0;i<30;i++)assert.equal(treatmentSTB({id:'fixture-'+i}),iconSTB.CircleHelp);assert.equal(treatmentSTB({id:'t1',icone:'brain'}),iconSTB.Brain);assert.equal(treatmentSTB({id:'t2',icone:'target'}),iconSTB.Target);assert.notEqual(treatmentSTB({id:'t1',icone:'brain'}),treatmentSTB({id:'t2',icone:'target'}))});
 const stripSTB=load('components/saude/MedicationOperationalStrip.tsx',{'react/jsx-runtime':jsxRuntime,'lucide-react':iconSTB}).MedicationOperationalStrip;
 for(const stockTone of ['known','empty','low','unknown'])check('12 compact and comfort preserve visible primary facts '+stockTone,()=>{const fixture={today:{label:'Próxima dose às 18:00',detail:'Horário informado',tone:'text-ink-secondary'},stockLabel:'Estoque declarado',stockDetail:'Informação adicional',stockTone,doseOutcome:'unconfirmed'};const c=stripSTB({...fixture,compact:true}),d=stripSTB({...fixture,compact:false});for(const tree of [c,d]){assert(displayText(tree).includes(fixture.today.label));assert(displayText(tree).includes(fixture.stockLabel));assert(tree.props['aria-label'].includes(fixture.stockDetail));assert(walk(tree).some(x=>x.type===iconSTB.Package))}assert(c.props.className.includes('mt-0 flex'));assert(c.props.className.includes('flex-wrap'));assert(walk(c).some(x=>x.props.className?.includes('min-h-[18px]')));assert(d.props.className.includes('mt-0.5'));});
 

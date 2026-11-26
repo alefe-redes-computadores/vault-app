@@ -1,5 +1,8 @@
 // app/saude/tratamentos/editar/page.tsx
 "use client";
+import {TreatmentIdentityPickerR03} from "@/components/saude/TreatmentIdentityR03";
+import {getVaultTreatmentIcon} from "@/lib/health-profile/treatment-icon";
+import {treatmentColorR03,resolveTreatmentKeyR03,visualRevisionR03,readVisualIntentR03,type TreatmentVisualChoiceR03} from "@/lib/health-profile/treatment-preferences-r03";
 
 import {
   Suspense,
@@ -76,9 +79,6 @@ import {
   useExames,
 } from "@/hooks/useExames";
 
-import {
-  getClinicalTheme,
-} from "@/lib/health-utils";
 
 import {
   Button,
@@ -443,6 +443,7 @@ function EditarTratamentoContent() {
             setTratamento(
               data
             );
+            setVisualEdit(null);
 
             setNome(
               data.nome ||
@@ -690,14 +691,11 @@ function EditarTratamentoContent() {
       ]
     );
 
-  const theme =
-    getClinicalTheme(
-      nome ||
-        "Editar Tratamento"
-    );
-
-  const PreviewIcon =
-    theme.icon;
+  const [visualEdit,setVisualEdit]=useState<{id:string;personId:string;value:TreatmentVisualChoiceR03;revision:number}|null>(null);
+  const selectedVisual=visualEdit?.id===tratamento?.id&&visualEdit?.personId===activePersonId?visualEdit?.value:undefined;
+  const treatmentColor = treatmentColorR03(tratamento?.cor);
+  const visualChoice=selectedVisual??resolveTreatmentKeyR03(tratamento);
+  const PreviewIcon=getVaultTreatmentIcon({visual_icon:visualChoice});
 
   const statusOriginal =
     tratamento?.status ||
@@ -807,10 +805,8 @@ function EditarTratamentoContent() {
                     )
                   ),
 
-                cor:
-                  theme.hex,
-
                 status,
+                ...(selectedVisual!==undefined?{visual_icon:selectedVisual,expected_visual_icon_revision:visualEdit?.revision}:{}),
 
                 observacoes:
                   observacoes.trim(),
@@ -1343,26 +1339,24 @@ function EditarTratamentoContent() {
             }
             initial="initial"
             animate="animate"
-            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            className="rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300"
             style={{
               borderLeft:
-                `6px solid ${theme.hex}`,
+                `6px solid ${treatmentColor}`,
+              borderColor: `${treatmentColor}55`,
+              borderLeftColor: treatmentColor,
             }}
           >
             <div className="flex items-center gap-4">
               <div
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300" style={{borderColor:`${treatmentColor}55`,backgroundColor:`${treatmentColor}15`}}
               >
-                <PreviewIcon
-                  size={
-                    24
-                  }
-                />
+                <PreviewIcon size={24} aria-hidden="true"/>
               </div>
 
               <div className="min-w-0 flex-1">
                 <p
-                  className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}
+                  className="font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300" style={{color:treatmentColor}}
                 >
                   IDENTIFICAÇÃO
                 </p>
@@ -1373,6 +1367,9 @@ function EditarTratamentoContent() {
                 </h2>
               </div>
             </div>
+            <TreatmentIdentityPickerR03 value={visualChoice} color={treatmentColor} disabled={!tratamento?.id||!activePersonId||visualRevisionR03(tratamento)===null||readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='pending'} onChange={value=>{const revision=visualRevisionR03(tratamento);if(tratamento?.id&&activePersonId&&revision!==null){setVisualEdit({id:tratamento.id,personId:activePersonId,value,revision});trigger("vibrate");}}}/>
+            {readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='pending'&&<p role="status" className="text-xs text-ink-muted">Ícone aguardando sincronização.</p>}
+            {readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='conflict'&&<p role="alert" className="text-xs text-coral">Outro aparelho alterou o ícone. Confira e escolha novamente.</p>}
           </motion.div>
 
           {/* ==================================================
@@ -1553,13 +1550,13 @@ function EditarTratamentoContent() {
                         currentStatus
                           ? {
                               borderColor:
-                                theme.hex,
+                                treatmentColor,
 
                               color:
-                                theme.hex,
+                                treatmentColor,
 
                               backgroundColor:
-                                `${theme.hex}20`,
+                                `${treatmentColor}20`,
                             }
                           : {}
                       }

@@ -1,0 +1,41 @@
+{
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "export CAPACITOR_BUILD=0 VAULT_WEB_STATIC_BUILD=1 NEXT_PUBLIC_VAULT_NATIVE_RUNTIME=web; npm run build && node scripts/verify-static-release-stability.cjs web",
+  "outputDirectory": "out",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/auth/callback",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, private, max-age=0"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
+  ]
+}

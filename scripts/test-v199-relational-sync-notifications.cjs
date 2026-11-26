@@ -54,7 +54,7 @@ assert(read("app/saude/fornecimento/page.tsx").includes('key === "hospital_id" ?
 
 const treatmentOption = read("components/saude/TreatmentRelationOption.tsx");
 assert(treatmentOption.includes("treatment.cor"));
-assert(treatmentOption.includes("getVaultTreatmentIcon"));
+assert(treatmentOption.includes("<TreatmentIdentityIconR03 entity={treatment}"));
 assert(treatmentOption.includes("statusLabel(treatment.status)"));
 for (const page of [
   "app/saude/exames/novo/page.tsx", "app/saude/exames/editar/page.tsx",
