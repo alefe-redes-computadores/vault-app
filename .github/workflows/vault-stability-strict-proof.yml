@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0d1fe07b921499ad7240eb3028b98da0602c8816
+          ref: e7d311de31cd52ce19afb7f9106f79d0816b20e8
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -22,7 +22,7 @@ jobs:
       - name: Provar SHA e instalar dependências
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 0d1fe07b921499ad7240eb3028b98da0602c8816
+          test "$(git rev-parse HEAD)" = e7d311de31cd52ce19afb7f9106f79d0816b20e8
           npm ci
       - name: Gate canônico estrito V63 V70 TSC
         shell: bash
