@@ -1,0 +1,199 @@
+name: Macro02 QA05 — diagnostico isolado (NÃO PUBLICAR)
+on:
+  push:
+    branches: ['vault-lab/macro02-app-qa05-*']
+permissions:
+  contents: read
+concurrency:
+  group: macro02-qa05-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      VAULT_V63_COLLECT_ALL: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fixar checkout da candidata exata (sem envelope CI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate=$(git rev-parse HEAD^)
+          test "$(git rev-parse "$candidate^" )" = 79d92cdc8fa50fa7c2cb918adf1a32c407df4657
+          test "$(git rev-parse "$candidate^{tree}")" = dc8f11c8352d6502a3e3e9399580c21ce3619fc7
+          git -c advice.detachedHead=false checkout --detach "$candidate"
+          test -z "$(git status --porcelain)"
+          echo "CANDIDATE_SHA=$candidate" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias fixadas pelo lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/m02-qa05"
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/m02-qa05/npm-ci.log"
+          node -e 'require("fake-indexeddb/auto"); require("dexie"); console.log("INDEXEDDB_DEPENDENCIES_OK")'
+      - name: V63 cumulativo, offline, V70 e TypeScript (diagnostico)
+        shell: bash
+        run: |
+          set -uo pipefail
+          d="$RUNNER_TEMP/m02-qa05"
+          printf 'CANDIDATE_SHA=%s\nTREE=%s\nRELEASE=BLOCKED\n' "$CANDIDATE_SHA" "$(git rev-parse HEAD^{tree})" > "$d/status.txt"
+          node scripts/test-v63-release-gate.mjs 2>&1 | tee "$d/v63.log"
+          v63=${PIPESTATUS[0]}
+          grep -Fq 'V63_COLETA_INTEGRAL_APROVADA | executadas=579 | falhas=0' "$d/v63.log" || v63=1
+          grep -Fq 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' "$d/v63.log" || v63=1
+          grep -Fq 'V63_R06_STATIC_OFFLINE_EXTENSION=PASS' "$d/v63.log" || v63=1
+          grep -Fq 'MACRO02_BACKUP_SNAPSHOT_GATE_OK' "$d/v63.log" || v63=1
+          grep -Fq 'MACRO02_DORMANT_AUTHORITY_GATE_OK' "$d/v63.log" || v63=1
+          node node_modules/typescript/bin/tsc --noEmit --incremental false 2>&1 | tee "$d/tsc.log"
+          tsc=${PIPESTATUS[0]}
+          v70a=0; v70b=0
+          if [ "$v63" -ne 0 ]; then
+            node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee "$d/v70-super.log"; v70a=${PIPESTATUS[0]}
+            node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee "$d/v70-final.log"; v70b=${PIPESTATUS[0]}
+          fi
+          printf 'V63_EXIT=%s\nTSC_EXIT=%s\nV70_SUPER_EXIT=%s\nV70_FINAL_EXIT=%s\n' "$v63" "$tsc" "$v70a" "$v70b" >> "$d/status.txt"
+          cat "$d/status.txt"
+          test "$v63" -eq 0 && test "$tsc" -eq 0 && test "$v70a" -eq 0 && test "$v70b" -eq 0
+      - name: Web build isolado (sem credenciais reais)
+        if: always() && env.CANDIDATE_SHA != ''
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+          VAULT_WEB_STATIC_BUILD: '1'
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/m02-qa05/web.log"
+          test -f out/index.html
+      - name: Configurar Java JDK 17
+        if: always() && env.CANDIDATE_SHA != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Export Android isolado (sem credenciais reais)
+        if: always() && env.CANDIDATE_SHA != ''
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+        run: |
+          set -euo pipefail
+          rm -rf .next out
+          node scripts/ci-build-export-resilient.cjs 2>&1 | tee "$RUNNER_TEMP/m02-qa05/android-export.log"
+          test -f out/index.html
+          echo "LAB_ANDROID_EXPORT_OK=1" >> "$GITHUB_ENV"
+      - name: Criar plataforma Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          if test -d android; then
+            npx cap sync android
+          else
+            npx cap add android
+          fi
+
+      - name: Configurar deep link de autenticação
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          android = "http://schemas.android.com/apk/res/android"
+          ET.register_namespace("android", android)
+          tree = ET.parse(path)
+          root = tree.getroot()
+          activity = next(
+              item for item in root.findall("./application/activity")
+              if item.get(f"{{{android}}}name", "").endswith("MainActivity")
+          )
+          exists = any(
+              data.get(f"{{{android}}}scheme") == "vault"
+              and data.get(f"{{{android}}}host") == "callback"
+              for data in activity.findall("./intent-filter/data")
+          )
+          if not exists:
+              intent = ET.SubElement(activity, "intent-filter", {
+                  f"{{{android}}}label": "vault_auth",
+              })
+              ET.SubElement(intent, "action", {
+                  f"{{{android}}}name": "android.intent.action.VIEW",
+              })
+              ET.SubElement(intent, "category", {
+                  f"{{{android}}}name": "android.intent.category.DEFAULT",
+              })
+              ET.SubElement(intent, "category", {
+                  f"{{{android}}}name": "android.intent.category.BROWSABLE",
+              })
+              ET.SubElement(intent, "data", {
+                  f"{{{android}}}scheme": "vault",
+                  f"{{{android}}}host": "callback",
+              })
+              tree.write(path, encoding="utf-8", xml_declaration=True)
+          PY
+
+      - name: Gerar identidade visual Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          test -f assets/icon.png
+          test -f assets/splash.png
+          npx @capacitor/assets generate --android
+
+      - name: Sincronizar Capacitor
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: npx cap sync android
+
+      - name: Validar bridge e plugins nativos V29
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/validate-android-bridge-v29.mjs
+
+      - name: Aplicar edge-to-edge nativo
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/patch-android-edge-to-edge-v28.mjs
+      - name: Configurar Health Connect e validar ferramentas Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/patch-android-health-connect-v113.mjs
+
+      - name: Configurar alarmes exatos M99 com autorização especial
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/patch-android-exact-alarms-m99.mjs
+
+      - name: Integrar atualização nativa segura M111
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+
+      - name: Instalar ícone de notificações Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          test -f assets/android/ic_stat_vault.xml
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+
+      - name: Gradle debug apenas diagnóstico (não distribuir)
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          set -euo pipefail
+          cd android
+          bash gradlew assembleDebug --no-daemon 2>&1 | tee "$RUNNER_TEMP/m02-qa05/gradle-debug.log"
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > "$RUNNER_TEMP/m02-qa05/gradle-debug-sha256.txt"
+      - name: Evidencias (nenhum dado clinico ou segredo)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro02-qa05-diagnostico-${{ github.run_id }}
+          path: ${{ runner.temp }}/m02-qa05/
+          if-no-files-found: warn
+          retention-days: 7
