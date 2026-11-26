@@ -8,9 +8,11 @@ DO $$ BEGIN
 END $$;
 DROP FUNCTION public.vault_macro02_read_operation_receipts_r1(uuid[],text);
 DROP FUNCTION public.vault_macro02_read_capability_r1();
+SET LOCAL ROLE vault_macro02_worker;
 DROP FUNCTION vault_macro02_private.read_operation_receipts_r1(uuid[],text);
 DROP FUNCTION vault_macro02_private.read_capability_r1();
 DROP FUNCTION vault_macro02_private.dormant_fence_r1();
+RESET ROLE;
 DROP TRIGGER m02_dormant_freeze_r1 ON vault_macro02_private.dose_commits;
 DROP TRIGGER m02_dormant_freeze_r1 ON vault_macro02_private.active_accounts;
 DROP FUNCTION vault_macro02_private.dormant_freeze_r1();

@@ -39,8 +39,8 @@ BEGIN
  RETURN jsonb_build_object('version',1,'account_id',uid,'writer','legacy','epoch','m02-dormant-r1','fence_id',fence,'issued_at_ms',issued,'expires_at_ms',issued+300000,'minimum_protocol',2);
 END $$;
 REVOKE ALL ON FUNCTION vault_macro02_private.read_capability_r1() FROM PUBLIC,anon,authenticated,service_role;
-ALTER FUNCTION vault_macro02_private.read_capability_r1() OWNER TO vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.read_capability_r1() TO authenticated;
+ALTER FUNCTION vault_macro02_private.read_capability_r1() OWNER TO vault_macro02_worker;
 CREATE FUNCTION vault_macro02_private.read_operation_receipts_r1(p_ids uuid[],p_fence_id text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE uid uuid:=vault_macro02_private.actor_uid(); fence text; result jsonb;
@@ -52,8 +52,8 @@ BEGIN
  RETURN jsonb_build_object('account_id',uid,'fence_id',fence,'complete',true,'rows',result);
 END $$;
 REVOKE ALL ON FUNCTION vault_macro02_private.read_operation_receipts_r1(uuid[],text) FROM PUBLIC,anon,authenticated,service_role;
-ALTER FUNCTION vault_macro02_private.read_operation_receipts_r1(uuid[],text) OWNER TO vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.read_operation_receipts_r1(uuid[],text) TO authenticated;
+ALTER FUNCTION vault_macro02_private.read_operation_receipts_r1(uuid[],text) OWNER TO vault_macro02_worker;
 REVOKE CREATE ON SCHEMA vault_macro02_private FROM vault_macro02_worker;
 CREATE FUNCTION public.vault_macro02_read_capability_r1() RETURNS jsonb
 LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT vault_macro02_private.read_capability_r1() $$;
