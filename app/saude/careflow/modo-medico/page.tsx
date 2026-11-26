@@ -21,11 +21,12 @@ import { useBrainV5Pulse } from '@/hooks/useBrainV5Pulse';
 import { useSharedHealthIntelligence } from '@/contexts/HealthIntelligenceContext';
 import { getLocalTodayISO } from '@/lib/health-utils';
 import { MEDICAL_SECTIONS_P3, buildMedicalDossierP3, type MedicalSectionP3, type MedicalModeP3 } from '@/lib/m3/medical-dossier-p3';
+import {useVitalEvidence} from '@/hooks/useVitalEvidence';
 import { assertMedicalScopeP3 } from '@/lib/m3/medical-scope-p3';
 
 function shiftDay(today:string,days:number){const [y,m,d]=today.split('-').map(Number);return new Date(Date.UTC(y,m-1,d-days+1)).toISOString().slice(0,10);}
 function fmt(day:string){return /^\d{4}-\d{2}-\d{2}$/.test(day)?`${day.slice(8)}/${day.slice(5,7)}/${day.slice(0,4)}`:day;}
-const DEFAULT_SECTIONS:MedicalSectionP3[]=MEDICAL_SECTIONS_P3.map(section=>section.id);
+const DEFAULT_SECTIONS:MedicalSectionP3[]=MEDICAL_SECTIONS_P3.map(section=>section.id).filter(id=>id!=='vital');
 const tags={registrado:'Registro acessível',declarado:'Informado no VAULT',motor:'Interpretação registrada'} as const;
 export default function MedicalModeP3Page(){
   const {user}=useAuth(),{activePersonId,persons}=useActivePersonId();
@@ -33,6 +34,7 @@ export default function MedicalModeP3Page(){
   const brain=useBrainV5Pulse();
   const {events=[],loading:loadingCare}=useCareFlowM2();
   const today=getLocalTodayISO();
+  const vitalEvidence=useVitalEvidence();
   const [start,setStart]=useState(()=>shiftDay(getLocalTodayISO(),30));
   const [end,setEnd]=useState(()=>getLocalTodayISO());
   const [mode,setMode]=useState<MedicalModeP3>('summary');
@@ -140,20 +142,21 @@ export default function MedicalModeP3Page(){
   const prepared=useMemo(()=>{
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:''};
     try{
-      return {report:buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
+      if(sections.includes('vital')&&!episode&&(!vitalEvidence.data||vitalEvidence.scope?.user_id!==user.id||vitalEvidence.scope?.person_id!==activePersonId))throw Error('Aguarde registros Vital ou desmarque a seção.');
+      return {report:buildMedicalDossierP3({vitalEvidence:vitalEvidence.data??undefined,context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
         surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,longitudinalA10:a10Facts,hospitalizationLinksA10:a10?.scope===scopeKey?a10.data.hospitalization_relations_a5:undefined,
         ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined}),error:''};
     }catch(error){return {report:null,error:error instanceof Error?error.message:'Não foi possível preparar esta prévia.'};}
-  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts]);
+  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts,vitalEvidence.data,vitalEvidence.scope]);
   const normalized=q.trim().toLocaleLowerCase('pt-BR');
   // Busca percorre a projeção detalhada completa, mas não altera o PDF.
   const searchReport=useMemo(()=>{
     if(!normalized||!ready||!user?.id||!activePersonId||!health.context)return prepared.report;
-    try{return buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
+    try{return buildMedicalDossierP3({vitalEvidence:vitalEvidence.data??undefined,context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
         surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,longitudinalA10:a10Facts,hospitalizationLinksA10:a10?.scope===scopeKey?a10.data.hospitalization_relations_a5:undefined,
       ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined});}
     catch{return prepared.report;}
-  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts]);
+  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts,vitalEvidence.data,vitalEvidence.scope]);
   const filtered=useMemo(()=>searchReport?.rows.filter(r=>
     (focusSection==='all'||r.section===focusSection)&&
     (!normalized||[r.title,r.detail,r.source,...r.relations].join(' ').toLocaleLowerCase('pt-BR').includes(normalized)))||[],
@@ -165,8 +168,8 @@ export default function MedicalModeP3Page(){
   },[filtered,limit]);
   const humanClinicalTextV34X=(value:string)=>value.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g,'$3/$2/$1').replace(/\bhealth_record\b/gi,'registro de saúde');
   const medicalReturn='/saude/careflow/modo-medico?'+new URLSearchParams({inicio:start,fim:end,formato:mode,secoes:sections.join(','),alertas:includeBrain?'1':'0',consulta:episode}).toString()+'#careflow-modo-acoes';
-  const groupIcon=(key:string)=>key==='doses'||key==='medications'?Pill:key==='consultations'?CalendarCheck:key==='careflow'||key==='exams'?FlaskConical:key==='symptoms'?MessageSquareHeart:key==='measurements'?HeartPulse:key==='surgeries'||key==='procedures_a9'?Scissors:key==='sensitivities_a9'?Activity:key==='withdrawals'?PackageCheck:key==='prescriptions'?ReceiptText:key==='treatments'?Workflow:key==='documents'?FolderLock:key==='brain'?Brain:Activity;
-  const groupTone=(key:string)=>key==='brain'?'text-violet-300':key==='consultations'?'text-sky-300':key==='symptoms'||key==='sensitivities_a9'?'text-rose-300':key==='procedures_a9'?'text-teal-300':key==='measurements'?'text-cyan-300':key==='doses'||key==='medications'||key==='withdrawals'?'text-emerald-300':key==='treatments'?'text-emerald-300':key==='documents'?'text-amber-200':'text-amber-300';
+  const groupIcon=(key:string)=>key==='vital'?Activity:key==='doses'||key==='medications'?Pill:key==='consultations'?CalendarCheck:key==='careflow'||key==='exams'?FlaskConical:key==='symptoms'?MessageSquareHeart:key==='measurements'?HeartPulse:key==='surgeries'||key==='procedures_a9'?Scissors:key==='sensitivities_a9'?Activity:key==='withdrawals'?PackageCheck:key==='prescriptions'?ReceiptText:key==='treatments'?Workflow:key==='documents'?FolderLock:key==='brain'?Brain:Activity;
+  const groupTone=(key:string)=>key==='vital'?'text-teal-300':key==='brain'?'text-violet-300':key==='consultations'?'text-sky-300':key==='symptoms'||key==='sensitivities_a9'?'text-rose-300':key==='procedures_a9'?'text-teal-300':key==='measurements'?'text-cyan-300':key==='doses'||key==='medications'||key==='withdrawals'?'text-emerald-300':key==='treatments'?'text-emerald-300':key==='documents'?'text-amber-200':'text-amber-300';
   function choose(section:MedicalSectionP3){
     setSections(value=>value.includes(section)?value.filter(x=>x!==section):[...value,section]);
     setFocusSection('all');setLimit(40);setMessage('');

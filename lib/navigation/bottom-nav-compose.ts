@@ -1,6 +1,6 @@
 // VAULT M6 — ações contextuais puras da navegação inferior.
 // Opções, ícones e tons sem estado de UI, consulta remota ou operações clínicas.
-import { Plus, Pill, HeartPulse, RefreshCw, Stethoscope, Hospital, MapPin, FlaskConical, CalendarCheck, Scissors, FileText, Activity, Syringe, ClipboardList, Droplets, Bell, PackageCheck, type LucideIcon } from "lucide-react";
+import { Plus, Pill, HeartPulse, RefreshCw, Stethoscope, Hospital, MapPin, FlaskConical, CalendarCheck, Scissors, FileText, Activity, Syringe, ClipboardList, Droplets, Bell, PackageCheck, Dumbbell, Utensils, type LucideIcon } from "lucide-react";
 
 export interface ComposeOption {
   id: string;
@@ -10,6 +10,8 @@ export interface ComposeOption {
 }
 
 const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
+  {id:"vital-treino",label:"Treino",icon:Dumbbell,path:"/saude/vital/treinos?action=new"},
+  {id:"vital-refeicao",label:"Refeição",icon:Utensils,path:"/saude/vital/nutricao?action=new"},
   {
     id: "medicamento",
     label: "Medicamento",
@@ -103,6 +105,8 @@ const SAUDE_DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 const HOJE_COMPOSE_OPTIONS: ComposeOption[] = [
+  {id:"vital-treino",label:"Treino",icon:Dumbbell,path:"/saude/vital/treinos?action=new"},
+  {id:"vital-refeicao",label:"Refeição",icon:Utensils,path:"/saude/vital/nutricao?action=new"},
   {
     id: "dose-unica",
     label: "Dose Única",
@@ -384,6 +388,8 @@ export function getComposeOptions(
 
 /** P2: icon/surface semantics never conflate entity identity with warning status. */
 export function getOptionColorClass(id: string): string {
+  if(id==="vital-treino")return "bg-sky-400/10 text-sky-300 border-sky-400/25";
+  if(id==="vital-refeicao")return "bg-emerald-400/10 text-emerald-300 border-emerald-400/25";
   if (["medicamento","novo-medicamento","farmacia","nova-farmacia","hospital","novo-hospital","local","novo-local","nova-retirada","novo-fornecimento","dose-unica"].includes(id))
     return "bg-emerald-400/10 text-emerald-300 border-emerald-400/25";
   if (["medico","novo-medico","consulta","nova-consulta"].includes(id))

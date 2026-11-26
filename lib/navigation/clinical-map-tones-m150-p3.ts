@@ -18,6 +18,7 @@ const TONES: Record<string,string> = {
   brain: VIOLET, studio: VIOLET, pharmalens: VIOLET,
   ocorrencias: VIOLET, escudo: BLUE, resumo: VIOLET,
   documentos: VIOLET, plano: ORANGE,
+  vital:TEAL,'vital-treinos':BLUE,'vital-nutricao':EMERALD,'vital-evolucao':CYAN,'vital-planos':AMBER,
 };
 export function clinicalMapToneM150P3(id: string): string { return TONES[id] ?? BLUE; }
 /** P5 P3: grupos expressam domínios, não gravidade clínica. */

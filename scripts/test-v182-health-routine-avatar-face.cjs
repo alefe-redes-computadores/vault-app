@@ -6,7 +6,11 @@ const ui=fs.readFileSync("app/saude/lembretes/page.tsx","utf8");
 const scene=fs.readFileSync("components/saude/HealthAvatar3D.tsx","utf8");
 const source=fs.readFileSync("lib/health-reminders/domain.ts","utf8");
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const moduleBox={exports:{}};new Function("require","module","exports",js)(require,moduleBox,moduleBox.exports);
+const vitalTargetBox={exports:{}};
+const vitalTargetJs=ts.transpileModule(fs.readFileSync('lib/vital/reminder-targets.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+new Function('require','module','exports',vitalTargetJs)(id=>{throw Error('Dependência Vital não permitida '+id);},vitalTargetBox,vitalTargetBox.exports);
+const moduleBox={exports:{}};new Function("require","module","exports",js)(id=>{if(id==='@/lib/vital/reminder-targets')return vitalTargetBox.exports;throw Error('Dependência não permitida '+id);},moduleBox,moduleBox.exports);
+for(const target of vitalTargetBox.exports.VITAL_REMINDER_TARGETS) assert.equal(moduleBox.exports.HEALTH_REMINDER_TARGETS.filter(x=>x.type===target.type&&x.route===target.route).length,1);
 const {nextHealthReminderOccurrence}=moduleBox.exports;
 
 const base=new Date(2026,9,19,9,0,0);

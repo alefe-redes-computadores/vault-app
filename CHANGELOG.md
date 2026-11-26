@@ -1,5 +1,28 @@
 # Histórico de versões do VAULT
 
+## [1.3.0] — Preparação 2026-11-25 (não distribuída)
+
+Versão de produto preparada; não equivale a Release GitHub, Action, APK instalado ou homologação física.
+
+### Novidades
+
+- Vital: treinos, nutrição, fichas, refeições e acompanhamento de rotina integrados.
+
+### Melhorias
+
+- Histórico de exercícios, planos versionados e lembretes pela central existente.
+
+- Evolução corporal com medidas existentes e recuperação de cópia cifrada do Vital.
+
+### Correções
+
+- Leitura paginada sem encerramento prematuro e retorno contextual para o dia selecionado.
+
+### Segurança
+
+- Registros com escopo de conta e pessoa, revisão explícita, fila transacional e proteção contra sobrescrita concorrente.
+
+
 ## [Não distribuído] — Engenharia Update 360 Premium (23/11/2026)
 
 **Código candidato, ainda não é GitHub Release, não integra o APK Build 2195 e não altera o Build 2211.**

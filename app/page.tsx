@@ -101,6 +101,7 @@ import {
 import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 import { PageTransition } from "@/components/PageTransition";
+import {VitalContextCard} from "@/components/vital/VitalContextCard";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
@@ -1350,6 +1351,7 @@ export default function HomePage() {
 
           <VaultUpdateHomePromptM117 />
           <HomeEssentialToggleM118 />
+          <VitalContextCard origin="/" day={hoje}/>
           <ExamAgendaM2 compact />
           {/* VAULT_M144_HOME_ENTRY · M149: item integrado na grade de áreas da Home, não um botão solto. */}
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>

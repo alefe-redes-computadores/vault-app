@@ -34,7 +34,10 @@ e(
 );
 e(r("app/saude/plano-seguranca/page.tsx").includes("VAULT_SAFETY_PLAN_PROGRESSIVE_V70"),"plano progressivo");
 e(r("components/BottomNav.tsx").includes("VAULT_BOTTOM_NAV_POLISH_V70"),"BottomNav");
-e(JSON.parse(r("package.json")).version==="1.2.0","versão 1.2.0");
+const v70Version=JSON.parse(r("package.json")).version;
+const v70Lock=JSON.parse(r("package-lock.json"));
+const v70Parts=/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v70Version)?v70Version.split('.').map(Number):[];
+e(v70Parts.length===3&&v70Parts.every(Number.isSafeInteger)&&(v70Parts[0]>1||v70Parts[0]===1&&v70Parts[1]>=2)&&v70Lock.version===v70Version&&v70Lock.packages?.['']?.version===v70Version&&r('lib/app-version.ts').includes(`APP_VERSION = "${v70Version}"`)&&r('README.md').includes(`<!-- VAULT_CURRENT_VERSION:${v70Version} -->`),"versão canônica consistente e sem downgrade de 1.2.0");
 e(
   r("lib/health-intelligence/sos-patterns.ts").includes(
     "current.quantityComplete && current.knownQuantity >= 21"

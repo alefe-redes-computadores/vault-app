@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase/client";
+import {vitalTable} from '@/lib/vital/cloud-transport';
+import {mergeCanonicalVitalRealtime} from '@/lib/vital-runtime/canonical';
 
 type Row = Record<string, unknown> & { id?: string; user_id?: string; updated_at?: string };
 type LocalTable = {
@@ -74,6 +76,12 @@ export function useSupabaseRealtime(userId?: string) {
         { event: "*", schema: "public" },
         async (payload) => {
           if (disposed) return;
+          if(vitalTable(payload.table)){
+            const incoming=(payload.new||{}) as Row;
+            if(incoming.user_id!==userId||payload.eventType==='DELETE')return;
+            try{await mergeCanonicalVitalRealtime(payload.table,userId,incoming,payload.eventType);}catch{ /* canonical full pull reports and preserves conflicts */ }
+            return;
+          }
           const config = TABLES[payload.table];
           if (!config) return;
 

@@ -6,7 +6,7 @@ import type { Report360, Report360Row } from "./clinical-report-360";
 const text = (value: unknown) => String(value ?? "").replace(/[\u0000-\u001f]+/g," ").trim();
 const sectionTitle:Record<Report360Row["category"],string> = {
   medications:"Medicamentos — cadastro atual",doses:"Doses documentadas",symptoms:"Sintomas e humor relatados",
-  measurements:"Medições e hábitos",consultations:"Consultas",documents:"Documentos de saúde (metadados)",brain:"Brain — snapshots preservados",
+  measurements:"Medições e hábitos",consultations:"Consultas",documents:"Documentos de saúde (metadados)",brain:"Brain — snapshots preservados",vital:"Vital — registros declarados",
 };
 export async function exportClinicalReport360Pdf(report: Report360): Promise<void> {
   const pdf = new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
@@ -48,7 +48,7 @@ export async function exportClinicalReport360Pdf(report: Report360): Promise<voi
     title("Para a consulta");
     paragraph("Reveja horários e quantidade reais, motivos relatados, sintomas, consultas e os avisos preservados. Divergências são pontos para discutir com o profissional — não conclusões clínicas.",9);
   }
-  const order:Report360Row["category"][]=["medications","doses","symptoms","measurements","consultations","documents","brain"];
+  const order:Report360Row["category"][]=["medications","doses","symptoms","measurements","consultations","documents","vital","brain"];
   for(const category of order){
     const rows=report.rows.filter(r=>r.category===category);
     if(!rows.length)continue;

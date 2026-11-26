@@ -1,6 +1,7 @@
 // lib/repositories/persons.ts
 
 import { db } from "../db";
+import {VITAL_PERSON_STORES,removeVitalForOwnedPerson,isVitalPersonQueueRow} from "../vital/person-removal";
 import { enfileirarOperacao } from "../sync/enfileirarOperacao";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 
@@ -283,6 +284,7 @@ export const personsRepository = {
       [
         db.persons,
         db.health_profiles,db.health_devices,db.registros_saude,db.health_connect_connections,db.health_connect_imports,
+        ...VITAL_PERSON_STORES.map(name=>db.table(name)),
         db.documents,
         db.medicamentos,
         db.consultas,
@@ -295,6 +297,7 @@ export const personsRepository = {
         db.syncQueue,
       ],
       async () => {
+        await removeVitalForOwnedPerson({user_id:user.id,person_id:id},{person:()=>db.persons.get(id),table:name=>db.table(name),removeQueue:s=>db.syncQueue.filter(q=>isVitalPersonQueueRow(q,s)).delete()});
         await db.documents
           .where("person_id")
           .equals(id)

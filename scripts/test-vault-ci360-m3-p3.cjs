@@ -15,12 +15,14 @@ function load(path,aliases={}){
   },Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,encodeURIComponent};
   vm.runInNewContext(js,sandbox,{filename:path,timeout:7000});return m.exports;
 }
-const report=load('lib/clinical-report-360.ts');
+const vitalValidation=load('lib/vital/validation.ts');
+const vitalFacts=load('lib/vital/facts.ts',{'./validation':vitalValidation});
+const report=load('lib/clinical-report-360.ts',{'@/lib/vital/facts':vitalFacts});
 const rehabProjection=load('lib/rehab-m5/projection.ts');
 const vaccination=load('lib/vaccination-a8/types.ts');
 const a9=load('lib/clinical-a9/types.ts');
 const pureB=load('lib/clinical-front-b-pure.ts'); // actual module; unknown runtime dependencies still reject
-const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination,'@/lib/clinical-a9/types':a9,'@/lib/clinical-front-b-pure':pureB});
+const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination,'@/lib/clinical-a9/types':a9,'@/lib/clinical-front-b-pure':pureB,'@/lib/vital/facts':vitalFacts});
 const scope=load('lib/m3/medical-scope-p3.ts');
 const timestamp='2026-11-17T11:00:00-03:00';
 const ctx=()=>({userId:'own-a',personId:'person-a',medicamentos:[],doseLogs:[],renovacoes:[],tratamentos:[],
@@ -33,6 +35,10 @@ assert.throws(()=>med.buildMedicalDossierP3({...args(c),sections:[]}),/Selecione
 assert.throws(()=>med.buildMedicalDossierP3({...args(c),start:'2026-02-30'}),/inválido/);
 assert.throws(()=>med.buildMedicalDossierP3({...args(c),start:'2026-11-18'}),/inválido/);
 const empty=med.buildMedicalDossierP3(args(c));assert.equal(empty.rows.length,0);
+const vitalMeal={id:'meal-vital',user_id:'own-a',person_id:'person-a',day:'2026-11-05',time:'12:00',kind:'lunch',custom_label:null,deleted_at:null,synced:true,items:[{name:'Fixture',quantity:null,unit:null}]};
+const vitalDossier=med.buildMedicalDossierP3({...args(c),sections:['vital'],vitalEvidence:{workouts:[],meals:[vitalMeal,{...vitalMeal,id:'foreign-meal',user_id:'foreign'}],trainingCheckins:[],nutritionCheckins:[]}});
+assert.equal(vitalDossier.rows.length,1);assert.equal(vitalDossier.rows[0].sourceId,'meal-vital');assert.equal(vitalDossier.rows[0].section,'vital');
+assert.throws(()=>med.buildMedicalDossierP3({...args(c),sections:['vital']}),/Vital/);
 assert.ok(empty.limitations.some(x=>x.includes('ausência')));
 const own={user_id:'own-a',person_id:'person-a'},other={user_id:'other-owner',person_id:'other-person'};
 c.medicamentos=[{...own,id:'med-1',nome:'Exemplo próprio',dosagem:'10 mg',tipo_uso:'continuo',status:'ativo'},

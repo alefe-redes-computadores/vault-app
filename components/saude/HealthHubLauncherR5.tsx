@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Reorder, useDragControls, useReducedMotion } from "framer-motion";
 import {
-  Activity, Accessibility, BedDouble, ArrowDown, ArrowUp, BellRing, BookHeart, BrainCircuit, Building2,
+  Activity, Accessibility, BedDouble, ArrowDown, ArrowUp, BellRing, BookHeart, BrainCircuit, Building2, Dumbbell, Utensils, Target, ChartNoAxesCombined,
   CalendarCheck, ChevronRight, Droplets, FileSearch, FlaskConical, FolderHeart,
   GripVertical, HeartPulse, LayoutGrid, Moon, PackageCheck, Pill, Star,
   ScanLine, Search, ShieldCheck, ShieldPlus, SlidersHorizontal, Sparkles, Stethoscope,
@@ -30,7 +30,7 @@ const ICONS:Record<HealthIconR5,LucideIcon>={
   thermometer:Thermometer,moon:Moon,droplets:Droplets,scan:ScanLine,files:FileSearch,
   shield:ShieldPlus,user:UserRoundCheck,sparkles:Sparkles,pill:Pill,book:BookHeart,
   chart:Activity,lock:ShieldCheck,stethoscope:Stethoscope,building:Building2,
-  package:PackageCheck,calendar:CalendarCheck,users:Users,bed:BedDouble,rehab:Accessibility,
+  package:PackageCheck,calendar:CalendarCheck,users:Users,bed:BedDouble,rehab:Accessibility, dumbbell:Dumbbell,utensils:Utensils,target:Target,trend:ChartNoAxesCombined,
 };
 const TONES:Record<HealthGroupR5,{icon:string;surface:string;heading:string;line:string}>={
   intelligence:{icon:"text-sky-200 bg-sky-400/10 border-sky-400/20",surface:"border-sky-400/20 bg-sky-400/[0.045]",heading:"text-sky-300",line:"border-sky-300/40"},
@@ -40,7 +40,12 @@ const TONES:Record<HealthGroupR5,{icon:string;surface:string;heading:string;line
 };
 const BY_ID=new Map(HEALTH_MODULES_R5.map(module=>[module.id,module]));
 const RECOVERY_MODULES_STB=HEALTH_MODULES_R5.filter(m=>m.id==="internacoes"||m.id==="reabilitacao");
-const toneForModuleSTB=(module:HubModuleR5)=>module.id==="reabilitacao"?{icon:"text-teal-200 bg-teal-400/10 border-teal-400/20",surface:"border-teal-400/20 bg-teal-400/[0.045]",heading:"text-teal-300",line:"border-teal-300/40"}:TONES[module.group];
+const VITAL_TONES:Record<string,{icon:string;surface:string;heading:string;line:string}>={
+ vital:{icon:"text-teal-200 bg-teal-400/10 border-teal-400/20",surface:"border-teal-400/20 bg-teal-400/[0.045]",heading:"text-teal-300",line:"border-teal-300/40"},
+ 'vital-treinos':TONES.intelligence,'vital-nutricao':TONES.foundation,'vital-planos':TONES.capture,
+ 'vital-evolucao':{icon:"text-cyan-200 bg-cyan-400/10 border-cyan-400/20",surface:"border-cyan-400/20 bg-cyan-400/[0.045]",heading:"text-cyan-300",line:"border-cyan-300/40"},
+};
+const toneForModuleSTB=(module:HubModuleR5)=>VITAL_TONES[module.id]??(module.id==="reabilitacao"?{icon:"text-teal-200 bg-teal-400/10 border-teal-400/20",surface:"border-teal-400/20 bg-teal-400/[0.045]",heading:"text-teal-300",line:"border-teal-300/40"}:TONES[module.group]);
 const MAX_STORE=8192;
 /** Fixed, compact patient-facing tasks; no duplicate catalog or new clinical source. */
 const IA20_ESSENTIAL_LINKS: ReadonlyArray<{label:string;href:string;icon:LucideIcon}> = [

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {VitalEvidencePanel} from '@/components/vital/VitalEvidencePanel';
 import {safeClinicalReturnM150} from '@/lib/navigation/clinical-return-m150';
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -168,6 +169,7 @@ export function BrainV7UniversalConsole() {
       :report&&<>
         {clinicalReviewP6?<BrainClinicalReviewMacro3 review={clinicalReviewP6}/>:null}
         <TreatmentContinuityA4 context="brain" maxItems={4}/>
+        <VitalEvidencePanel origin="/saude/brain-v7" brain/>
         <section className={section}>
           <h2 className={title}><HeartPulse size={17} className="text-emerald-300"/>Referências pessoais · tratamentos contínuos</h2>
           <p className={`mt-2 ${subtle}`}>Marque voluntariamente até 5 tratamentos contínuos como referência pessoal. Falta de registro NÃO equivale a falta de medicamento, e uma retomada não prova estabilidade farmacológica.</p>

@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import {VaultAdaptiveFooterR03} from "@/components/VaultAdaptiveFooterR03";
 const ContextualHelp = dynamic(() => import("@/components/help/ContextualHelp").then(module => module.ContextualHelp));
 import { isVaultNative } from "@/lib/native-runtime";
 import { resolveDoseNotificationDestination, shouldSignalPendingDosesInPlace } from "@/lib/notification-dose-navigation";
@@ -1380,7 +1381,8 @@ export function Providers({
       <VaultUpdateReconciler />
       <GlobalSyncIssueAlert />
       <ContextualHelp userId={user.id} personId={activePersonId} />
-        <div className="min-h-screen pb-24">
+        <div className="min-h-screen pb-24 vault-app-shell-r03">
+          <VaultAdaptiveFooterR03 />
           <Suspense
             fallback={
               <div className="min-h-screen bg-void" />

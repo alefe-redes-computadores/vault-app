@@ -45,9 +45,15 @@ const pureB={exports:{}};
 const pureBPath='lib/clinical-front-b-pure.ts';
 const pureBJs=ts.transpileModule(fs.readFileSync(pureBPath,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
 vm.runInNewContext(pureBJs,{module:pureB,exports:pureB.exports,require:id=>{throw Error('Dependência não permitida no núcleo B '+id);}}, {filename:pureBPath,timeout:10000});
+function loadVitalPure(path,allowed={}){
+ const mod={exports:{}};const code=ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ vm.runInNewContext(code,{module:mod,exports:mod.exports,require:id=>{if(Object.prototype.hasOwnProperty.call(allowed,id))return allowed[id];throw Error('Dependência Vital não permitida '+id);},encodeURIComponent},{filename:path,timeout:10000});return mod.exports;
+}
+const vitalValidation=loadVitalPure('lib/vital/validation.ts');
+const vitalFacts=loadVitalPure('lib/vital/facts.ts',{'./validation':vitalValidation});
 vm.runInNewContext(compiled.outputText,{
  exports:m.exports,module:m,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,
- require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;if(id==='@/lib/clinical-front-b-pure')return pureB.exports;throw Error('Dependência não permitida '+id);}
+ require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;if(id==='@/lib/clinical-front-b-pure')return pureB.exports;if(id==='@/lib/vital/facts')return vitalFacts;throw Error('Dependência não permitida '+id);}
 },{filename:p,timeout:10000});
 const {buildMedicalDossierP3}=m.exports;
 const owner={user_id:'u',person_id:'p'},foreign={user_id:'outro',person_id:'p'};

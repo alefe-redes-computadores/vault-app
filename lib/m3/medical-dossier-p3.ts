@@ -3,6 +3,7 @@
  * Apenas relações por IDs existentes e escopo proprietário+pessoa COMPROVADO.
  */
 import { buildClinicalReport360, validClinicalDay, type Report360Section } from '@/lib/clinical-report-360';
+import {vitalFacts,type VitalEvidence} from '@/lib/vital/facts';
 import type { HealthInsightContext } from '@/lib/health-insights';
 import {formatDoseQuantityB,metricKindB,formatSleepDurationB,originLabelB} from '@/lib/clinical-front-b-pure';
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
@@ -84,6 +85,7 @@ export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;des
   {id:'procedures_a9',label:'Procedimentos não cirúrgicos',description:'Planos, realizações e retificações informadas'},
   {id:'sensitivities_a9',label:'Alergias e reações declaradas',description:'Origem, intensidade e incerteza sem diagnóstico automático'},
   {id:'documents',label:'Documentos',description:'Somente títulos e metadados permitidos'},
+  {id:'vital',label:'Vital',description:'Treinos realizados e alimentação declarada, sem inferência'},
 ];
 const ALLOWED = new Set<MedicalSectionP3>(MEDICAL_SECTIONS_P3.map(s=>s.id));
 const BASE = new Set<MedicalSectionP3>(['medications','doses','symptoms','measurements','consultations','documents']);
@@ -107,6 +109,7 @@ const human=(text:string):string=>text
 export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
   treatmentFacts?:readonly A4ClinicalFact[];
+  vitalEvidence?:VitalEvidence;
   longitudinalA10?:readonly A10Fact[];
   hospitalizationLinksA10?:readonly Record<string,unknown>[];
   surgeryEvents?:readonly A7Event[];
@@ -416,6 +419,10 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
         provenance:'declarado',source:f.authority,sourceId:f.id,registeredAt:null,
         relations:verifiedMedicalRelationsA10G4(f,input.longitudinalA10),href:f.href});
     }
+  }
+  if(selected('vital')&&!consultation){
+    if(!input.vitalEvidence)throw Error('Registros Vital indisponíveis; desmarque a seção ou aguarde.');
+    for(const f of vitalFacts({user_id:uid,person_id:pid},start,end,input.vitalEvidence))add({section:'vital',date:f.day,time:f.time,title:f.title,detail:f.detail,source:f.source,sourceId:f.id,registeredAt:null,provenance:'declarado',relations:[],href:f.href});
   }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
   const episodeRows=consultation?rows.filter(r=>{

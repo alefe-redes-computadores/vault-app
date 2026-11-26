@@ -9,13 +9,14 @@ import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
+import {useVitalEvidence} from "@/hooks/useVitalEvidence";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { buildClinicalReport360, type Report360Mode, type Report360Section } from "@/lib/clinical-report-360";
 import { ConsultationChangeM121 } from "@/components/saude/ConsultationChangeM121";
 
 const SECTIONS: {id:Report360Section;label:string}[] = [
   {id:"medications",label:"Medicamentos"},{id:"doses",label:"Doses"},{id:"symptoms",label:"Sintomas/humor"},
-  {id:"measurements",label:"Medições"},{id:"consultations",label:"Consultas"},{id:"documents",label:"Documentos de saúde (somente títulos)"},
+  {id:"measurements",label:"Medições"},{id:"consultations",label:"Consultas"},{id:"documents",label:"Documentos de saúde (somente títulos)"},{id:"vital",label:"Vital (treinos e alimentação)"},
 ];
 function backDays(end:string, days:number){const [y,m,d]=end.split("-").map(Number);const date=new Date(Date.UTC(y,m-1,d-days+1));return date.toISOString().slice(0,10);}
 export default function Reports360Page(){
@@ -23,6 +24,7 @@ export default function Reports360Page(){
   const {user}=useAuth();
   const {activePersonId,persons,changePerson}=useActivePersonId();
   const health=useHealthIntelligence({includeAudit:false});
+  const vitalEvidence=useVitalEvidence();
   const brain=useBrainV5Pulse();
   const {medicos=[]}=useMedicos();
   const today=getLocalTodayISO();
@@ -40,9 +42,10 @@ export default function Reports360Page(){
   const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!brain.isLoading&&health.context?.personId===activePersonId&&health.context?.userId===user?.id);
   const result=useMemo(()=>{
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:null};
-    try{return {report:buildClinicalReport360({context:health.context,ledger:brain.records,ownerId:user.id,personId:activePersonId,personName:person?.name||"Pessoa selecionada",start,end,sections,mode}),error:null};}
+    if(sections.includes("vital")&&(!vitalEvidence.data||vitalEvidence.scope?.user_id!==user.id||vitalEvidence.scope?.person_id!==activePersonId))return {report:null,error:"Aguarde a consulta Vital ou desmarque a seção."};
+    try{return {report:buildClinicalReport360({vitalEvidence:vitalEvidence.data??undefined,context:health.context,ledger:brain.records,ownerId:user.id,personId:activePersonId,personName:person?.name||"Pessoa selecionada",start,end,sections,mode}),error:null};}
     catch(e){return {report:null,error:e instanceof Error?e.message:"Não foi possível preparar o relatório."};}
-  },[ready,user?.id,activePersonId,health.context,brain.records,person?.name,start,end,sections,mode]);
+  },[ready,user?.id,activePersonId,health.context,brain.records,person?.name,start,end,sections,mode,vitalEvidence.data,vitalEvidence.scope]);
   const choose=(section:Report360Section)=>{setMessage("");setSections(value=>value.includes(section)?value.filter(x=>x!==section):[...value,section]);};
   const preset=(days:7|30|90)=>{setEnd(today);setStart(backDays(today,days));setMessage("");};
   const reportScopeM2=useRef({userId:user?.id||'',personId:activePersonId||''});

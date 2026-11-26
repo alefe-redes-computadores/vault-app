@@ -192,4 +192,4 @@ Esta intervenção **não** altera `APP_VERSION=1.2.0`, não distribui o APK da 
 - **Estados**: código preparado / gate local / Git / CI / Release / aparelho / homologação. Nunca presumir equivalência.
 - Contrato detalhado: [docs/VAULT-UPDATE360-PREMIUM-GUARDIAN.md](docs/VAULT-UPDATE360-PREMIUM-GUARDIAN.md).
 
-<!-- VAULT_CURRENT_VERSION:1.2.0 -->
+<!-- VAULT_CURRENT_VERSION:1.3.0 -->

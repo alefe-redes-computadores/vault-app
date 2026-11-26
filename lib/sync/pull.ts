@@ -151,6 +151,7 @@ async function runPullTasks(
 // PULL
 // ============================================================
 
+import {pullCanonicalVital} from '@/lib/vital-runtime/canonical';
 export function pullAllData(userId: string): Promise<void> {
   if (pullInFlight) {
     if (pullInFlightUser !== userId) {
@@ -1825,6 +1826,8 @@ async function performPullAllData(userId: string): Promise<void> {
     // ==========================================================
     // FINALIZAÇÃO
     // ==========================================================
+    let vitalPullFailed=false;
+    try{await pullCanonicalVital(userId);}catch{vitalPullFailed=true;}
     if (clinicalM1PullErrors.length>0){
       throw new Error(`M1: importação clínica incompleta: ${clinicalM1PullErrors.join(' · ')}`);
     }
@@ -1832,6 +1835,7 @@ async function performPullAllData(userId: string): Promise<void> {
       throw new Error(`Falha na importação das doses: ${criticalPullErrors.join(" · ")}`);
     }
 
+    if(vitalPullFailed)throw new Error("Vital: importação incompleta; registros locais preservados.");
     if (
       typeof window !==
       "undefined"

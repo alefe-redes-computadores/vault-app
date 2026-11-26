@@ -7,7 +7,7 @@ import {
   Activity, Accessibility, BedDouble, ArrowLeft, Bell, BrainCircuit, CalendarDays, ChevronDown, ChevronRight,
   ClipboardList, Clock3, Compass, Droplets, Factory, FileHeart, FlaskConical,
   HeartPulse, Layers3, Pill, Search, Eye, ShieldCheck, Stethoscope,
-  Syringe, Truck, Users, X, Star,
+  Syringe, Truck, Users, X, Star, Dumbbell, Utensils, Target, ChartNoAxesCombined,
 } from 'lucide-react';
 import { useHapticFeedback } from '@/lib/haptics';
 import {useAuth} from '@/hooks/useAuth';
@@ -32,7 +32,7 @@ const icons: Record<ClinicalMapIconM150, LucideIcon> = {
   stethoscope: Stethoscope, flask: FlaskConical, droplet: Droplets,
   bell: Bell, users: Users, shield: ShieldCheck, brain: BrainCircuit,
   eye: Eye, layers: Layers3, factory: Factory, clipboard: ClipboardList,
-  syringe: Syringe, bed: BedDouble, rehab: Accessibility,
+  syringe: Syringe, bed: BedDouble, rehab: Accessibility, dumbbell:Dumbbell,utensils:Utensils,target:Target,trend:ChartNoAxesCombined,
 };
 
 /** P5 P4: Inicio/Hoje/Documentos/Mais já têm BottomNav. Nenhum atalho
@@ -148,7 +148,7 @@ export default function ClinicalMapM150Page() {
       </section>}
       {!searching&&focus.length>0&&<section aria-label="Em foco agora" className="space-y-2"><h2 className="text-xs font-bold text-sky-200">Em foco agora</h2>
         <p className="text-[11px] text-ink-muted">Registros e acessos recentes, sem criar tarefas.</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{focus.map((item,index)=>{const module=HEALTH_MODULES_R5.find(m=>m.id===item.id);if(!module)return null;const entry=clinicalDirectoryM150.flatMap(group=>group.items).find(candidate=>candidate.id===item.id);const FocusIcon=item.kind==="brain"?BrainCircuit:item.kind==="consultation"?Stethoscope:item.kind==="exam"?FlaskConical:item.kind==="protocol"?HeartPulse:(entry?icons[entry.icon]:Clock3);return <Link key={item.id} href={withReturnTarget(module.href,sourceHref)} onClick={rememberMapSTB} className={`flex min-h-14 items-center gap-2.5 rounded-xl border border-sky-300/20 bg-sky-300/[.04] p-3 ${isTrailingGridItemSTB(index,focus.length)?"sm:col-span-2":""}`} aria-label={`Abrir ${module.title}`}><span data-vault-focus-icon="r4" className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/[.09] text-sky-200"><FocusIcon size={18} aria-hidden="true"/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{module.title}</strong><span className="mt-1 block line-clamp-1 text-[11px] leading-snug text-ink-muted">{item.reason.replace(/^Brain:\s*/i,'')}</span></span><ChevronRight size={16} className="shrink-0 text-sky-200" aria-hidden="true"/></Link>;})}</div></section>}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{focus.map((item,index)=>{const module=HEALTH_MODULES_R5.find(m=>m.id===item.id);if(!module)return null;const entry=[...clinicalDirectoryM150,...clinicalAdditionalSectionsM150].flatMap(group=>group.items).find(candidate=>candidate.id===item.id);const FocusIcon=item.kind==="brain"?BrainCircuit:item.kind==="consultation"?Stethoscope:item.kind==="exam"?FlaskConical:item.kind==="protocol"?HeartPulse:(entry?icons[entry.icon]:Clock3);return <Link key={item.id} href={withReturnTarget(module.href,sourceHref)} onClick={rememberMapSTB} className={`flex min-h-14 items-center gap-2.5 rounded-xl border border-sky-300/20 bg-sky-300/[.04] p-3 ${isTrailingGridItemSTB(index,focus.length)?"sm:col-span-2":""}`} aria-label={`Abrir ${module.title}`}><span data-vault-focus-icon="r4" className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/[.09] text-sky-200"><FocusIcon size={18} aria-hidden="true"/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{module.title}</strong><span className="mt-1 block line-clamp-1 text-[11px] leading-snug text-ink-muted">{item.reason.replace(/^Brain:\s*/i,'')}</span></span><ChevronRight size={16} className="shrink-0 text-sky-200" aria-hidden="true"/></Link>;})}</div></section>}
       {groups.length===0&&<div className="rounded-2xl border border-surface-border/60 bg-surface/45 p-4 text-sm text-ink-secondary">Nenhuma área encontrada. Tente outro nome ou limpe a busca.</div>}
       {groups.map(group=>{
         const preferred=featuredBySection[group.id]||[];

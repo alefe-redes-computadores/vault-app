@@ -2,7 +2,8 @@
 import type { HealthInsightContext } from "@/lib/health-insights";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 
-export type Report360Section = "medications" | "doses" | "symptoms" | "measurements" | "consultations" | "documents";
+import {vitalFacts,type VitalEvidence} from '@/lib/vital/facts';
+export type Report360Section = "medications" | "doses" | "symptoms" | "measurements" | "consultations" | "documents" | "vital";
 export type Report360Mode = "factual" | "brain" | "consultation";
 export type Report360Category = Report360Section | "brain";
 export interface Report360Row {
@@ -29,6 +30,7 @@ export interface Report360 {
 }
 export interface Report360Input {
   context: HealthInsightContext;
+  vitalEvidence?: VitalEvidence;
   ledger: readonly BrainV5Alert[];
   ownerId: string;
   personId: string;
@@ -63,7 +65,7 @@ export function buildClinicalReport360(input: Report360Input): Report360 {
   const startMs = Date.parse(`${start}T12:00:00Z`), endMs = Date.parse(`${end}T12:00:00Z`);
   if ((endMs-startMs)/86400000 > 366) throw new Error("O período máximo é de 367 dias, contando as datas inicial e final.");
   const chosen = [...new Set(input.sections)].filter((s):s is Report360Section =>
-    ["medications","doses","symptoms","measurements","consultations","documents"].includes(s));
+    ["medications","doses","symptoms","measurements","consultations","documents","vital"].includes(s));
   if (!chosen.length) throw new Error("Selecione pelo menos uma seção.");
   const includes = (key: Report360Section) => chosen.includes(key);
   const within = (date: string) => validClinicalDay(date) && date >= start && date <= end;
@@ -101,6 +103,11 @@ export function buildClinicalReport360(input: Report360Input): Report360 {
       if (!owned(doc) || doc.category_id !== "saude" || !within(date)) continue;
       rows.push(row("documents", date, null, doc.title || "Documento de saúde", `Tipo: ${doc.type} · Data de cadastro, não do evento clínico. Sem anexos, conteúdo, credenciais ou metadados.`, "health_document_metadata", doc.id || `${date}:${doc.type}`));
     }
+  }
+  if (includes("vital")) {
+    if(!input.vitalEvidence)throw Error("Registros Vital não disponíveis. Aguarde ou desmarque a seção.");
+    for(const f of vitalFacts({user_id:ownerId,person_id:personId},start,end,input.vitalEvidence))
+      rows.push(row("vital",f.day,f.time,f.title,f.detail,f.source,f.id));
   }
   if (mode === "brain" || mode === "consultation") {
     for (const item of ledger) {

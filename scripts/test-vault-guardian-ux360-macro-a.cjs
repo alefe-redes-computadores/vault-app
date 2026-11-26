@@ -58,7 +58,9 @@ const original=d.clinicalDirectoryM150.flatMap(g=>g.items);
 const extras=d.clinicalAdditionalSectionsM150.flatMap(g=>g.items);
 const all=[...original,...extras];
 ok('Diretorio existente mantido',()=>assert(original.length>=31));
-ok('Onze destinos adicionais reais e distintos',()=>assert.equal(extras.length,11));
+const expectedExtraRoutes={"reabilitacao":"/saude/reabilitacao","vacinas":"/saude/vacinas","procedimentos-a9":"/saude/procedimentos","reacoes-a9":"/saude/reacoes","engenharia-clinica":"/saude/engenharia-clinica","relatorio":"/saude/relatorios","rede-medicos":"/saude/medicos","rede-hospitais":"/saude/hospitais","rede-farmacias":"/saude/farmacias","fenix-indicadores":"/saude/fenix#indicadores","fenix-fontes":"/saude/fenix#fontes","vital":"/saude/vital","vital-treinos":"/saude/vital/treinos","vital-nutricao":"/saude/vital/nutricao","vital-evolucao":"/saude/vital/evolucao","vital-planos":"/saude/vital/planos"};
+const assertExtraRoutes=()=>{assert.equal(extras.length,16);for(const [id,href] of Object.entries(expectedExtraRoutes))assert.equal(extras.filter(x=>x.id===id&&x.href===href).length,1,`Destino ausente/duplicado: ${id} ${href}`);};
+ok('Onze destinos históricos e cinco Vital, IDs e rotas exatos',assertExtraRoutes);
 ok('Nenhum destino duplicado por URL',()=>assert.equal(new Set(all.map(e=>e.href)).size,all.length));
 ok('Nenhum ID duplicado',()=>assert.equal(new Set(all.map(e=>e.id)).size,all.length));
 for(const e of extras)ok('Rota complementar existente '+e.href,()=>{const route=e.href.split(/[?#]/,1)[0];assert(fs.existsSync(path.join('app',route,'page.tsx')),'Rota não existe: '+route)});
@@ -95,7 +97,7 @@ const identityCases={
  'NAV-07':()=>assert(read('components/BottomNav.tsx').includes('router.replace(path)')),
  'NAV-08':()=>assert(read('app/saude/mapa/page.tsx').includes('returnHref={sourceHref}')),
  'NAV-09':()=>assert(read('app/saude/cirurgias/detalhes/page.tsx').includes('safeClinicalReturnM150(searchParams.get("return_to")')),
- 'NAV-10':()=>assert.equal(extras.length,11),
+ 'NAV-10':assertExtraRoutes,
  'NAV-11':()=>assert(read('app/saude/linha-clinica/page.tsx').includes('scrollIntoView')),
  'NAV-12':()=>assert.equal(c.safeClinicalReturnM150('/api/private','/saude/linha-clinica','/saude/mapa'),'/saude/mapa'),
  'HUB-01':()=>assert(read('app/saude/mapa/page.tsx').includes('setShowAdditional')),

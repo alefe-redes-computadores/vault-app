@@ -15,7 +15,9 @@ function load(path,deps={}){
   throw new Error(`Importação inesperada ${key}`);
  });return m.exports;
 }
-const core=load("lib/clinical-report-360.ts");
+const vitalValidation=load("lib/vital/validation.ts");
+const vitalFacts=load("lib/vital/facts.ts",{"./validation":vitalValidation});
+const core=load("lib/clinical-report-360.ts",{"@/lib/vital/facts":vitalFacts});
 const safe=load("lib/clinical-report-360-export.ts",{
  "@capacitor/core":{Capacitor:{isNativePlatform:()=>false}},
  "@capacitor/filesystem":{Directory:{Cache:"CACHE"},Encoding:{UTF8:"utf8"},Filesystem:{}},
@@ -33,6 +35,10 @@ const defaultOptions={context,ledger:[brain()],ownerId:"u1",personId:"p1",person
 const run=opts=>core.buildClinicalReport360({...defaultOptions,...opts});
 const report=run();
 check(report.rows.length===6,"6 fatos selecionados, sem dados de outra pessoa ou logs pendentes");
+const vitalMeal={id:'vital-meal',user_id:id,person_id:person,day:'2026-11-05',time:'12:00',kind:'lunch',custom_label:null,deleted_at:null,synced:true,items:[{name:'Alimento fixture',quantity:null,unit:null}]};
+const vitalReport=core.buildClinicalReport360({...defaultOptions,sections:['vital'],vitalEvidence:{workouts:[],meals:[vitalMeal,{...vitalMeal,id:'foreign-vital',person_id:'p2'},{...vitalMeal,id:'deleted-vital',deleted_at:'2026-11-06T00:00:00Z'}],trainingCheckins:[],nutritionCheckins:[]}});
+check(vitalReport.rows.length===1&&vitalReport.rows[0].sourceId==='vital-meal'&&vitalReport.rows[0].category==='vital','Vital: relatório usa fato real e exclui outra pessoa e tombstone');
+assert.throws(()=>core.buildClinicalReport360({...defaultOptions,sections:['vital']}),/Vital/);
 check(report.schemaVersion===1&&report.personName==="Perfil teste","schema e identidade exportável");
 check(report.summary.confirmed===1&&report.summary.explicitlyIgnored===1,"tomada e dose ignorada são eventos diferentes");
 check(report.summary.brainSnapshots===0,"modo factual nunca inclui Brain");

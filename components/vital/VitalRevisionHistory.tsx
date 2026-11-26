@@ -1,0 +1,6 @@
+"use client";
+import {useLiveQuery} from 'dexie-react-hooks';
+import {History} from 'lucide-react';
+import type {Scope,TableName} from '@/lib/vital/model';
+import type {VitalRepository} from '@/lib/vital/repository';
+export function VitalRevisionHistory({repo,scope,table,id}:{repo:VitalRepository;scope:Scope;table:TableName;id:string}){const key=`${scope.user_id}:${scope.person_id}:${table}:${id}`;const result=useLiveQuery(async()=>{try{return {key,rows:await repo.revisionHistory(scope,table,id),error:false};}catch{return {key,rows:[],error:true};}},[repo,key]);if(result?.key!==key)return null;if(result.error)return <p role="alert" className="text-xs text-ink-muted">Histórico de revisão indisponível.</p>;if(!result.rows.length)return null;return <details className="mt-2 rounded-xl border border-surface-border p-2"><summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold"><History size={16}/> Histórico de revisões ({result.rows.length})</summary>{result.rows.map(row=><div key={row.id} className="border-t border-surface-border py-2 text-xs"><strong>Revisão {row.previous_revision}</strong><p className="break-words text-ink-muted">{row.reason}</p><p className="text-ink-muted">{new Date(row.created_at).toLocaleString('pt-BR')} · {row.synced?'Sincronização registrada':'Local'}</p></div>)}</details>;}

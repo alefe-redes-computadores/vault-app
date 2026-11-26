@@ -78,6 +78,7 @@ import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visu
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
+import {VitalContextCard} from "@/components/vital/VitalContextCard";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { addDaysToLocalDate, getLocalTodayISO } from "@/lib/health-utils";
@@ -1634,6 +1635,7 @@ export default function HojePage() {
         </header>
         {/* P5: a navegação de seções é uma camada de apresentação sobre dados já selecionados. */}
         <div className="mx-auto max-w-3xl px-4 pt-2">
+          <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
           <TodayJourneyRailP5
             isToday={isHoje}
             pendingCount={isHoje ? totalPendentes : 0}

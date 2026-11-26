@@ -413,3 +413,17 @@ body:not(:has(nav.vault-bottom-nav)) .vault-adaptive-tail.vault-episode-compact 
 body:has(nav.vault-bottom-nav [data-vault-home-compose]) .vault-adaptive-tail {
   padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important;
 }
+
+/* STB-04/13 R03: one reservation after measurement, independent of :has.
+   Legacy rules remain intact until the observer has marked a measured route. */
+.vault-app-shell-r03[data-vault-footer-r03="ready"] {
+  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  padding-bottom: 0;
+}
+.vault-app-shell-r03[data-vault-footer-r03="ready"] .vault-adaptive-tail.vault-adaptive-tail {
+  min-height: 0 !important;
+  padding-bottom: calc(max(0px, var(--vault-footer-obstruction-r03) - env(safe-area-inset-bottom, 0px)) + 12px) !important;
+}
+.vault-app-shell-r03[data-vault-footer-r03="ready"] .vault-adaptive-tail .vault-adaptive-tail.vault-adaptive-tail {
+  padding-bottom: 0 !important;
+}

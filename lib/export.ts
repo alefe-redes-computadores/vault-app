@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import {TABLES as VITAL_TABLES} from '@/lib/vital/model';
 
 /**
  * Exporta um snapshot lógico dos dados pertencentes à conta atual.
@@ -112,7 +113,10 @@ export async function exportAllData(userId: string): Promise<string> {
         vaultIds.has(item.vault_id)
     );
 
+    const ownedPeople=new Set(persons.filter(p=>p.user_id===userId).map(p=>p.id));
+    const vitalEntries=await Promise.all(VITAL_TABLES.map(async name=>[name,(await db.table(name).where('user_id').equals(userId).toArray()).filter(r=>r.user_id===userId&&ownedPeople.has(r.person_id))] as const));
     const data = {
+      ...Object.fromEntries(vitalEntries),
       export_date: new Date().toISOString(),
       version: "3.0",
       user_id: userId,

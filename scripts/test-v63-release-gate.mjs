@@ -565,6 +565,7 @@ const contracts = [
   "scripts/test-vault-android-promotion-policy.cjs",
   "scripts/test-vault-guardian3-ux.cjs", // G4-03: uma unica vez
   "scripts/test-vault-frente-b-video-relacional.cjs", // R02.1: vacina relacional permanente
+  "scripts/test-vault-vital-integral.cjs", // Evolution: behavioral + IndexedDB integration
 ];
 
 // CI permanece fail-fast por padrao. Para homologacao no Termux, o modo

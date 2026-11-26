@@ -6,12 +6,17 @@ export type HealthGroupR5 = "intelligence" | "body" | "capture" | "foundation";
 export type HealthIconR5 =
   | "activity" | "flask" | "folder" | "heart" | "thermometer" | "moon" | "droplets"
   | "scan" | "files" | "shield" | "user" | "sparkles" | "pill" | "book" | "chart"
-  | "lock" | "stethoscope" | "building" | "package" | "calendar" | "users" | "bed" | "rehab";
+  | "lock" | "stethoscope" | "building" | "package" | "calendar" | "users" | "bed" | "rehab" | "dumbbell" | "utensils" | "target" | "trend";
 export interface HubModuleR5 {
   id: string; title: string; description: string; href: string;
   group: HealthGroupR5; icon: HealthIconR5; keywords: readonly string[];
 }
 export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
+  {"id":"vital","title":"Vital","description":"Atividade, alimentação e evolução corporal","href":"/saude/vital","group":"body","icon":"activity","keywords":["vital","academia","treinos","nutricao","dieta","evolucao"]},
+  {"id":"vital-treinos","title":"Treinos","description":"Sessões, fichas e exercícios","href":"/saude/vital/treinos","group":"body","icon":"dumbbell","keywords":["academia","cardio","musculacao","aparelhos"]},
+  {"id":"vital-nutricao","title":"Nutrição","description":"Planos e refeições","href":"/saude/vital/nutricao","group":"body","icon":"utensils","keywords":["alimentacao","dieta","cetogenica","refeicoes"]},
+  {"id":"vital-evolucao","title":"Evolução corporal","description":"Histórico de atividade e medidas","href":"/saude/vital/evolucao","group":"body","icon":"trend","keywords":["peso","medidas","progresso"]},
+  {"id":"vital-planos","title":"Planos e metas","description":"Fichas e planos versionados","href":"/saude/vital/planos","group":"body","icon":"target","keywords":["ficha","objetivo","plano alimentar"]},
   {id:"careflow",title:"Acompanhamento clínico",description:"Consultas e evolução",href:"/saude/careflow",group:"intelligence",icon:"activity",keywords:["cuidado","acompanhamento","protocolo"]},
   {id:"exames",title:"Exames 360",description:"Pedidos, itens e resultados",href:"/saude/careflow/exames",group:"intelligence",icon:"flask",keywords:["pedido","laboratorio","resultados"]},
   {id:"dossie",title:"Dossiê Clínico",description:"Linha do tempo e PDF local",href:"/saude/careflow/dossie",group:"intelligence",icon:"folder",keywords:["relatorio","medico","pdf","linha do tempo"]},

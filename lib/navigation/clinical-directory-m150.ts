@@ -6,7 +6,7 @@
 export type ClinicalMapIconM150 =
   | 'clock' | 'pill' | 'heart' | 'file' | 'truck' | 'calendar' | 'activity'
   | 'stethoscope' | 'flask' | 'droplet' | 'bell' | 'users' | 'shield'
-  | 'brain' | 'eye' | 'layers' | 'factory' | 'clipboard' | 'syringe' | 'bed' | 'rehab';
+  | 'brain' | 'eye' | 'layers' | 'factory' | 'clipboard' | 'syringe' | 'bed' | 'rehab' | 'dumbbell' | 'utensils' | 'target' | 'trend';
 export type ClinicalMapEntryM150 = {
   id: string;
   label: string;
@@ -119,6 +119,13 @@ const clinicalSearchAliasesM150P5P5: Readonly<Record<string, readonly string[]>>
  * All entries point to existing destinations; IDs of original favorites remain untouched.
  */
 export const clinicalAdditionalSectionsM150: readonly ClinicalMapSectionM150[] = [
+  {id:"vital",title:"Vital",description:"Atividade, alimentação e evolução corporal",items:[
+    {"id":"vital","label":"Vital","description":"Atividade, alimentação e evolução corporal","href":"/saude/vital","icon":"activity"},
+    {"id":"vital-treinos","label":"Treinos","description":"Sessões, fichas e exercícios","href":"/saude/vital/treinos","icon":"dumbbell"},
+    {"id":"vital-nutricao","label":"Nutrição","description":"Planos e refeições","href":"/saude/vital/nutricao","icon":"utensils"},
+    {"id":"vital-evolucao","label":"Evolução corporal","description":"Histórico de atividade e medidas","href":"/saude/vital/evolucao","icon":"trend"},
+    {"id":"vital-planos","label":"Planos e metas","description":"Fichas e planos versionados","href":"/saude/vital/planos","icon":"target"},
+  ]},
   {id:'complementares',title:'Outras áreas de saúde',description:'Profissionais, reabilitação, documentos e Fênix',items:[
     {id:'reabilitacao',label:'Reabilitação',description:'Programas, equipe e sessões clínicas',href:'/saude/reabilitacao',icon:'rehab'},
     {id:'vacinas',label:'Vacinação',description:'Carteira e aplicações declaradas',href:'/saude/vacinas',icon:'syringe'},
@@ -134,6 +141,11 @@ export const clinicalAdditionalSectionsM150: readonly ClinicalMapSectionM150[] =
   ]},
 ];
 const additionalSearchAliasesM150: Readonly<Record<string,readonly string[]>> = {
+ "vital":["vital", "academia", "treinos", "nutricao", "dieta", "evolucao"],
+ "vital-treinos":["academia", "cardio", "musculacao", "aparelhos"],
+ "vital-nutricao":["alimentacao", "dieta", "cetogenica", "refeicoes"],
+ "vital-evolucao":["peso", "medidas", "progresso"],
+ "vital-planos":["ficha", "objetivo", "plano alimentar"],
  reabilitacao:['fisioterapia','terapia ocupacional','sessao','recuperacao funcional','fonoaudiologia','fisiatra','reabilitacao fisica'],
  vacinas:['vacina','imunizacao','carteira vacinal','reforco'],
  'procedimentos-a9':['curativo','ambulatorial','intervencao'],

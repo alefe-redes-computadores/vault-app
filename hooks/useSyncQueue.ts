@@ -62,6 +62,8 @@ import { clinicalExamDependenciesM1 } from "@/lib/clinical-exams-m1/dependencies
 import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
 import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-links-p2";
 import { syncRehabM5 } from "@/lib/rehab-m5/sync";
+import {vitalTable} from '@/lib/vital/cloud-transport';
+import {VITAL_SYNC_PRIORITY,syncCanonicalVital,pendingCanonicalVitalDependency,finalizeCanonicalVital} from '@/lib/vital-runtime/canonical';
 import { syncHospitalizationA5,pendingA5Dependency } from "@/lib/hospitalizations-a5/sync";
 import {syncSurgeryA7,pendingSurgeryA7Dependency} from "@/lib/surgery-a7/sync";
 import {syncVaccinationA8,pendingVaccinationA8Dependency} from "@/lib/vaccination-a8/sync";
@@ -5296,6 +5298,7 @@ export function useSyncQueue() {
       item:
         SyncQueueItem
     ): Promise<boolean> => {
+      if(vitalTable(item.table))return finalizeCanonicalVital(item);
       if (
         !item.id
       ) {
@@ -5363,6 +5366,13 @@ export function useSyncQueue() {
       item:
         SyncQueueItem
     ) => {
+      if(vitalTable(item.table)){
+        const client=requireSupabase();const {data,error}=await client.auth.getUser();
+        if(error||!data.user)throw Error('Vital: autenticação obrigatória.');
+        const pending=await pendingCanonicalVitalDependency(item);
+        if(pending)throw new SyncDependencyDeferredError('Vital: aguardando dependência '+pending);
+        await syncCanonicalVital(item,data.user.id);return;
+      }
       switch (
         item.table
       ) {
@@ -5822,6 +5832,7 @@ export function useSyncQueue() {
                   "health_goals",
                   "health_reminders",
                   "notification_policies_p2",
+                  ...VITAL_SYNC_PRIORITY,
 
                   "credentials",
                   "cards",

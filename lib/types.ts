@@ -786,7 +786,20 @@ export interface SyncQueueItem {
     | "brain_active_probe_responses"
     | "a1_treatment_phases"
     | "a1_prescription_links"
-    | "a1_supply_locations";
+    | "a1_supply_locations"
+    | "vital_exercises"
+    | "vital_foods"
+    | "vital_nutrition_modalities"
+    | "vital_training_plans"
+    | "vital_nutrition_plans"
+    | "vital_training_plan_versions"
+    | "vital_nutrition_plan_versions"
+    | "vital_workout_sessions"
+    | "vital_meals"
+    | "vital_training_checkins"
+    | "vital_nutrition_checkins"
+    | "vital_exercise_favorites"
+    | "vital_audit";
   operation: "add" | "update" | "delete";
   payload: Record<string, unknown>;
   created_at: string;

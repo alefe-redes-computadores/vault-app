@@ -148,6 +148,10 @@ type LegacySyncQueueItem = Omit<SyncQueueItem, 'payload'> & {
 // DATABASE
 // ============================================================
 
+import { VITAL_STORES } from '@/lib/vital/storage-dexie';
+import { DRAFT_STORE } from '@/lib/vital/drafts';
+import { VITAL_ACK_STORE } from '@/lib/vital/cloud-transport';
+// Evolution: additions to the existing database, never a second Dexie instance.
 class VaultDB extends Dexie {
   persons!: Table<Person, string>;
   documents!: Table<Document, string>;
@@ -1571,6 +1575,7 @@ class VaultDB extends Dexie {
         if(row.topic===undefined)row.topic=null;
       });
     });
+    this.version(59).stores({...VITAL_STORES, vital_drafts:DRAFT_STORE, vital_sync_ack:VITAL_ACK_STORE});
 
   }
 }
