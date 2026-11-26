@@ -1,9 +1,10 @@
 'use client';
 /** A10: exact, read-only source fact. No edit action or independent writer. */
-import {Suspense,useMemo} from 'react';
+import {Suspense,useEffect,useMemo} from 'react';
 import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import {safeReturnTarget,withReturnTarget} from '@/lib/navigation/return-context';
+import {sanitizeClinicalBackHrefUX360,scrubLegacyClinicalQueryUX360} from '@/lib/ui/clinical-a10-filter-session-ux360';
 import {useLiveQuery} from 'dexie-react-hooks';
 import {ArrowLeft,ArrowUpRight,CalendarDays,FileText,Link2,ShieldCheck} from 'lucide-react';
 import {useAuth} from '@/hooks/useAuth';
@@ -15,7 +16,9 @@ import {graphFromExistingA10,relatedFactsA10} from '@/lib/a10/relations';
 
 function ExactFactView(){
  const params=useSearchParams();const authority=params.get('origem')||'',id=params.get('id')||'';
- const backHref=safeReturnTarget(params.get('return_to'),'/saude/linha-clinica');
+ // Same privacy authority as the longitudinal list, including deep links.
+ const backHref=sanitizeClinicalBackHrefUX360(safeReturnTarget(params.get('return_to'),'/saude/linha-clinica'));
+ useEffect(()=>{scrubLegacyClinicalQueryUX360();},[params]);
  const detailHref=withReturnTarget(`/saude/linha-clinica/detalhe?origem=${encodeURIComponent(params.get('origem')||'')}&id=${encodeURIComponent(params.get('id')||'')}`,backHref);
  const {user,loading}=useAuth();const {activePersonId}=useActivePersonId();
  const uid=user?.id||'',pid=activePersonId||'',scope=`${uid}:${pid}`;

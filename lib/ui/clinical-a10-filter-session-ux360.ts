@@ -94,7 +94,7 @@ function sanitizeLocalHref(raw:string,depth:number,budget:{nodes:number}):string
   try{
     const u=new URL(local,LOCAL_ORIGIN);
     if(u.origin!==LOCAL_ORIGIN||u.username||u.password||u.pathname.startsWith('//')||/^\/api(?:\/|$)/i.test(decodeURIComponent(u.pathname)))return null;
-    const clinical=/^\/saude\/linha-clinica\/?$/i.test(decodeURIComponent(u.pathname));
+    const clinical=/^\/saude\/linha-clinica(?:\/detalhe)?\/?$/i.test(decodeURIComponent(u.pathname));
     const entries:Array<[string,string]>=[];
     u.searchParams.forEach((value,key)=>entries.push([key,value]));
     const seenContext=new Map<string,number>();

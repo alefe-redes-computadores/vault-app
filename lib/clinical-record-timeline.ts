@@ -48,19 +48,51 @@ function recordCategory(record: RegistroSaude): ClinicalEvent["category"] {
   if (record.categoria === "sintoma" || record.categoria === "medicao" || record.categoria === "humor") return record.categoria;
   return "outro";
 }
-function eventClock(value: string | undefined, fallback: string | undefined) {
-  if (value) {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  }
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(fallback || "") ? fallback! : "00:00";
+/** Civil clock already declared by the source; empty means unknown, never midnight. */
+function recordedClock(value: unknown): string {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/.exec(typeof value === "string" ? value.trim() : "");
+  return match ? `${match[1]}:${match[2]}` : "";
+}
+/** Only a timestamp validated by the Macro02 authority reaches this formatter. */
+function eventClock(value: string | null): string {
+  return value ? new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "";
+}
+/** Display only. Scheduled/cadastral clocks never substitute for a missing confirmation. */
+export function clinicalEventClockLabel(event: ClinicalEvent): string {
+  const actual = recordedClock(event.time);
+  if (actual) return actual;
+  const declared = event.kind === "dose" ? recordedClock(event.dose?.horario) : "";
+  return declared && (event.dose?.dose_kind === "scheduled" || event.dose?.dose_kind === "planned")
+    ? `Sem horário confirmado · Previsto ${declared}`
+    : "Sem horário registrado";
+}
+export function clinicalDoseClockSummary(events: readonly ClinicalEvent[]): string {
+  if (events.length === 1) return clinicalEventClockLabel(events[0]);
+  const known = events.filter(event => Boolean(recordedClock(event.time))).length;
+  const unknown = events.length - known;
+  if (!known) return "Sem horários registrados";
+  if (!unknown) return `${known} horários registrados`;
+  return `${known} com horário · ${unknown} sem horário`;
+}
+/** Group origin and realization are distinct. Same Macro02 classifier, no inferred outcome. */
+export function clinicalDoseGroupStateLabel(events: readonly ClinicalEvent[]): string {
+  const kinds = new Set(events.map(event => event.dose?.dose_kind));
+  const kind = kinds.size === 1 ? events[0]?.dose?.dose_kind : undefined;
+  const origin = kinds.size > 1 ? "Origens distintas" : kind === "sos" ? "SOS" : kind === "extra" ? "Extra" : kind === "planned" ? "Planejada" : kind === "scheduled" ? "Programada" : "Origem não informada";
+  const states = events.map(event => classifyDoseRealization(event.dose || {}).state);
+  const taken = states.filter(state => state === "taken").length;
+  const ignored = states.filter(state => state === "ignored").length;
+  const review = states.filter(state => state === "conflict" || state === "unknown").length;
+  const pending = states.length - taken - ignored - review;
+  const detail = [taken ? `${taken} ${taken === 1 ? "tomada" : "tomadas"}` : "", ignored ? `${ignored} ${ignored === 1 ? "ignorada" : "ignoradas"}` : "", review ? `${review} a conferir` : "", pending ? `${pending} sem confirmação` : ""].filter(Boolean).join(" · ");
+  return [origin, detail].filter(Boolean).join(" · ");
 }
 export function buildClinicalEvents(records: RegistroSaude[], doses: DoseLog[], medications: Medicamento[]): ClinicalEvent[] {
   const medicationMap = new Map(medications.filter(item => item.id).map(item => [item.id!, item]));
   const recordEvents: ClinicalEvent[] = records.filter(item => /^\d{4}-\d{2}-\d{2}$/.test(item.data || "")).map(item => ({
     id: `record:${item.id || `${item.data}:${item.horario}:${item.nome}`}`,
     date: item.data || "",
-    time: item.horario || "00:00",
+    time: recordedClock(item.horario),
     kind: "record",
     category: recordCategory(item),
     title: item.nome || "Registro de saúde",
@@ -75,7 +107,7 @@ export function buildClinicalEvents(records: RegistroSaude[], doses: DoseLog[], 
     const evidence=classifyDoseRealization(item);
     const origin = item.dose_kind === "extra" ? "Dose extra" : item.dose_kind === "sos" ? "Dose SOS" : item.dose_kind==='planned'?"Dose planejada":item.dose_kind==='scheduled'?"Dose programada":"Dose de origem não informada";
     const state=evidence.state==='taken'?"Tomada registrada":evidence.state==='ignored'?"Dose ignorada — informada":"Registro a conferir";
-    return { id: `dose:${item.id || `${item.data}:${item.horario}:${item.medicamento_id}`}`, date: item.data || "", time: evidence.confirmedAt?eventClock(evidence.confirmedAt, undefined):"", kind: "dose", category: "dose", title: medication?.nome || "Medicamento removido", subtitle: `${origin} · ${state}${evidence.confirmedAt?` · Instante registrado: ${evidence.confirmedAt}`:""}${evidence.state==='taken' && typeof item.quantidade==="number" ? ` · ${formatDoseQuantityB(item.quantidade)}` : ""}`, dose: item, medication };
+    return { id: `dose:${item.id || `${item.data}:${item.horario}:${item.medicamento_id}`}`, date: item.data || "", time: eventClock(evidence.confirmedAt), kind: "dose", category: "dose", title: medication?.nome || "Referência do medicamento indisponível", subtitle: `${origin} · ${state}${evidence.confirmedAt?` · Instante registrado: ${evidence.confirmedAt}`:""}${evidence.state==='taken' && typeof item.quantidade==="number" ? ` · ${formatDoseQuantityB(item.quantidade)}` : ""}`, dose: item, medication };
   });
   return [...recordEvents, ...doseEvents].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
 }

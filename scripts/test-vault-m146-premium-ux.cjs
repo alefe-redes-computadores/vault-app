@@ -34,6 +34,34 @@ ok(safeReturnTarget('//externo.example/redirect','/saude/retiradas')==='/saude/r
 ok(safeReturnTarget('https://evil.example/','/saude/renovacao')==='/saude/renovacao','Retorno bloqueia URL absoluta externa');
 ok(safeReturnTarget('/saude/retiradas/detalhes?id=1&return_to=%2F','/saude/retiradas').startsWith('/saude/retiradas/detalhes'),'Retorno interno preserva query');
 ok(withReturnTarget('/saude/renovacao/detalhes?id=1','/').includes('return_to=%2F'),'Retorno da Home propaga pelo filho');
+// Residual Closure: real navigation guards and privacy projection (not a UI/Android claim).
+for(const href of ['/%61pi/health','/aPi%2Fhealth','/%2F%2Fevil.example','/%5Cevil.example','/saude/%252Fapi','/saude/%00bad','/saude/%0Abad','/saude/%ZZ','/saude/%2e%2e/hoje','/saude/../hoje'])
+ ok(safeReturnTarget(href,'/hoje')==='/hoje',`residual encoded/traversal path blocked: ${href}`);
+for(const href of ['/','/saude/vital/evolucao','/saude/medicamentos/detalhes?id=x%2Fy#secao','/saude/retiradas?status=planejada','/saude/%C3%A1rea'])
+ ok(safeReturnTarget(href,'/hoje')===href,`residual valid contextual route preserved: ${href}`);
+ok(withReturnTarget('/saude/medicamentos/detalhes?id=2','/saude/medicamentos/detalhes?id=1').includes('return_to='),'residual same route distinct record remains navigable');
+ok(!withReturnTarget('/hoje','/hoje').includes('return_to='),'residual self-return not introduced');
+const {sanitizeClinicalBackHrefUX360,scrubLegacyClinicalQueryUX360}=pure('lib/ui/clinical-a10-filter-session-ux360.ts');
+const back=(raw)=>sanitizeClinicalBackHrefUX360(safeReturnTarget(raw,'/saude/linha-clinica'));
+const rawClinical='/saude/linha-clinica?busca=synthetic&inicio=2026-01-01&fim=2026-01-02&historico=1#fato';
+ok(back(rawClinical)==='/saude/linha-clinica#fato','residual private search/period removed from return');
+const detail='/saude/linha-clinica/detalhe?origem=medicamentos&id=opaque';
+ok(back(detail+'&busca=synthetic&inicio=2026-01-01')===detail,'residual detail retains opaque ID/source without legacy filter');
+const nested=detail+'&origin_from='+encodeURIComponent(rawClinical);
+ok(new URL(back(nested),'https://vault.local').searchParams.get('origin_from')==='/saude/linha-clinica#fato','residual nested origin sanitized');
+ok(back('/saude/linha-clinica?%2562usca=synthetic')==='/saude/linha-clinica','residual encoded search key stripped');
+ok(back('/saude/linha-clinica?origin_from='+encodeURIComponent('https://evil.example'))==='/saude/linha-clinica','residual external nested origin removed');
+ok(back(null)==='/saude/linha-clinica','residual default origin preserved');
+const detailPage=read('app/saude/linha-clinica/detalhe/page.tsx');
+ok(detailPage.includes("sanitizeClinicalBackHrefUX360(safeReturnTarget(params.get('return_to'),'/saude/linha-clinica'))")&&detailPage.includes('useEffect(()=>{scrubLegacyClinicalQueryUX360();},[params])'),'residual real detail uses privacy authority on links and current entry');
+const previousWindow=global.window;
+try {
+ let replaced=null;
+ const marker={next:'preserve'};
+ global.window={location:{href:'https://vault.local'+detail+'&q=synthetic&inicio=2026-01-01&return_to='+encodeURIComponent(rawClinical)},history:{state:marker,replaceState:(state,title,url)=>{replaced={state,url}}}};
+ scrubLegacyClinicalQueryUX360();
+ ok(replaced&&replaced.state===marker&&new URL(replaced.url,'https://vault.local').searchParams.get('id')==='opaque'&&!replaced.url.includes('synthetic')&&!replaced.url.includes('inicio')&&new URL(replaced.url,'https://vault.local').searchParams.get('return_to')==='/saude/linha-clinica#fato','residual replaces current entry without losing opaque ID, Next state or origin');
+}finally{if(previousWindow===undefined)delete global.window;else global.window=previousWindow;}
 const navRenew=read('app/saude/renovacao/detalhes/page.tsx');
 const navWithdrawal=read('app/saude/retiradas/nova/page.tsx');
 ok(navRenew.includes('const returnTo = safeReturnTarget(rawReturnTo, "/saude/renovacao")')&&navRenew.includes('router.replace(returnTo)'), 'Detalhes da renovação preservam rota autorizada');
@@ -78,3 +106,6 @@ for(const token of ['test-vault-m143-p2-consolidated.cjs','test-vault-m143-p3-cl
  ok(gate.includes(token),`Suite protegida ${token}`);
 ok(gate.split('"scripts/test-vault-m146-premium-ux.cjs"').length===2,'M146 aparece uma vez no gate');
 console.log(`VAULT M146 PREMIUM: ${n} contratos aprovados`);
+
+// Residual Closure: consumer regressions in the existing permanent gate.
+require('./test-vault-residual-consumers.cjs');

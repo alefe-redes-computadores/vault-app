@@ -1,6 +1,7 @@
 // app/saude/medicamentos/editar/page.tsx
 "use client";
 import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
+import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
 import { MedicationStableTimeInputM4P2 } from "@/components/saude/MedicationStableTimeInputM4P2";
 import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
@@ -3730,11 +3731,12 @@ function EditarMedicamentoContent() {
         return;
       }
 
-      router.replace(
-                    `/saude/medicamentos/detalhes?id=${encodeURIComponent(
-                      id
-                    )}`
-                  );
+      const detailTarget = `/saude/medicamentos/detalhes?id=${encodeURIComponent(id)}`;
+      const origin = safeReturnTarget(searchParams.get("return_to"), "");
+      const originPath = decodeURIComponent(origin.split(/[?#]/, 1)[0]).replace(/\/+$/, "");
+      // Return to this same medication; carry the safe original task one hop further.
+      router.replace(origin && originPath !== "/saude/medicamentos/detalhes" && originPath !== "/saude/medicamentos/editar"
+        ? withReturnTarget(detailTarget, origin) : detailTarget);
     };
 
   const discardChanges =

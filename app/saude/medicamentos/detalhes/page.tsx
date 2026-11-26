@@ -28,7 +28,7 @@ import { MedicationDetailNavigation } from "@/components/saude/MedicationWorkspa
 import { MedicationDetailCareHubM148 } from "@/components/saude/MedicationDetailCareHubM148";
 import { MedicationKnowledgePanelM153P4 } from "@/components/saude/MedicationKnowledgePanelM153P4";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
-import { countLabel, humanizeStockUnit, shortPrescriptionKnowledgeLabel } from "@/lib/medications/visual-copy";
+import { countLabel, humanizeStockUnit, shortPrescriptionKnowledgeLabel, medicationIngredientDisplayResidual } from "@/lib/medications/visual-copy";
 import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 import { buildMedicationDetailHubM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
@@ -1842,7 +1842,7 @@ function MedicamentoDetalhesContent() {
   });
   const stableMedicationKnowledge = resolveMedicationKnowledgeM153P4(med, med.data_receita || undefined);
   const stablePrescriptionKnowledge = stableMedicationKnowledge.facts.find(fact => fact.kind === "prescription_type" && fact.authority !== "conflict");
-  const stableIngredientKnowledge = stableMedicationKnowledge.facts.find(fact => fact.kind === "active_ingredient")?.value;
+  const stableIngredientKnowledge = medicationIngredientDisplayResidual(catalogIdentity, stableMedicationKnowledge.facts).join(" + ");
   const regulatoryHeaderLabel = regulatoryProfile?.label || shortPrescriptionKnowledgeLabel(stablePrescriptionKnowledge?.value);
 
   // ==========================================================
@@ -2834,10 +2834,10 @@ function MedicamentoDetalhesContent() {
                     </span>
                   </p>
 
-                  {(catalogIdentity?.activeIngredients?.length || stableIngredientKnowledge) && (
+                  {stableIngredientKnowledge && (
                     <p className="mt-2 flex min-w-0 flex-wrap gap-1 text-xs leading-snug text-ink-secondary" data-vault-v34x-ingredient-visible>
                       <span className="font-semibold text-ink-muted">Princípio ativo:</span>
-                      <span className="min-w-0 break-words">{catalogIdentity?.activeIngredients?.join(" + ") || stableIngredientKnowledge}</span>
+                      <span className="min-w-0 break-words">{stableIngredientKnowledge}</span>
                     </p>
                   )}
                   {catalogIdentity && catalogIdentity.authorityState !== "unvalidated" && (
@@ -2856,10 +2856,10 @@ function MedicamentoDetalhesContent() {
                       <span className="ml-auto text-[10px] font-medium text-ice/80 group-open:hidden">Ver ficha</span>
                       </summary>
 
-                      {(catalogIdentity.activeIngredients.length > 0 || stableIngredientKnowledge) && (
+                      {stableIngredientKnowledge && (
                         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
                           <span className="text-ink-muted/60">Princípio ativo · </span>
-                          {catalogIdentity.activeIngredients.join(" + ") || stableIngredientKnowledge}
+                          {stableIngredientKnowledge}
                         </p>
                       )}
 

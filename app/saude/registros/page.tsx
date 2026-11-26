@@ -44,6 +44,9 @@ import { analisarRegistroSaude } from "@/lib/health-insights";
 import {
   buildClinicalDays,
   buildClinicalEvents,
+  clinicalEventClockLabel,
+  clinicalDoseClockSummary,
+  clinicalDoseGroupStateLabel,
   buildClinicalMonth,
   currentClinicalMonth,
   localDateKey,
@@ -669,7 +672,7 @@ function DayGroup({
   const doses = events.filter((e) => e.kind === "dose");
   const groups = new Map<string, ClinicalEvent[]>();
   for (const dose of doses) {
-    const origin = dose.dose?.dose_kind || "scheduled";
+    const origin = dose.dose?.dose_kind || "unknown";
     const key = `${dose.dose?.medicamento_id || dose.title}:${origin}`;
     groups.set(key, [...(groups.get(key) || []), dose]);
   }
@@ -725,15 +728,7 @@ function DoseGroup({
 }) {
   const first = events[0];
   const medication = first.medication;
-  const times = events.map((e) => e.time.slice(0, 5));
-  const origins = new Set(events.map((e) => e.dose?.dose_kind));
-  const origin = events.some(isSosDose)
-    ? "SOS"
-    : events.some(isExtraDose)
-    ? "Extra"
-    : first.dose?.ignorado_em
-    ? "Ignorada"
-    : "Programada";
+  const origin = clinicalDoseGroupStateLabel(events);
   return (
     <details className="group/dose border-b border-surface-border/40 last:border-0">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5">
@@ -774,7 +769,7 @@ function DoseGroup({
           ) : null}
         </div>
         <span className="font-mono text-[9px] text-ink-faint">
-          {events.length === 1 ? times[0] : `${times.length} horários`}
+          {clinicalDoseClockSummary(events)}
         </span>
         <ChevronDown
           size={13}
@@ -790,7 +785,7 @@ function DoseGroup({
             <div className="flex items-center justify-between gap-2">
               <span className="text-ink-muted">{event.subtitle}</span>
               <span className="font-mono text-ink-faint">
-                {event.time.slice(0, 5)}
+                {clinicalEventClockLabel(event)}
               </span>
             </div>
             {event.dose?.id && safetyByDoseId.has(event.dose.id) ? (
@@ -854,7 +849,7 @@ function EventRow({
             </p>
           </div>
           <span className="shrink-0 font-mono text-[9px] text-ink-muted">
-            {displayDate(event.date)} · {event.record?(formatMeasurementTimeSTB(event.record.horario)||"Sem horário"):event.time.slice(0, 5)}
+            {displayDate(event.date)} · {event.record?(formatMeasurementTimeSTB(event.record.horario)||"Sem horário"):clinicalEventClockLabel(event)}
           </span>
         </div>
         {typeof event.intensity === "number" && (
