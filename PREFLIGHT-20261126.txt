@@ -1,0 +1,8 @@
+Live read-only metadata verified 2026-11-26. No real clinical DML or DDL.
+Project gqxqbfkcgfhsqtwjlhvz, PostgreSQL 17.6 (managed).
+DoseLogs: 835; invalid account/person/medication scope: 0.
+Macro02 functions: 0; private schema absent.
+Persons user_id FK references auth.users ON DELETE CASCADE.
+Latest ledger: 20261126161012 vault_stb11_visual_cas_r03; 20261126160929 vault_pharmalens_catalog_privileges_r03; 20261125234659 vault_evolution_macro01_vital_r4. Preserve all three.
+Main checked earlier in this session: 43c39ee489283c772fa52fa07803b2735e94737e. Local HEAD 40640ba53b4a94791e922ecf3d3d2cc9c510d4c7 is its ancestor, not newer. Sandbox success 130/130 pre/postimages, 247 hashes, backup vault-macro02-pre-xpsxylya. No publish.
+Production column shape read separately: medicamentos.person_id nullable; medications name/dosagem NOT NULL; persons.name NOT NULL; retiradas.data, status, tipo, created_at, updated_at, reagendamentos, a3_location_changes, exige_nova_receita NOT NULL. The lab fixture does not reproduce all live FKs, defaults, roles or extensions; full schema-only reproduction remains required. No client data exported.

@@ -1,0 +1,45 @@
+name: Macro02 SQL PG17.6 isolated certification
+on:
+  push:
+    branches: ['vault-lab/macro02-pg17-r5-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact SQL package
+        run: sha256sum -c SHA256SUMS.txt
+      - name: Build exact PostgreSQL 17.6 lab image
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          docker pull postgres:17.6-bookworm
+          docker image inspect postgres:17.6-bookworm --format '{{json .RepoDigests}}' > evidence/PG_IMAGE_DIGEST.json
+          docker build --pull=false -t macro02-lab:17.6 -f Dockerfile.lab .
+      - name: Execute synthetic and production-catalog mirror fixtures, no network
+        run: |
+          set -euo pipefail
+          chmod 777 evidence
+          for mode in synthetic catalog-mirror; do
+            mkdir -p "evidence/$mode"
+            chmod 777 "evidence/$mode"
+            docker run --rm --network none --user postgres --entrypoint /bin/bash \
+              -v "$PWD:/qa:ro" -v "$PWD/evidence/$mode:/out:rw" \
+              -e M02_EVIDENCE_DIR=/out -e M02_FIXTURE_MODE="$mode" \
+              macro02-lab:17.6 -ec 'cd /qa; python3 -u qa-pg17/executar_pg17.py' \
+              2>&1 | tee "evidence/$mode/console.log"
+          done
+      - name: Preserve immutable test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACRO02-PG17-R5-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 7
