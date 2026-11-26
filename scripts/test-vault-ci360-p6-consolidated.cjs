@@ -19,7 +19,7 @@ for(const p of sources){ok('Parse TypeScript '+p,()=>{
  const ast=ts.createSourceFile(p,read(p),ts.ScriptTarget.Latest,true,p.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.equal(ast.parseDiagnostics.length,0,p+': '+ast.parseDiagnostics.map(x=>x.messageText));
 });}
-function pure(p){const js=ts.transpileModule(read(p),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const m=new Module(p,module);m._compile(js,p);return m.exports;}
+function pure(p){const js=ts.transpileModule(read(p),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const m=new Module(p,module);m.require=id=>id==='../dose-slot-authority'?require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id):require(id);m._compile(js,p);return m.exports;}
 const links=pure(sources[0]);const observe=pure(sources[1]);const docs=pure(sources[2]);
 const owner={user_id:'conta1',person_id:'p1'};
 const m1={id:'m1',nome:'Metadona',dosagem:'10 mg',...owner};
@@ -50,7 +50,7 @@ ok('Dose sem registro não vira ignorada',()=>assert.equal(between({doses:[d('1'
 ok('Dose futura fora da janela não é contada',()=>assert.equal(between({doses:[d('1','2026-11-17',{tomado_em:'a'})]}).taken,0));
 ok('Conta externa não vaza dosagens',()=>assert.equal(between({doses:[d('1','2026-11-16',{user_id:'conta2',tomado_em:'a'})]}).taken,0));
 ok('Pessoa externa não vaza dosagens',()=>assert.equal(between({doses:[d('1','2026-11-16',{person_id:'p2',tomado_em:'a'})]}).taken,0));
-ok('SOS contado somente se tomado',()=>assert.equal(between({doses:[d('1','2026-11-16',{dose_kind:'sos',tomado_em:'a'}),d('2','2026-11-16',{dose_kind:'sos'})]}).extra,1));
+ok('SOS contado somente se tomado',()=>assert.equal(between({doses:[d('1','2026-11-16',{dose_kind:'sos',tomado_em:'2026-11-16T10:00:00Z'}),d('2','2026-11-16',{dose_kind:'sos'})]}).extra,1));
 ok('Eventos sem registro são desconhecidos, nunca zero aderência',()=>assert.equal(between({}).missingLogState,'unknown'));
 ok('Falta de pessoa bloqueia relatório',()=>assert.equal(observe.clinicalLongitudinalEvidenceP6({...base,owner:{user_id:'conta1',person_id:''}}).scoped,false));
 ok('Retirada realizada no passado entra como fato',()=>assert.equal(between({withdrawals:[{...owner,id:'r1',medicamento_id:'m1',status:'realizada',data:'2026-11-10'}]}).withdrawalsCompleted,1));

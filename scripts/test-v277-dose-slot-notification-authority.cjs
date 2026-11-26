@@ -6,14 +6,14 @@ const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.Common
 const sandboxModule={exports:{}};vm.runInNewContext(`(function(exports,module,require){${js}\n})(module.exports,module,require)`,{module:sandboxModule,require});
 const {buildDoseSlotIndex,resolveDoseSlot,doseSlotIsResolved}=sandboxModule.exports;
 const row=(over={})=>({id:"a",user_id:"u1",person_id:"p1",medicamento_id:"m1",data:"2026-10-27",horario:"09:00",dose_kind:"scheduled",...over});
-let index=buildDoseSlotIndex([row(),row({id:"foreign",user_id:"u2",tomado_em:"2026-10-27T09:01:00"})],{userId:"u1",personId:"p1"});
+let index=buildDoseSlotIndex([row(),row({id:"foreign",user_id:"u2",tomado_em:"2026-10-27T09:01:00-03:00"})],{userId:"u1",personId:"p1"});
 ok(resolveDoseSlot(index,"m1","2026-10-27","09:00").state==="pending","índice isola conta e pessoa");
-index=buildDoseSlotIndex([row(),row({id:"b",tomado_em:"2026-10-27T09:01:00"})],{userId:"u1",personId:"p1"});
+index=buildDoseSlotIndex([row(),row({id:"b",tomado_em:"2026-10-27T09:01:00-03:00"})],{userId:"u1",personId:"p1"});
 ok(resolveDoseSlot(index,"m1","2026-10-27","09:00").state==="taken","confirmação posterior vence duplicata pendente");
-index=buildDoseSlotIndex([row({tomado_em:"2026-10-27T09:01:00"}),row({id:"b",ignorado_em:"2026-10-27T09:02:00"})]);
+index=buildDoseSlotIndex([row({tomado_em:"2026-10-27T09:01:00-03:00"}),row({id:"b",ignorado_em:"2026-10-27T09:02:00-03:00"})]);
 const conflict=resolveDoseSlot(index,"m1","2026-10-27","09:00");
 ok(conflict.state==="conflict"&&doseSlotIsResolved(conflict),"contradição fica visível e não gera nova cobrança");
-index=buildDoseSlotIndex([row({dose_kind:"sos",tomado_em:"2026-10-27T09:01:00"})]);
+index=buildDoseSlotIndex([row({dose_kind:"sos",tomado_em:"2026-10-27T09:01:00-03:00"})]);
 ok(resolveDoseSlot(index,"m1","2026-10-27","09:00").state==="absent","SOS não resolve slot programado");
 const home=read("app/page.tsx"),homePending=read("lib/home/pending-dose-projection.ts"),backlog=read("lib/pending-dose-backlog.ts"),today=read("app/hoje/page.tsx"),todayProjection=read("lib/today/build-timeline-items.ts"),todaySummary=read("lib/today/timeline-summary.ts"),reconciler=read("components/DoseNotificationReconciler.tsx");
 const scheduled=read("lib/dose-notifications.ts"),overdue=read("lib/overdue-dose-notifications.ts");

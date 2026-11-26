@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from './dose-slot-authority';
 import type { DoseLog, Medicamento, RegistroSaude } from "@/lib/types";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { indexConfirmedDoseSafetyEpisodes, type ClinicalDoseSafetyEpisode } from "@/lib/clinical-safety-episodes";
@@ -10,7 +11,7 @@ export interface ClinicalMonthDoseRow {
   confirmedAt: string | null;
   medication: string;
   doseKind: string;
-  status: "taken" | "ignored";
+  status: "taken" | "ignored" | "conflict" | "unknown";
   quantity: number | null;
   reason: string | null;
   safety: ClinicalDoseSafetyEpisode | null;
@@ -49,18 +50,18 @@ export function buildClinicalMonthReport({
     log.data.startsWith(`${monthKey}-`) && dateIsValid(log.data) && Boolean(log.tomado_em || log.ignorado_em));
   const medMap = new Map<string, string>(medications.filter(med => med.user_id === userId && med.person_id === personId && med.id).map(med => [med.id!, med.nome] as const));
   const safety = indexConfirmedDoseSafetyEpisodes(ownLogs, brainLedger, userId, personId);
-  const doses: ClinicalMonthDoseRow[] = ownLogs.map((log): ClinicalMonthDoseRow => ({
+  const doses: ClinicalMonthDoseRow[] = ownLogs.map((log): ClinicalMonthDoseRow => {const evidence=classifyDoseRealization(log);return ({
     id: log.id || `${log.medicamento_id}:${log.data}:${log.horario}`,
     date: log.data,
     scheduledTime: validClock(log.horario),
-    confirmedAt: log.tomado_em || log.ignorado_em || null,
+    confirmedAt: evidence.confirmedAt,
     medication: medMap.get(log.medicamento_id) || "Medicamento sem cadastro acessível",
     doseKind: log.dose_kind || "scheduled",
-    status: log.tomado_em ? "taken" : "ignored",
+    status: evidence.state==='pending'?'unknown':evidence.state,
     quantity: typeof log.quantidade === "number" && Number.isFinite(log.quantidade) && log.quantidade > 0 ? log.quantidade : null,
     reason: log.motivo?.trim() || null,
-    safety: log.id ? safety.get(log.id) || null : safety.get(log.tomado_em || "") || null,
-  })).sort((a, b) => b.date.localeCompare(a.date) || (b.confirmedAt || b.scheduledTime || "").localeCompare(a.confirmedAt || a.scheduledTime || "") || a.id.localeCompare(b.id));
+    safety: evidence.state==='taken'?(log.id ? safety.get(log.id) || null : safety.get(log.tomado_em || "") || null):null,
+  });}).sort((a, b) => b.date.localeCompare(a.date) || (b.confirmedAt || b.scheduledTime || "").localeCompare(a.confirmedAt || a.scheduledTime || "") || a.id.localeCompare(b.id));
   const ownRecords = healthRecords.filter(record => record.user_id === userId && record.person_id === personId &&
     record.data.startsWith(`${monthKey}-`) && dateIsValid(record.data));
   const { rows: records, biometricSourceNote } = aggregateClinicalMonthRecords(ownRecords);

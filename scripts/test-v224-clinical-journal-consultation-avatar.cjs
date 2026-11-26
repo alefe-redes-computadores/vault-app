@@ -9,7 +9,7 @@ const load = (file, injected={}) => {
   const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const module={exports:{}};
   new Function('module','exports','require',js)(module,module.exports,id=>{
-    if(Object.hasOwn(injected,id))return injected[id];
+    if(Object.hasOwn(injected,id))return injected[id];if(id==='./dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id);
     throw Error(`Unexpected runtime import ${id} in ${file}`);
   });
   return module.exports;
@@ -30,8 +30,8 @@ const longitudinal=load('lib/health-intelligence/longitudinal-insights.ts',{
 const today='2026-10-22';
 const ctx={personId:'person-A',hoje:today,
   medicamentos:[{id:'m',person_id:'person-A',user_id:'owner',nome:'Medicamento registrado',dosagem:'10 mg'}],
-  doseLogs:[{id:'d1',person_id:'person-A',user_id:'owner',medicamento_id:'m',data:today,horario:'08:00',tomado_em:today+'T08:05:00',synced:false},
-    {id:'foreign-dose',person_id:'person-B',user_id:'other',medicamento_id:'m',data:today,horario:'09:00',ignorado_em:today+'T09:10:00',synced:false}],
+  doseLogs:[{id:'d1',person_id:'person-A',user_id:'owner',medicamento_id:'m',data:today,horario:'08:00',tomado_em:today+'T08:05:00-03:00',synced:false},
+    {id:'foreign-dose',person_id:'person-B',user_id:'other',medicamento_id:'m',data:today,horario:'09:00',ignorado_em:today+'T09:10:00-03:00',synced:false}],
   renovacoes:[],tratamentos:[{id:'t1',person_id:'person-A',user_id:'owner',status:'ativo',nome:'Tratamento informado'},{id:'foreign-treatment',person_id:'person-B',user_id:'other',status:'ativo',nome:'Outro tratamento'}],
   registrosSaude:[{id:'r1',person_id:'person-A',user_id:'owner',categoria:'sintoma',tipo:'dor',nome:'Dor registrada',intensidade:3,data:today,horario:'10:00',synced:false},
     {id:'foreign-record',person_id:'person-B',user_id:'other',categoria:'sintoma',tipo:'dor',nome:'Dor registrada',intensidade:10,data:today,horario:'09:00',synced:false},

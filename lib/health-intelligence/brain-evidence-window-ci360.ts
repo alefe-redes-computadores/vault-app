@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /**
  * CI360 P1 — Projeção factual e somente leitura sobre o contexto canônico do Brain.
  * Não diagnostica, não compara limites farmacológicos e não modifica registros.
@@ -19,6 +20,7 @@ export type BrainEvidenceWindowCI360 = {
   sos24h: number;
   extra24h: number;
   unspecified24h: number;
+  plannedConfirmed24h: number;
   confirmed30d: number;
   ignored30d: number;
   sos30d: number;
@@ -52,7 +54,7 @@ function actualTakeTimestamp(value: unknown): number | null {
 }
 function blank(asOfISO: string, reason: string): BrainEvidenceWindowCI360 {
   return { state:"unavailable", reason, asOfISO, confirmed24h:0, scheduled24h:0, sos24h:0, extra24h:0,
-    unspecified24h:0, confirmed30d:0, ignored30d:0, sos30d:0, extra30d:0, distinctDoseDays30d:0,
+    unspecified24h:0, plannedConfirmed24h:0, confirmed30d:0, ignored30d:0, sos30d:0, extra30d:0, distinctDoseDays30d:0,
     distinctRecordDays30d:0, documentedDays30d:0, sharedMedicationDays30d:0, conflicts30d:0,
     missingTakenClock30d:0, futureTakenClock30d:0, pendingSync30d:0, sevenDays:[], source:"person_scoped_local_snapshot" };
 }
@@ -95,26 +97,14 @@ export function buildBrainEvidenceWindowCI360(
         !trackedMedIds.has(log.medicamento_id) || seenDoseIds.has(log.id)) continue;
     seenDoseIds.add(log.id);
     const recordedDay = validDay(log.data) && log.data >= first30 && log.data <= hoje;
-    const taken = Boolean(log.tomado_em);
-    const ignored = Boolean(log.ignorado_em);
-    if (!recordedDay && !taken) continue;
-    if (taken && ignored) {
-      if (recordedDay) result.conflicts30d++;
-      continue; // Conflito não comprova tomada nem ignorada.
-    }
-    if (log.dose_kind === "planned") continue; // Agendamento não é consumo.
-    if (ignored && recordedDay) {
-      result.ignored30d++;
-      doseDays.add(log.data);
-      continue;
-    }
-    if (!taken) continue;
-    const actual = actualTakeTimestamp(log.tomado_em);
-    if (recordedDay && actual === null) result.missingTakenClock30d++;
-    if (actual !== null && actual > now) {
-      if (recordedDay) result.futureTakenClock30d++;
-      continue; // Futuro não é tomada já realizada.
-    }
+    const evidence=classifyDoseRealization(log);
+    if(evidence.state==='conflict'){if(recordedDay)result.conflicts30d++;continue;}
+    if(evidence.state==='unknown'){if(recordedDay)result.missingTakenClock30d++;continue;}
+    if(evidence.state==='pending')continue; // Agendamento sem confirmação não é consumo.
+    const actual=actualTakeTimestamp(evidence.confirmedAt);
+    if(actual===null){if(recordedDay)result.missingTakenClock30d++;continue;}
+    if(actual>now){if(recordedDay)result.futureTakenClock30d++;continue;}
+    if(evidence.state==='ignored'){if(recordedDay){result.ignored30d++;doseDays.add(log.data);}continue;}
     if (recordedDay && actual !== null) {
       result.confirmed30d++;
       doseDays.add(log.data);
@@ -131,6 +121,7 @@ export function buildBrainEvidenceWindowCI360(
     if (log.dose_kind === "sos") result.sos24h++;
     else if (log.dose_kind === "extra") result.extra24h++;
     else if (log.dose_kind === "scheduled") result.scheduled24h++;
+    else if(log.dose_kind==="planned") result.plannedConfirmed24h++;
     else result.unspecified24h++;
   }
   result.distinctDoseDays30d = doseDays.size;

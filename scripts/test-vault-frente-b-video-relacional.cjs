@@ -89,8 +89,8 @@ const mutantMetricMap={...h.METRIC_IDENTITY_B,oxigenacao:{...h.METRIC_IDENTITY_B
 ok(new Set(Object.values(mutantMetricMap).map(x=>x.icon.displayName)).size<9,'mutante negativo de ícones repetidos detectado');
 // R02: actual timeline, historical dose invariants and route boundary (synthetic records only).
 const timelineJs=ts.transpileModule(timeline,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const tm=new Module('timeline-b',module);tm.require=id=>{if(id==='@/lib/clinical-front-b-pure')return pure;throw Error('Timeline depende de '+id)};tm._compile(timelineJs,'timeline-b');
-const taken={id:'dose-b',user_id:'u',person_id:'p',medicamento_id:'med-b',data:'2026-11-25',horario:'10:00',tomado_em:'2026-11-25T10:00:00',quantidade:5};
+const tm=new Module('timeline-b',module);tm.require=id=>{if(id==='@/lib/clinical-front-b-pure')return pure;if(id==='./dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id);throw Error('Timeline depende de '+id)};tm._compile(timelineJs,'timeline-b');
+const taken={id:'dose-b',user_id:'u',person_id:'p',medicamento_id:'med-b',data:'2026-11-25',horario:'10:00',tomado_em:'2026-11-25T10:00:00-03:00',quantidade:5};
 const med={id:'med-b',user_id:'u',person_id:'p',nome:'Sintético',estoque_unidade_medida:'gotas'};
 const eventFor=(dose,medication)=>tm.exports.buildClinicalEvents([], [dose], [medication])[0];
 const hist=eventFor(taken,med),histChanged=eventFor(taken,{...med,estoque_unidade_medida:'comprimidos'});

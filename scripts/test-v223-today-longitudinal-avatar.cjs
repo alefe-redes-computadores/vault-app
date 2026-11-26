@@ -13,8 +13,8 @@ const {compareRecordedDoseWindows} = load('lib/health-intelligence/recorded-dose
 const {groupScheduleSlots,eligibleGroupDoseKeys} = load('lib/dose-schedule-groups.ts');
 const day=(offset)=>new Date(Date.UTC(2026,9,22)-offset*86400000).toISOString().slice(0,10);
 const sample=[];
-for(let i=0;i<14;i++)sample.push({user_id:'owner',person_id:'p1',medicamento_id:'m1',data:day(i),horario:'08:00',tomado_em:i<12?`${day(i)}T08:00:00`:undefined,ignorado_em:i>=12?`${day(i)}T08:00:00`:undefined});
-for(let i=14;i<28;i++)sample.push({user_id:'owner',person_id:'p1',medicamento_id:'m1',data:day(i),horario:'08:00',tomado_em:i<19?`${day(i)}T08:00:00`:undefined,ignorado_em:i>=19?`${day(i)}T08:00:00`:undefined});
+for(let i=0;i<14;i++)sample.push({user_id:'owner',person_id:'p1',medicamento_id:'m1',data:day(i),horario:'08:00',tomado_em:i<12?`${day(i)}T08:00:00-03:00`:undefined,ignorado_em:i>=12?`${day(i)}T08:00:00-03:00`:undefined});
+for(let i=14;i<28;i++)sample.push({user_id:'owner',person_id:'p1',medicamento_id:'m1',data:day(i),horario:'08:00',tomado_em:i<19?`${day(i)}T08:00:00-03:00`:undefined,ignorado_em:i>=19?`${day(i)}T08:00:00-03:00`:undefined});
 const result=compareRecordedDoseWindows(sample,'owner','p1','2026-10-22');
 assert.ok(result,'Two documented 14-day periods should produce a trend');
 assert.equal(result.current.takenPercent,86);
@@ -25,14 +25,14 @@ assert.equal(compareRecordedDoseWindows(sample,'owner','p2','2026-10-22'),null,'
 assert.equal(compareRecordedDoseWindows(sample,'other','p1','2026-10-22'),null,'Other user must not enter trend');
 assert.equal(compareRecordedDoseWindows(sample.slice(0,4),'owner','p1','2026-10-22'),null,'Sparse samples must not produce alerts');
 assert.equal(compareRecordedDoseWindows(sample,'owner','p1','2026-02-30'),null,'Invalid date not accepted');
-const foreign={...sample[1], user_id:'other',tomado_em:undefined,ignorado_em:'2026-10-21T08:00:00'};
+const foreign={...sample[1], user_id:'other',tomado_em:undefined,ignorado_em:'2026-10-21T08:00:00-03:00'};
 assert.deepEqual(compareRecordedDoseWindows([...sample,foreign],'owner','p1','2026-10-22'),result);
 const sos=sample.map(x=>({...x,dose_kind:'sos'}));
 assert.equal(compareRecordedDoseWindows(sos,'owner','p1','2026-10-22'),null,'SOS is not scheduled adherence');
-const dup={...sample[1],tomado_em:undefined,ignorado_em:'2026-10-21T08:00:00'};
+const dup={...sample[1],tomado_em:undefined,ignorado_em:'2026-10-21T08:00:00-03:00'};
 const conflicting=compareRecordedDoseWindows([...sample,dup],'owner','p1','2026-10-22');
 assert.ok(conflicting && conflicting.current.decided===13,'Conflicting duplicate excluded without counting twice');
-const future={...sample[0],data:'2026-10-23',horario:'07:00',tomado_em:'2026-10-23T07:00:00'};
+const future={...sample[0],data:'2026-10-23',horario:'07:00',tomado_em:'2026-10-23T07:00:00-03:00'};
 assert.deepEqual(compareRecordedDoseWindows([...sample,future],'owner','p1','2026-10-22'),result);
 const items=[
  {medicamentoId:'a',horario:'10:00',tomada:false,ignorada:false},

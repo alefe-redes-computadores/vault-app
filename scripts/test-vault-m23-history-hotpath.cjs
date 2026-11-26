@@ -45,7 +45,7 @@ ok(body.includes('firstAcquisitionByMedication.get(med.id)')&&
 ok(retroSource.includes('hasUnconfirmedSlot')&&
  !retroSource.includes('pendingDates.includes(cursor)')&&
  retroSource.includes('confidence: "bounded"'),'pending dates linear, uncertainty unchanged');
-ok(slotSource.includes('let taken=false,ignored=false,latest:DoseLog|null=null;')&&
+ok(slotSource.includes('let taken=false,ignored=false,invalid=false,latest:DoseLog|null=null;')&&slotSource.includes('classifyDoseRealization(row)')&&
  slotSource.includes('taken&&ignored?"conflict"')&&
  slotSource.includes('const records=index.get('),'one-pass slot resolution retains conflicts and ownership');
 const compile=p=>ts.transpileModule(read(p),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -87,10 +87,10 @@ const oldResolve=(records)=>{
  return {state:taken&&ignored?'conflict':taken?'taken':ignored?'ignored':'pending',records,latest};
 };
 const fixture=[
- {id:'1',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'23:00',created_at:'2026-11-02T06:00',tomado_em:'2026-11-02T23:30'},
- {id:'2',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'23:00',created_at:'2026-11-02T06:00',ignorado_em:'2026-11-02T06:01'},
- {id:'3',user_id:'u2',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'23:00',created_at:'2026-11-03T06:00',tomado_em:'2026-11-02T06:01'},
- {id:'4',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'09:00',created_at:'2026-11-03T06:00',dose_kind:'sos',tomado_em:'2026-11-02T09:00'},
+ {id:'1',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'23:00',created_at:'2026-11-02T06:00',tomado_em:'2026-11-02T23:30:00Z'},
+ {id:'2',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'23:00',created_at:'2026-11-02T06:00',ignorado_em:'2026-11-02T06:01:00Z'},
+ {id:'3',user_id:'u2',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'23:00',created_at:'2026-11-03T06:00',tomado_em:'2026-11-02T06:01:00Z'},
+ {id:'4',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-02',horario:'09:00',created_at:'2026-11-03T06:00',dose_kind:'sos',tomado_em:'2026-11-02T09:00:00Z'},
  {id:'5',user_id:'u1',person_id:'p1',medicamento_id:'m2',data:'2026-11-02',horario:'08:00',dose_kind:'planned'},
  ];
 const index=realSlots.buildDoseSlotIndex(fixture,{userId:'u1',personId:'p1'});
@@ -100,7 +100,7 @@ ok(snap.state==='conflict'&&snap.records.length===2&&snap.latest===fixture[0],'c
 ok(realSlots.resolveDoseSlot(index,'m1','2026-11-02','09:00').state==='absent','SOS not silently treated as scheduled');
 ok(realSlots.resolveDoseSlot(index,'m2','2026-11-02','08:00').state==='pending','planned does not prove taken');
 for(const rows of [[],[fixture[0]],[fixture[1]],fixture.slice(0,2),
- Array.from({length:10000},(_,i)=>({id:'r'+i,created_at:`${i}`,tomado_em:i%3===0?'yes':null,ignorado_em:i%4===0?'yes':null}))]){
+ Array.from({length:10000},(_,i)=>({id:'r'+i,created_at:`${i}`,tomado_em:i%3===0?'2026-11-02T10:00:00Z':null,ignorado_em:i%4===0?'2026-11-02T11:00:00Z':null}))]){
  const k='m1|2026-11-02|23:00';const idx=new Map([[k,rows]]);
  assert.deepEqual(realSlots.resolveDoseSlot(idx,'m1','2026-11-02','23:00'),oldResolve(rows));
  checks++;

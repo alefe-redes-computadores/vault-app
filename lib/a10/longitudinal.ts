@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /** A10.0/A10.1 — read-only clinical timeline. No inferred diagnosis, causality, procedure or medication act. */
 export const A10_AUTHORITIES = [
   'consultas','cirurgias','a1_treatment_phases','hospitalizations_a5','hospitalization_events_a5',
@@ -14,7 +15,7 @@ export type A10Datasets = Partial<Record<A10Authority, readonly A10Row[]>>;
 export interface A10Fact {
   key:string; id:string; authority:A10Authority; domain:A10Domain;
   title:string; detail:string; status:string; origin:string;
-  day:string|null; displayedDate:string; dateKind:'factual'|'planned'|'reported'|'registration';
+  day:string|null; displayedDate:string; dateKind:'factual'|'planned'|'reported'|'registration'|'scheduled'|'unknown';
   sortKey:string; source:string; personId:string; userId:string;
   href:string; originHref:string; revision:'current'|'historical'|'void'|'deleted';
   sync:'synced'|'pending'|'unknown'; relationId:string|null; explicitRelations:readonly string[]; relationTargets:readonly {authority:A10Authority;id:string}[];
@@ -109,7 +110,7 @@ const labels:Record<A10Domain,string>={
 };
 export const A10_DOMAIN_LABELS=labels;
 function describe(table:A10Authority,r:A10Row,ctx:{meds:Map<string,string>;vaccines:Map<string,string>;rehab:Map<string,string>;timeZone:string}):{
- title:string;detail:string;status:string;date:string|null;planned:boolean;origin:string;relationId:string|null;href?:string;
+ title:string;detail:string;status:string;date:string|null;planned:boolean;origin:string;relationId:string|null;href?:string;dateKind?:A10Fact['dateKind'];
 }|null{
  const id=get(r,'id'),status=get(r,'status'),note=get(r,'note')||get(r,'observacoes');
  if(table==='consultas')return {title:get(r,'especialidade')||'Consulta registrada',detail:get(r,'motivo')||get(r,'medico')||'',status:status||'Sem estado confirmado',date:firstDay(r,'data'),planned:status==='agendada',origin:'Cadastro de consulta',relationId:get(r,'medico_id')||null,href:'/saude/consultas/detalhes?id='+q(id)};
@@ -139,16 +140,23 @@ function describe(table:A10Authority,r:A10Row,ctx:{meds:Map<string,string>;vacci
  if(table==='doseLogs'){
   const med=ctx.meds.get(get(r,'medicamento_id'))||'Medicamento não identificado nesta pessoa';
   const rawKind=get(r,'dose_kind')||get(r,'doseKind')||get(r,'tipo_dose');
-  const plannedKind=['planned','scheduled','prevista','planejada'].includes(rawKind);
+  const plannedKind=['planned','prevista','planejada'].includes(rawKind);
+  const routine=rawKind==='scheduled';
   const isSOS=['sos','extra','avulsa'].includes(rawKind);
-  const hadTaken=Boolean(value(r,'tomado_em')),hadIgnored=Boolean(value(r,'ignorado_em'));
-  const contradicted=plannedKind&&(hadTaken||hadIgnored);
-  const taken=hadTaken&&!plannedKind,ignored=hadIgnored&&!plannedKind;
+  const evidence=classifyDoseRealization(r);
+  const state=evidence.state;
+  const scheduleDay=firstDay(r,'data');
   const recordedClock=get(r,'horario')||get(r,'hora');
-  const clock=/^([01]\d|2[0-3]):[0-5]\d$/.test(recordedClock)?' · Horário informado: '+recordedClock:'';
-  const effectiveStatus=contradicted?'Registro contraditório — conferir origem':taken?'Tomada registrada':ignored?'Ignorada — informada':plannedKind?'Dose prevista — tomada não confirmada':isSOS?'Registro SOS/extra sem tomada confirmada':'Registro sem confirmação de tomada';
-  const eventOrigin=contradicted?'Registro de dose — estado contraditório':taken?'Registro de dose — tomada informada':ignored?'Registro de dose — ignorada informada':plannedKind?'Registro de dose — previsão documentada':'Registro de dose — sem confirmação de tomada';
-  return {title:med,detail:(get(r,'motivo')||'')+clock,status:effectiveStatus,date:firstDay(r,'data'),planned:plannedKind&&!taken&&!ignored,origin:eventOrigin,relationId:get(r,'medicamento_id')||null,href:'/saude/careflow/fato?tipo=dose&id='+q(id)};
+  const clock=/^([01]\d|2[0-3]):[0-5]\d$/.test(recordedClock)?recordedClock:null;
+  const confirmed=state==='taken'||state==='ignored';
+  const actualDay=confirmed?localScheduledDayA10(evidence.confirmedAt,ctx.timeZone):null;
+  const dateKind:A10Fact['dateKind']=confirmed?(actualDay?'factual':'unknown'):state==='pending'&&scheduleDay?(plannedKind?'planned':routine?'scheduled':'unknown'):'unknown';
+  const date=confirmed?actualDay:dateKind==='planned'||dateKind==='scheduled'?scheduleDay:null;
+  const effectiveStatus=state==='conflict'?'Registro contraditório — conferir origem':state==='unknown'?'Confirmação com temporalidade inválida ou ambígua — conferir registro':state==='taken'?'Tomada registrada':state==='ignored'?'Ignorada — informada':plannedKind?'Dose prevista — tomada não confirmada':routine?'Pendência da rotina — tomada não confirmada':isSOS?'Registro SOS/extra sem tomada confirmada':'Registro sem confirmação de tomada';
+  const eventOrigin=plannedKind?'Planejamento documentado':routine?'Rotina programada':isSOS?'SOS/extra registrado':'Origem da dose não especificada';
+  const scheduleDetail=scheduleDay?'Data prevista: '+dateBR_A10(scheduleDay)+(clock?' às '+clock:''):clock?'Horário previsto: '+clock:'';
+  const actualDetail=evidence.confirmedAt?(state==='taken'?'Instante de tomada informado: ':'Instante da marcação de ignorada: ')+evidence.confirmedAt:'';
+  return {title:med,detail:[get(r,'motivo'),scheduleDetail,actualDetail].filter(Boolean).join(' · '),status:effectiveStatus,date,planned:dateKind==='planned',dateKind,origin:'Registro de dose — '+eventOrigin,relationId:get(r,'medicamento_id')||null,href:'/saude/careflow/fato?tipo=dose&id='+q(id)};
  }
  return null;
 }
@@ -176,10 +184,10 @@ export function projectLongitudinalA10(data:A10Datasets,userId:string,personId:s
    if(!includeHistory&&(deleted||isVoid||historical)){if(historical)omittedSuperseded++;continue;}
    const item=describe(table,row,ctx);if(!item)continue;
    const created=firstDay(row,'created_at')||localScheduledDayA10(value(row,'created_at'),timeZone);const date=item.date;
-   const datum=date||created;
+   const datum=date||(item.dateKind==='unknown'?null:created);
    const revision:A10Fact['revision']=deleted?'deleted':isVoid?'void':historical?'historical':'current';
    facts.push({key,id,authority:table,domain:meta.domain,title:small(item.title),detail:small(item.detail),status:item.status,origin:item.origin,
-    day:date,displayedDate:datum?dateBR_A10(datum):'Data não informada',dateKind:date?(item.planned?'planned':table==='sensitivity_events_a9'?'reported':table==='surgical_intents_a7m5'?'registration':table==='rehab_sessions_m5'?'reported':'factual'):'registration',
+    day:date,displayedDate:datum?dateBR_A10(datum):'Data não informada',dateKind:item.dateKind??(date?(item.planned?'planned':table==='sensitivity_events_a9'?'reported':table==='surgical_intents_a7m5'?'registration':table==='rehab_sessions_m5'?'reported':'factual'):'registration'),
     sortKey:datum||'0000-00-00',source:sourceOf(row),personId,userId,
     href:`/saude/linha-clinica/detalhe?origem=${encodeURIComponent(table)}&id=${q(id)}`,originHref:item.href||meta.route,revision,
     sync:value(row,'synced')===true?'synced':value(row,'synced')===false?'pending':'unknown',relationId:item.relationId,explicitRelations:typedRelationsA10(table,row).map(x=>x.id),relationTargets:typedRelationsA10(table,row)});

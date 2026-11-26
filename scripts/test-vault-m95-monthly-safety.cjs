@@ -13,7 +13,7 @@ function transpile(p){
 }
 function loadPure(p,dependencies={}){
  const target={exports:{}};
- new Function("module","exports","require",transpile(p))(target,target.exports, id=>{if(Object.prototype.hasOwnProperty.call(dependencies,id))return dependencies[id];throw new Error("Importação inesperada em teste hermético: "+id);});
+ new Function("module","exports","require",transpile(p))(target,target.exports, id=>{if(Object.prototype.hasOwnProperty.call(dependencies,id))return dependencies[id];if(id==='./dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id);throw new Error("Importação inesperada em teste hermético: "+id);});
  return target.exports;
 }
 const safety=loadPure('lib/clinical-safety-episodes.ts');

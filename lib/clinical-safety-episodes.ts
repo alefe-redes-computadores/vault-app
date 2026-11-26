@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from './dose-slot-authority';
 /** M95: read-only association of canonical dose logs with Brain V5 persisted snapshots.
  * Does not infer historical notifications, dose safety or medical correctness.
  */
@@ -46,7 +47,7 @@ export function indexConfirmedDoseSafetyEpisodes(
 ): Map<string, ClinicalDoseSafetyEpisode> {
   const valid = new Map<string, DoseLog>();
   for (const log of logs) {
-    if (log.user_id !== userId || log.person_id !== personId || !log.tomado_em ||
+    if (log.user_id !== userId || log.person_id !== personId || classifyDoseRealization(log).state!=='taken' ||
         !validDate(log.data) || !Number.isFinite(log.quantidade) || (log.quantidade ?? 0) <= 0) continue;
     const identity = log.id || log.tomado_em;
     if (identity) valid.set(`quantidade-confirmada-${log.medicamento_id}-${identity}`, log);

@@ -22,6 +22,24 @@ module.exports=async function(){
   await assert.rejects(repo.setStatus({...input,horario:'15:00',unit:{unidade_dose:'tablet',unidade_dose_rotulo:null,fonte_unidade:'declared'}}),/unidade Premium/);assert.equal(await db.doseLogs.count(),before);console.log('PASS explicit Premium unit never silently discarded');
   await db.medicamentos.update('m',{macro02_stock_managed:true});await assert.rejects(repo.setStatus({...input,horario:'15:30'}),/Evidência Premium/);assert.equal(await db.doseLogs.count(),before);await db.medicamentos.update('m',{macro02_stock_managed:false});console.log('PASS managed marker blocks legacy writer even without cycle');
   const stockQueue=await db.syncQueue.where('chave').equals('medicamentos:m').first();await db.syncQueue.update(stockQueue.id,{payload:{...stockQueue.payload,user_id:'other'}});await assert.rejects(repo.setStatus({...input,horario:'15:45'}),/identidade conflitante/);assert.equal(await db.doseLogs.count(),before);assert.equal((await db.syncQueue.get(stockQueue.id)).payload.user_id,'other');await db.syncQueue.update(stockQueue.id,{payload:stockQueue.payload});console.log('PASS conflicting foreign outbox key never merged or overwritten');
-  await db.syncQueue.add({id:'ambiguous',chave:'doseLogs:unknown',table:'doseLogs',operation:'add',payload:{id:'unknown'}});await assert.rejects(repo.setStatus({...input,horario:'16:00'}),/PENDING_CONFLICT/);assert.equal(await db.doseLogs.count(),before);assert.equal(rpcCalls,0);console.log('PASS ambiguous clinical queue retains all evidence without RPC');
+  // Persist a synthetic historical planned row, then exercise the actual setStatus transaction.
+  const plannedMed={...med,id:'m-planned',estoque_quantidade:2};await db.medicamentos.add(plannedMed);
+  const planned={id:'planned-dexie',user_id:'u',person_id:'p',medicamento_id:plannedMed.id,data:input.data,horario:'16:30',dose_kind:'planned',quantidade:1,created_at:'2026-11-24T10:00:00Z',synced:true};
+  await db.doseLogs.add(planned);await db.doseLogs.add({...planned,id:'planned-ignored-dexie',horario:'17:00'});
+  const planInput={...input,medicamentoId:plannedMed.id,horario:planned.horario,tomadoEm:'2026-11-25T16:30:00Z'};
+  assert.equal(await repo.setStatus(planInput),planned.id);assert.equal(await repo.setStatus(planInput),planned.id);
+  assert.equal(await repo.setStatus({...planInput,horario:'17:00',status:'ignored',motivo:'nao_realizada'}),'planned-ignored-dexie');
+  const saved=await db.doseLogs.get(planned.id),ignored=await db.doseLogs.get('planned-ignored-dexie');
+  assert.equal(saved.dose_kind,'planned');assert.equal(ignored.dose_kind,'planned');assert.equal(saved.created_at,planned.created_at);assert.equal(saved.quantidade,planned.quantidade);assert.equal((await db.medicamentos.get(plannedMed.id)).estoque_quantidade,1);
+  const q=await db.syncQueue.where('chave').equals('doseLogs:'+planned.id).first();assert.equal(q.payload.dose_kind,'planned');assert.equal(q.payload.id,planned.id);
+  const untouched=JSON.stringify([await db.doseLogs.toArray(),await db.medicamentos.toArray(),await db.syncQueue.toArray()]);
+  const projection=load('lib/a10/longitudinal.ts').projectLongitudinalA10({medicamentos:[plannedMed],doseLogs:[saved,ignored]},'u','p',false,'America/Sao_Paulo').facts;
+  assert.equal(projection.find(x=>x.id===planned.id).status,'Tomada registrada');assert.equal(projection.find(x=>x.id===ignored.id).status,'Ignorada — informada');assert(projection.every(x=>x.dateKind==='factual'));
+  const h=load('lib/medication-dose-history.ts').buildMedicationDoseHistoryMonth({medication:plannedMed,logs:[saved,ignored],monthKey:'2026-11',today:'2026-11-26'});assert.equal(h.days.flatMap(x=>x.events).find(x=>x.id===planned.id).kind,'scheduled_taken');
+  const mm=load('lib/health-intelligence/dose-month-metrics.ts').buildDoseMonthMetrics({logs:[saved,ignored],personId:'p',userId:'u',today:'2026-11-26'});assert.equal(mm.total.taken,1);assert.equal(mm.total.ignored,1);
+  assert.equal(JSON.stringify([await db.doseLogs.toArray(),await db.medicamentos.toArray(),await db.syncQueue.toArray()]),untouched);assert.equal(rpcCalls,0);
+  console.log('MACRO02_PLANNED_WRITER_PROJECTION_OK');
+  const beforeAmbiguous=await db.doseLogs.count();
+  await db.syncQueue.add({id:'ambiguous',chave:'doseLogs:unknown',table:'doseLogs',operation:'add',payload:{id:'unknown'}});await assert.rejects(repo.setStatus({...input,horario:'16:00'}),/PENDING_CONFLICT/);assert.equal(await db.doseLogs.count(),beforeAmbiguous);assert.equal(rpcCalls,0);console.log('PASS ambiguous clinical queue retains all evidence without RPC');
  }finally{db.close();await db.delete();delete global.window;delete global.document;}
 };

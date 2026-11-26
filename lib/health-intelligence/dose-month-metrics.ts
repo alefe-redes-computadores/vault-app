@@ -1,5 +1,5 @@
 import type { DoseLog } from "@/lib/types";
-import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
+import { buildDoseSlotIndex, resolveDoseSlot, classifyDoseRealization } from "@/lib/dose-slot-authority";
 
 /** V228: only explicitly registered slots; no inferred medication adherence. */
 export type DoseDay = {
@@ -56,7 +56,7 @@ export function buildDoseMonthMetrics(input:{logs:DoseLog[];personId:string;user
     if (seen.has(duplicateKey)) continue;
     seen.add(duplicateKey);
     if (kind === "sos" || kind === "extra") {
-      if (log.tomado_em) {
+      if (classifyDoseRealization(log).state==='taken') {
         const row = rows.get(log.data)!;
         row[kind] += 1;
         if (log.synced === false) row.pendingSync += 1;

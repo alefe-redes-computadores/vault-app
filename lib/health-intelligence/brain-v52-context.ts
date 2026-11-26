@@ -4,6 +4,7 @@
  * adesão a partir de logs ausentes, dose segura, intoxicação ou abstinência.
  * Read-only; nenhum acesso a rede, banco, notificações ou armazenamento.
  */
+import {classifyDoseRealization} from "../dose-slot-authority";
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 
 type Medication = HealthInsightContext["medicamentos"][number];
@@ -64,14 +65,15 @@ const recordedAt = (value?: string | null): number | null => {
   return Number.isFinite(stamp) ? stamp : null;
 };
 const takenAt = (dose: Dose, now: number, maxAgeHours = 24): number | null => {
-  if (!dose.tomado_em || dose.ignorado_em) return null;
-  const stamp = recordedAt(dose.tomado_em);
+  const evidence=classifyDoseRealization(dose);
+  if(evidence.state!=="taken")return null;
+  const stamp=recordedAt(evidence.confirmedAt);
   return stamp !== null && stamp <= now && now - stamp <= maxAgeHours * 3600000 ? stamp : null;
 };
 const owned = (row: { user_id?: string | null; person_id?: string | null }, ctx: HealthInsightContext) =>
   Boolean(ctx.userId && ctx.personId && row.user_id === ctx.userId && row.person_id === ctx.personId);
 const unplanned = (dose: Dose) => dose.dose_kind === "extra" || dose.dose_kind === "sos";
-const scheduled = (dose: Dose) => !unplanned(dose) && dose.dose_kind !== "planned";
+const scheduled = (dose: Dose) => !unplanned(dose);
 const historyLink = (id: string) => `/saude/medicamentos/historico?id=${encodeURIComponent(id)}`;
 const SAFE_ACTION = "Não aumente, repita, compense, suspenda ou reinicie doses com base neste alerta. Confira os registros com o prescritor; dor no peito, falta de ar, desmaio, confusão intensa ou dificuldade para despertar exigem avaliação de urgência (SAMU 192).";
 const LIMITATION = "Correlação apenas temporal, com registros explicitamente salvos e medicamentos reconhecidos. Não comprova abstinência, intoxicação, efeito individual nem motivo de uma tomada; medicamentos externos e ausência de registros não são avaliados.";
@@ -93,13 +95,14 @@ export function v52ExplicitSkippedDays(
     const date = priorDay(today, step);
     if (!date) break;
     const daily = logs.filter(d => d.data === date && d.medicamento_id === med.id && scheduled(d));
-    const hasTaken = daily.some(d => Boolean(d.tomado_em));
+    const hasTaken = daily.some(d => ["taken","conflict","unknown"].includes(classifyDoseRealization(d).state));
     if (hasTaken || !times.every(time => daily.some(d => {
-      const ignoredAt = recordedAt(d.ignorado_em);
+      const evidence=classifyDoseRealization(d);
+      const ignoredAt = evidence.state==="ignored"?recordedAt(evidence.confirmedAt):null;
       return d.horario === time && ignoredAt !== null && ignoredAt <= asOfMs && !d.tomado_em;
     }))) break;
     dates.push(date);
-    count += daily.filter(d => {const at = recordedAt(d.ignorado_em); return at !== null && at <= asOfMs && !d.tomado_em;}).length;
+    count += daily.filter(d => {const evidence=classifyDoseRealization(d);const at=evidence.state==="ignored"?recordedAt(evidence.confirmedAt):null; return at !== null && at <= asOfMs && !d.tomado_em;}).length;
   }
   return { days: dates.length, dates, records: count };
 }
@@ -113,8 +116,9 @@ const REASONS: Readonly<Record<string, string>> = {
 };
 function explicitBarrier(logs: readonly Dose[], now: number): { label: string; log: Dose } | null {
   for (const log of logs) {
-    if (!scheduled(log) || !log.ignorado_em || log.tomado_em) continue;
-    const at = recordedAt(log.ignorado_em);
+    const evidence=classifyDoseRealization(log);
+    if (!scheduled(log)||evidence.state!=="ignored")continue;
+    const at=recordedAt(evidence.confirmedAt);
     if (at === null || at > now || now - at > 14 * 86400000) continue;
     const label = REASONS[norm(log.motivo)];
     if (label) return {label, log};

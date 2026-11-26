@@ -2,7 +2,7 @@ import type { ClinicalMonthBrainInsight, ClinicalMonthDoseRow, ClinicalMonthReco
 import type { RegistroSaude } from "@/lib/types";
 
 const LABELS: Record<string, string> = {
-  scheduled: "Rotina", sos: "SOS (Resgate)", extra: "Dose Extra",
+  scheduled: "Rotina", planned: "Planejamento", sos: "SOS (Resgate)", extra: "Dose Extra",
   sem_estoque: "Sem estoque / Barreira de fornecimento", nao_realizada: "Não realizada",
   already_knew: "Ciente no momento do registro", atencao: "Atenção",
   importante: "Importante", informativa: "Informativa",
@@ -38,6 +38,7 @@ export function groupClinicalMonthDoses(rows: readonly ClinicalMonthDoseRow[]): 
       }
       const when = row.scheduledTime || "Horário não informado";
       const real = row.confirmedAt ? new Date(row.confirmedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Não informado";
+      if(row.status==='conflict'||row.status==='unknown'){lines.push(`${when} | Registro a conferir: ${row.medication} · confirmação não demonstrada`);continue;}
       if (row.status === "ignored") lines.push(`${when} | Ignorada: ${row.medication} (${quantity(row)}) — Motivo: ${clinicalLabel(row.reason || "nao_realizada")}`);
       else lines.push(`${when} | ${clinicalLabel(row.doseKind)} tomada: ${row.medication} (${quantity(row)}) · Registro real: ${real}${row.safety ? " · Alerta preservado" : ""}`);
     }

@@ -17,7 +17,7 @@ const files=[
 for(const file of files){const tree=ts.createSourceFile(file,fs.readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true,file.endsWith('tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(tree.parseDiagnostics.length===0,'AST TS/TSX '+file)};
 function compile(file,imports={}){
  const js=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- const m=new Module(file,module);m.require=id=>id in imports?imports[id]:require(id);m._compile(js,file);return m.exports;
+ const m=new Module(file,module);m.require=id=>id in imports?imports[id]:id==='../dose-slot-authority'?require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id):require(id);m._compile(js,file);return m.exports;
 }
 const long=compile(files[0]).buildBrainLongitudinalCI360;
 const at='2026-11-16T13:00:00.000Z';

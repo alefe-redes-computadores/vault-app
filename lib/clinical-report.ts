@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from './dose-slot-authority';
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 import { buildCareRhythm, type CareRhythmSummary } from "@/lib/health-intelligence/care-rhythm";
 
@@ -92,7 +93,7 @@ function isSymptom(record: HealthInsightContext["registrosSaude"][number]): bool
 }
 
 function isTaken(dose: HealthInsightContext["doseLogs"][number]): boolean {
-  return Boolean(dose.tomado_em);
+  return classifyDoseRealization(dose).state==='taken';
 }
 
 function calculateWindow(context: HealthInsightContext, start: Date, end: Date) {
@@ -151,7 +152,7 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
       scheduledTaken: doses.filter((item) => isTaken(item) && item.dose_kind !== "sos" && item.dose_kind !== "extra").length,
       sosTaken: doses.filter((item) => isTaken(item) && item.dose_kind === "sos").length,
       extraTaken: doses.filter((item) => isTaken(item) && item.dose_kind === "extra").length,
-      ignored: doses.filter((item) => Boolean(item.ignorado_em)).length,
+      ignored: doses.filter((item) => classifyDoseRealization(item).state==='ignored').length,
     };
   }).sort((a, b) => (b.sosTaken + b.extraTaken + b.scheduledTaken) - (a.sosTaken + a.extraTaken + a.scheduledTaken));
 
@@ -186,7 +187,7 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
       scheduledTaken,
       sosTaken,
       extraTaken,
-      ignored: current.doses.filter((item) => Boolean(item.ignorado_em)).length,
+      ignored: current.doses.filter((item) => classifyDoseRealization(item).state==='ignored').length,
     },
     comparison: {
       recordsDelta: comparable ? percentDelta(current.records.length, previous.records.length) : null,

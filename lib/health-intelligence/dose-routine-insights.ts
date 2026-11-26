@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from "../dose-slot-authority";
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 import { historyRangeStart, validDay, validInstant, type HistoricalDose, type Scope } from "../dose-premium/center-view";
 import { civilDoseInstant } from "../dose-premium/review-intent";
@@ -8,7 +9,7 @@ import { readDoseUnit } from "../dose-premium/historical-unit";
 /**
  * V226 — leitura dos atos explicitamente registrados, não da adesão presumida.
  * Ignorar é uma decisão clínica anotada; uma ausência de DoseLog não é dose ignorada.
- * SOS, extra e planejadas não pertencem ao denominador de doses programadas.
+ * SOS, extra e previsões sem realização não pertencem ao denominador de doses programadas.
  */
 type RecordedOutcome = "taken" | "ignored";
 type ScheduledRecord = HealthInsightContext["doseLogs"][number];
@@ -49,8 +50,10 @@ function daypart(time: string): "manha" | "tarde" | "noite" {
 
 function resolveOutcome(records: ScheduledRecord[]): RecordedOutcome | null {
   // Duplicidade legada contraditória não vira evidência de adesão nem de omissão.
-  const taken = records.some((item) => Boolean(item.tomado_em));
-  const ignored = records.some((item) => Boolean(item.ignorado_em));
+  const states=records.map(classifyDoseRealization).map(x=>x.state);
+  if(states.includes("conflict")||states.includes("unknown"))return null;
+  const taken=states.includes("taken");
+  const ignored=states.includes("ignored");
   if (taken === ignored) return null;
   return taken ? "taken" : "ignored";
 }
@@ -67,7 +70,7 @@ export function buildRecordedDoseRoutineInsights(context: HealthInsightContext):
   const slots = new Map<string, ScheduledRecord[]>();
   for (const log of context.doseLogs) {
     if (log.person_id !== context.personId || log.user_id !== ownerId || !knownIds.has(log.medicamento_id)) continue;
-    if (log.dose_kind === "sos" || log.dose_kind === "extra" || log.dose_kind === "planned") continue;
+    if (log.dose_kind === "sos" || log.dose_kind === "extra") continue;
     const day = localDateKey(log.data);
     const time = normalizeTime(log.horario);
     if (!day || !time) continue;
@@ -137,7 +140,7 @@ export function summarizeRecordedDoseTiming(input:{scope:Scope;today:string;asOf
   }
   let denominator=0,absolute=0,early=0,late=0,earlyCount=0,lateCount=0,sample=0;const days=new Set<string>();
   for(const rows of slots.values()){
-    denominator+=rows.filter(row=>Boolean(row.tomado_em)).length;
+    denominator+=rows.filter(row=>classifyDoseRealization(row).state==="taken").length;
     if(rows.length!==1)continue;const row=rows[0];
     if(!row.id||counts.get(row.id)!==1||!validInstant(row.tomado_em)||row.ignorado_em||Date.parse(row.tomado_em)>Date.parse(asOf))continue;
     try{const planned=civilDoseInstant(row.data,row.horario.slice(0,5),asOf),minutes=(Date.parse(row.tomado_em)-Date.parse(planned))/60000;

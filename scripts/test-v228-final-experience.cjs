@@ -16,18 +16,18 @@ const {buildDoseMonthMetrics}=load('lib/health-intelligence/dose-month-metrics.t
 const date='2026-10-22',owned={user_id:'u1',person_id:'p1'};
 const dose=(id,day,hour,kind,opts={})=>({id,medicamento_id:'m1',data:day,horario:hour,dose_kind:kind,...owned,...opts});
 const logs=[
- dose('a',date,'09:00','scheduled',{tomado_em:'2026-10-22T09:03:00',synced:false}),
- dose('dup',date,'09:00','scheduled',{ignorado_em:'2026-10-22T09:10:00'}),
- dose('other',date,'10:00','scheduled',{ignorado_em:'2026-10-22T10:00:00'}),
- dose('take2',date,'15:00','scheduled',{tomado_em:'2026-10-22T15:00:00'}),
+ dose('a',date,'09:00','scheduled',{tomado_em:'2026-10-22T09:03:00-03:00',synced:false}),
+ dose('dup',date,'09:00','scheduled',{ignorado_em:'2026-10-22T09:10:00-03:00'}),
+ dose('other',date,'10:00','scheduled',{ignorado_em:'2026-10-22T10:00:00-03:00'}),
+ dose('take2',date,'15:00','scheduled',{tomado_em:'2026-10-22T15:00:00-03:00'}),
  dose('pending',date,'11:00','planned'),
- dose('sos1',date,'12:00','sos',{tomado_em:'2026-10-22T12:00:00'}),
- dose('sos2',date,'12:00','sos',{tomado_em:'2026-10-22T12:05:00'}),
- dose('extra',date,'14:00','extra',{tomado_em:'2026-10-22T14:00:00'}),
- dose('foreign',date,'09:00','scheduled',{user_id:'u2',tomado_em:'2026-10-22T09:00:00'}),
- dose('anotherPerson',date,'09:00','scheduled',{person_id:'p2',tomado_em:'2026-10-22T09:00:00'}),
- dose('future','2026-10-23','09:00','scheduled',{tomado_em:'2026-10-23T09:00:00'}),
- dose('bad','2026-02-30','09:00','scheduled',{tomado_em:'2026-02-30T09:00:00'}),
+ dose('sos1',date,'12:00','sos',{tomado_em:'2026-10-22T12:00:00-03:00'}),
+ dose('sos2',date,'12:00','sos',{tomado_em:'2026-10-22T12:05:00-03:00'}),
+ dose('extra',date,'14:00','extra',{tomado_em:'2026-10-22T14:00:00-03:00'}),
+ dose('foreign',date,'09:00','scheduled',{user_id:'u2',tomado_em:'2026-10-22T09:00:00-03:00'}),
+ dose('anotherPerson',date,'09:00','scheduled',{person_id:'p2',tomado_em:'2026-10-22T09:00:00-03:00'}),
+ dose('future','2026-10-23','09:00','scheduled',{tomado_em:'2026-10-23T09:00:00-03:00'}),
+ dose('bad','2026-02-30','09:00','scheduled',{tomado_em:'2026-02-30T09:00:00-03:00'}),
 ];
 const month=buildDoseMonthMetrics({logs,personId:'p1',userId:'u1',today:date,days:30});
 assert.deepEqual(month.total,{taken:1,ignored:1,unconfirmed:1,conflicts:1,sos:2,extra:1,pendingSync:1});

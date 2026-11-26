@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /**
  * CI360 P2 / B05.1+B05.3 — proveniência e cobertura de regras de segurança.
  * Somente leitura, sem aplicar uma regra clínica nova e sem converter unidades.
@@ -72,12 +73,14 @@ export function buildBrainSafetyEvidenceCI360(
   let observedTaken24h=0;
   for (const log of context.doseLogs) {
     if (!log.id || seenLogIds.has(log.id) || log.user_id!==userId || log.person_id!==personId ||
-        !seenMedIds.has(log.medicamento_id) || log.dose_kind==="planned") continue;
+        !seenMedIds.has(log.medicamento_id)) continue;
     seenLogIds.add(log.id);
-    if (!log.tomado_em) continue;
-    if (log.ignorado_em) { excludedConflicts++; continue; }
-    const time=exactTimestamp(log.tomado_em);
-    if (time===null) { excludedInvalidClocks++; continue; }
+    const evidence=classifyDoseRealization(log);
+    if(evidence.state==='conflict'){excludedConflicts++;continue;}
+    if(evidence.state==='unknown'){excludedInvalidClocks++;continue;}
+    if(evidence.state!=='taken')continue;
+    const time=exactTimestamp(evidence.confirmedAt);
+    if(time===null){excludedInvalidClocks++;continue;}
     if (time>now || time<now-86_400_000) continue;
     counts.set(log.medicamento_id,(counts.get(log.medicamento_id)||0)+1);
     observedTaken24h++;

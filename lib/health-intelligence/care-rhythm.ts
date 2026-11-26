@@ -6,7 +6,7 @@
  * Works only with the supplied person-scoped snapshot; no I/O or persistence.
  */
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
-import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
+import { buildDoseSlotIndex, resolveDoseSlot, classifyDoseRealization } from "@/lib/dose-slot-authority";
 
 export type CareRhythmPeriod = 7 | 30 | 90;
 export interface CareRhythmDay {
@@ -166,10 +166,10 @@ export function buildCareRhythm(context: HealthInsightContext, periodDays: CareR
   }
   // Collapse duplicate scheduled slots before counting. A resolved record wins
   // over an unresolved legacy duplicate; SOS/extra are separate real events.
-  const scheduledSlots = buildDoseSlotIndex(context.doseLogs.filter(dose=>!dose.dose_kind||dose.dose_kind==="scheduled"),{userId:context.userId,personId:context.personId});
+  const scheduledSlots = buildDoseSlotIndex(context.doseLogs,{userId:context.userId,personId:context.personId});
   const independent: HealthInsightContext["doseLogs"] = [];
   for (const dose of context.doseLogs) {
-    if (dose.dose_kind && dose.dose_kind !== "scheduled") { independent.push(dose); continue; }
+    if (dose.dose_kind && dose.dose_kind !== "scheduled" && dose.dose_kind !== "planned") { independent.push(dose); continue; }
   }
   let doseConflicts=0;
   const canonicalScheduled=[...scheduledSlots.values()].flatMap(group=>{
@@ -181,24 +181,26 @@ export function buildCareRhythm(context: HealthInsightContext, periodDays: CareR
     return representative?[representative]:[];
   });
   for (const dose of [...canonicalScheduled, ...independent]) {
-    if (dose.person_id !== context.personId) continue;
+    if (dose.person_id !== context.personId || (context.userId && dose.user_id!==context.userId)) continue;
     const at = utcDay(dose.data);
     if (at === null) { excludedInvalid++; continue; }
     if (at < start || at > today) continue;
     // Scheduled events are unique per medication/date/time irrespective of a
     // legacy duplicate ID. Genuine SOS and extra events remain separate by ID.
     const origin = dose.dose_kind || "scheduled";
-    const key = origin === "scheduled"
+    const key = origin === "scheduled" || origin === "planned"
       ? `slot:${dose.medicamento_id}:${dose.data}:${dose.horario}`
       : dose.id ? `id:${dose.id}` : `event:${dose.medicamento_id}:${dose.data}:${dose.horario}:${origin}`;
     if (seenDoses.has(key)) continue;
     seenDoses.add(key);
     if (dose.synced === false) localUnsynced++;
     const day = dates.get(dose.data)!;
-    if (dose.tomado_em && dose.dose_kind !== "planned") {
+    const state=classifyDoseRealization(dose).state;
+    if(state==='conflict'||state==='unknown'){doseConflicts++;continue;}
+    if (state==='taken') {
       day.takenDoses++;
       if (dose.dose_kind === "sos" || dose.dose_kind === "extra") day.sosExtraDoses++;
-    } else if (dose.ignorado_em && dose.dose_kind !== "planned") ignored++;
+    } else if (state==='ignored') ignored++;
   }
   const days = [...dates.values()];
   const slept = days.filter(d => d.sleepMinutes !== null);

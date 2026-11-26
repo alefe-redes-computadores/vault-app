@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from './dose-slot-authority';
 // lib/medication-dose-history.ts
 import {historicalPharmaceuticalIdentity,type PharmaceuticalSnapshot} from './dose-premium/pharmaceutical-snapshot';
 import { summarizeHistoricalQuantities, type DoseUnitFields } from "./dose-premium/historical-unit";
@@ -131,8 +132,9 @@ function knownRoutineStart(medication: Medicamento): string | null {
 function eventFromLog(log: DoseLog, duplicateRoutine:boolean): DoseHistoryEvent {
   const routine=log.dose_kind==='scheduled'||log.dose_kind==='planned';
   const independent=log.dose_kind==='sos'||log.dose_kind==='extra';
-  const conflict=Boolean(log.tomado_em&&log.ignorado_em)||duplicateRoutine;
-  const kind:DoseHistoryEventKind=conflict?'conflict':routine?(log.tomado_em?'scheduled_taken':log.ignorado_em?'scheduled_ignored':'planned'):independent?'avulsa':'unknown_origin';
+  const state=classifyDoseRealization(log).state;
+  const conflict=state==='conflict'||state==='unknown'||duplicateRoutine;
+  const kind:DoseHistoryEventKind=conflict?'conflict':routine?(state==='taken'?'scheduled_taken':state==='ignored'?'scheduled_ignored':'planned'):independent&&state==='taken'?'avulsa':'unknown_origin';
   return {pharmaceuticalSnapshot:historicalPharmaceuticalIdentity(log),id:log.id,horario:log.horario||"00:00",tomadoEm:log.tomado_em,ignoradoEm:log.ignorado_em,quantidade:log.quantidade,
     unidade_dose:log.unidade_dose,unidade_dose_rotulo:log.unidade_dose_rotulo,fonte_unidade:log.fonte_unidade,
     origin:log.dose_kind,motivo:log.motivo,kind};
@@ -219,7 +221,7 @@ export function buildMedicationDoseHistoryMonth({
   const monthDays = days.filter((day) => day.inMonth);
   const monthEvents = monthDays.flatMap((day) => day.events);
   const takenEvents = monthEvents.filter((event) =>
-    event.kind!=="conflict"&&Boolean(event.tomadoEm)&&!event.ignoradoEm
+    event.kind!=="conflict"&&classifyDoseRealization({tomado_em:event.tomadoEm,ignorado_em:event.ignoradoEm}).state==='taken'
   );
   const expected = monthDays.reduce((total, day) => total + day.expectedSlots.length, 0);
   const taken = monthDays.reduce((total, day) => total + day.takenScheduled, 0);

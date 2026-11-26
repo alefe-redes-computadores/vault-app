@@ -14,6 +14,7 @@ function compile(path){
 function pure(path,deps={}){
  const module={exports:{}};
  new Function("module","exports","require",compile(path))(module,module.exports,key=>{
+ if(key==="../dose-slot-authority")return require("./vault-macro02-test-pure-loader.cjs").loadMacro02Pure(key);
   if(Object.prototype.hasOwnProperty.call(deps,key))return deps[key];
   throw Error(`Importação inesperada: ${key}`);
  });

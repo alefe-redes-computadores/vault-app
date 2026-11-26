@@ -24,11 +24,11 @@ ok(page.indexOf('<BrainEvidenceWindowCI360 context=') > page.indexOf('id="insigh
 ok(component.includes('useMemo(() => buildBrainEvidenceWindowCI360(context, asOfISO)') && !component.includes('db.') && !component.includes('supabase'), "Reutiliza contexto e não cria segunda query");
 ok(component.includes('/saude/medicamentos/historico') && component.includes('/saude/relatorios') && component.includes('/saude/pharmalens') && component.includes('/saude/fornecimento') && component.includes('/saude/plano-seguranca') && component.includes('onNavigate('), "Destinos existentes e retorno contextual");
 ok(engine.includes('log.user_id !== userId || log.person_id !== personId') && engine.includes('record.user_id !== userId || record.person_id !== personId'), "Conta e pessoa filtradas novamente na fronteira");
-ok(engine.includes('actualTakeTimestamp(log.tomado_em)') && engine.includes('log.dose_kind === "planned"') && engine.includes('if (taken && ignored)'), "Tomada real, plano e conflitos separados");
+ok(engine.includes('classifyDoseRealization(log)') && engine.includes("evidence.state==='pending'") && engine.includes("evidence.state==='conflict'"), "Tomada real, plano e conflitos separados");
 ok(!engine.includes('applyStockDelta') && !engine.includes('mgPer') && !engine.includes('sendMessage') && !engine.includes('diagnosis'), "Sem writes nem equivalência clínica inventada");
 ok((gate.match(/"scripts\/test-vault-ci360-p1-evidence.cjs"/g)||[]).length === 1, "Contrato único no gate canônico");
 const js = ts.transpileModule(engine, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const m = new Module(enginePath,module);m._compile(js,enginePath);
+const m = new Module(enginePath,module);m.require=id=>id==='../dose-slot-authority'?require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id):require(id);m._compile(js,enginePath);
 const run = m.exports.buildBrainEvidenceWindowCI360;
 const now = "2026-11-16T03:00:00.000Z";
 const med = (id, person="p") => ({id,nome:id,user_id:"u",person_id:person,status:"ativo"});
@@ -42,7 +42,7 @@ const rows = [
  taken("old","scheduled","2026-11-14T12:00:00.000Z",{data:"2026-11-14"}),
  taken("other-medicine","scheduled","2026-11-14T10:00:00.000Z",{data:"2026-11-14",medicamento_id:"m2"}),
  taken("future","scheduled","2026-11-18T03:00:00.000Z",{data:"2026-11-16"}),
- taken("planned","planned","2026-11-16T00:00:00.000Z"),
+ taken("planned","planned",undefined,{tomado_em:undefined}),
  taken("untrusted-time","scheduled","2026-11-16 00:30",{}),
  taken("ignored","scheduled",undefined,{tomado_em:undefined,ignorado_em:"2026-11-16T02:00:00.000Z"}),
  taken("conflict","scheduled","2026-11-16T01:00:00.000Z",{ignorado_em:"2026-11-16T01:10:00.000Z"}),

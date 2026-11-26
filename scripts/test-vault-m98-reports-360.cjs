@@ -12,7 +12,7 @@ function transpile(path){
 }
 function load(path,deps={}){
  const m={exports:{}};new Function("module","exports","require",transpile(path))(m,m.exports,key=>{
-  if(Object.prototype.hasOwnProperty.call(deps,key))return deps[key];
+  if(Object.prototype.hasOwnProperty.call(deps,key))return deps[key];if(key==='./dose-slot-authority')return loadMacro02Pure(key);
   if(['@/lib/dose-premium/historical-unit','@/lib/dose-premium/pharmaceutical-snapshot'].includes(key))return loadMacro02Pure(key);
   throw new Error(`Importação inesperada ${key}`);
  });return m.exports;

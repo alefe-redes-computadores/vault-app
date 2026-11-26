@@ -5,7 +5,7 @@ function ok(condition,label){assert.ok(condition,label);console.log(`M113 OK ${+
 const read=p=>fs.readFileSync(p,'utf8');
 function load(p){const s=read(p);const js=ts.transpileModule(s,{fileName:p,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},reportDiagnostics:true});
  if(js.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))throw Error('Erro de TS: '+p);
- const mod={exports:{}};new Function('module','exports','require',js.outputText)(mod,mod.exports,id=>{throw Error('Import runtime indevido: '+id)});return mod.exports;
+ const mod={exports:{}};new Function('module','exports','require',js.outputText)(mod,mod.exports,id=>{if(id==='../dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id);throw Error('Import runtime indevido: '+id)});return mod.exports;
 }
 const t=load('lib/health-intelligence/pattern-timeline-m113.ts');
 const j=load('lib/private-journal-m113.ts');
@@ -15,15 +15,15 @@ const ctx=()=>({userId:u,personId:p,hoje:today,medicamentos:[{id:'m1',user_id:u,
 const log=(id,date,extra={})=>({id,user_id:u,person_id:p,medicamento_id:'m1',data:date,horario:'09:00',...extra});
 const record=(id,date,intensity=5,name='Tontura')=>({id,user_id:u,person_id:p,data:date,categoria:'sintoma',tipo:name,nome:name,intensidade:intensity});
 let c=ctx();let r=t.buildPatternTimelineM113(c);ok(r.events.length===0,'sem dados: sem eventos artificiais');ok(r.trends.length===0,'sem dados: sem agravamento inventado');ok(r.recordedDays===0,'sem registros não significa zero sintomas');ok(r.readOnly===true,'linha do tempo somente leitura');
-let a=ctx();a.doseLogs=[log('a','2026-11-09',{ignorado_em:'2026-11-09T09:10:00'})];r=t.buildPatternTimelineM113(a);ok(r.events.length===1,'dose ignorada explicitamente entra');ok(r.events[0].label.includes('ignorada'),'ignorar é descrito sem inferir abstinência');ok(r.events[0].kind==='medication','classe do registro de dose explícita');
-a.doseLogs.push(log('b','2026-11-09',{tomado_em:'2026-11-09T09:30:00',dose_kind:'extra'}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'dose extra tomada no mesmo dia não se perde');ok(r.events.some(x=>x.label.includes('SOS/extra')),'dose extra é apenas descrita');
-a.doseLogs.push(log('b','2026-11-09',{tomado_em:'2026-11-09T09:30:00'}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'ID duplicado não duplica evento');
-a.doseLogs.push(log('both','2026-11-09',{tomado_em:'2026-11-09T09:30:00',ignorado_em:'2026-11-09T09:10:00'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:both'),'conflito tomado/ignorado não é classificado');
-a.doseLogs.push(log('future','2026-11-12',{tomado_em:'2026-11-12T09:00:00'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:future'),'sem evento clínico futuro');
-a.doseLogs.push(log('foreign','2026-11-09',{tomado_em:'2026-11-09T09:00:00',user_id:'other'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:foreign'),'isolamento por conta');
-a.doseLogs.push(log('otherperson','2026-11-09',{tomado_em:'2026-11-09T09:00:00',person_id:'other'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:otherperson'),'isolamento por pessoa');
-a.doseLogs.push(log('noid','2026-11-09',{tomado_em:'2026-11-09T09:00:00',id:undefined}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'evento sem identidade não entra');
-a.doseLogs.push(log('unknownmed','2026-11-09',{tomado_em:'2026-11-09T09:00:00',medicamento_id:'ghost'}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'vínculo de medicamento ausente não entra');
+let a=ctx();a.doseLogs=[log('a','2026-11-09',{ignorado_em:'2026-11-09T09:10:00Z'})];r=t.buildPatternTimelineM113(a);ok(r.events.length===1,'dose ignorada explicitamente entra');ok(r.events[0].label.includes('ignorada'),'ignorar é descrito sem inferir abstinência');ok(r.events[0].kind==='medication','classe do registro de dose explícita');
+a.doseLogs.push(log('b','2026-11-09',{tomado_em:'2026-11-09T09:30:00Z',dose_kind:'extra'}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'dose extra tomada no mesmo dia não se perde');ok(r.events.some(x=>x.label.includes('SOS/extra')),'dose extra é apenas descrita');
+a.doseLogs.push(log('b','2026-11-09',{tomado_em:'2026-11-09T09:30:00Z'}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'ID duplicado não duplica evento');
+a.doseLogs.push(log('both','2026-11-09',{tomado_em:'2026-11-09T09:30:00Z',ignorado_em:'2026-11-09T09:10:00Z'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:both'),'conflito tomado/ignorado não é classificado');
+a.doseLogs.push(log('future','2026-11-12',{tomado_em:'2026-11-12T09:00:00Z'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:future'),'sem evento clínico futuro');
+a.doseLogs.push(log('foreign','2026-11-09',{tomado_em:'2026-11-09T09:00:00Z',user_id:'other'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:foreign'),'isolamento por conta');
+a.doseLogs.push(log('otherperson','2026-11-09',{tomado_em:'2026-11-09T09:00:00Z',person_id:'other'}));r=t.buildPatternTimelineM113(a);ok(!r.events.some(x=>x.key==='dose:otherperson'),'isolamento por pessoa');
+a.doseLogs.push(log('noid','2026-11-09',{tomado_em:'2026-11-09T09:00:00Z',id:undefined}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'evento sem identidade não entra');
+a.doseLogs.push(log('unknownmed','2026-11-09',{tomado_em:'2026-11-09T09:00:00Z',medicamento_id:'ghost'}));r=t.buildPatternTimelineM113(a);ok(r.events.length===2,'vínculo de medicamento ausente não entra');
 a.retiradas=[{id:'pk1',user_id:u,person_id:p,medicamento_id:'m1',data:'2026-11-10',status:'agendada'}];r=t.buildPatternTimelineM113(a);ok(r.events.some(e=>e.nature==='planned_not_completed'),'retirada agendada não equivale a recebida');ok(r.events.some(e=>e.label.includes('não confirma recebimento')),'texto anti-presunção explícito');
 a.retiradas.push({id:'pk2',user_id:u,person_id:p,medicamento_id:'m1',data:'2026-11-09',status:'nao_realizada'});r=t.buildPatternTimelineM113(a);ok(r.events.some(e=>e.label.includes('não realizada')),'retirada não realizada apenas quando registrada');
 a.retiradas.push({id:'pk3',user_id:u,person_id:p,medicamento_id:'m1',data:'2026-11-07',status:'realizada'});r=t.buildPatternTimelineM113(a);ok(r.events.some(e=>e.label.includes('registrada como realizada')),'retirada realizada preserva semântica');

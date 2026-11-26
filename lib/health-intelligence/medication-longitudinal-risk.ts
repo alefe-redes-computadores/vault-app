@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 type Medication=HealthInsightContext["medicamentos"][number];
 type Dose=HealthInsightContext["doseLogs"][number];
@@ -17,8 +18,8 @@ const PROFILES:Profile[]=[
  {substance:"desvenlafaxina",aliases:["desvenlafaxina","pristiq"],minObservedDays:10,interruptionHours:48,source:FDA_DESVENLAFAXINE,withdrawalLabel:"SNRI",escalationReview:false},
 ];
 const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-const at=(d:Dose)=>{const raw=d.tomado_em||(d.data?`${d.data}T${d.horario||"00:00"}`:"");if(!raw)return null;const x=new Date(raw);return Number.isNaN(x.getTime())?null:x};
-const taken=(d:Dose)=>Boolean(d.tomado_em);
+const at=(d:Dose)=>{const evidence=classifyDoseRealization(d);return evidence.state==='taken'&&evidence.confirmedAt?new Date(evidence.confirmedAt):null};
+const taken=(d:Dose)=>classifyDoseRealization(d).state==='taken';
 const qty=(d:Dose)=>typeof d.quantidade==="number"&&d.quantidade>0?d.quantidade:1;
 const hours=(a:Date,b:Date)=>Math.abs(a.getTime()-b.getTime())/3_600_000;
 const profileFor=(m:Medication)=>{const n=norm(m.nome);return PROFILES.find(p=>p.aliases.some(a=>n===a||n.startsWith(`${a} `)))||null};
@@ -50,7 +51,7 @@ function interruption(c:HealthInsightContext,m:Medication,p:Profile,now:Date):He
  // V120: missing logs and zero stock do not prove interrupted use.
  const planned=Array.from(new Set((m.estoque_horarios||[]).filter(Boolean)));
  if(!planned.length)return null;
- const skipped=c.doseLogs.filter(d=>d.person_id===c.personId&&d.medicamento_id===m.id&&d.ignorado_em&&Number.isFinite(new Date(d.ignorado_em).getTime())&&new Date(d.ignorado_em)<=now&&!d.tomado_em&&d.dose_kind!=="sos"&&d.dose_kind!=="extra");
+ const skipped=c.doseLogs.filter(d=>d.person_id===c.personId&&d.medicamento_id===m.id&&classifyDoseRealization(d).state==='ignored'&&d.ignorado_em&&new Date(d.ignorado_em)<=now&&d.dose_kind!=="sos"&&d.dose_kind!=="extra");
  const dayKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
  let confirmedDays=0;
  for(let offset=1;offset<=21;offset++){

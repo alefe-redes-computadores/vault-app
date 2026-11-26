@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from './dose-slot-authority';
 import {historicalPharmaceuticalIdentity} from '@/lib/dose-premium/pharmaceutical-snapshot';
 import { describeHistoricalDose } from "@/lib/dose-premium/historical-unit";
 /** M98: local, deterministic and person-scoped clinical export. Never infers dose intake. */
@@ -83,13 +84,14 @@ export function buildClinicalReport360(input: Report360Input): Report360 {
   if (includes("doses")) {
     for (const dose of context.doseLogs) {
       if (!owned(dose) || !within(dose.data) || (!dose.tomado_em && !dose.ignorado_em)) continue;
-      const recorded = Boolean(dose.tomado_em);
+      const evidence=classifyDoseRealization(dose);
+      const recorded = evidence.state==='taken';
       const kind = dose.dose_kind || "origem não informada";
-      const conflict=Boolean(dose.tomado_em&&dose.ignorado_em);
+      const conflict=evidence.state==='conflict'||evidence.state==='unknown';
       if(!conflict&&recorded){doseSummary.confirmed++;if(dose.dose_kind==='sos')doseSummary.sos++;if(dose.dose_kind==='extra')doseSummary.extra++;}
-      else if(!conflict)doseSummary.explicitlyIgnored++;
+      else if(evidence.state==='ignored')doseSummary.explicitlyIgnored++;
       const pharma=historicalPharmaceuticalIdentity(dose), identityLabel=pharma?`Cadastro no registro: ${pharma.dosagem||'concentração não informada'} · `:'Identidade do cadastro atual (snapshot histórico ausente) · ';
-      rows.push(row("doses", dose.data, clock(dose.horario), pharma?.nome || meds.get(dose.medicamento_id)?.nome || "Medicamento sem cadastro acessível", `${conflict?"Registro contraditório · revisão necessária":recorded ? "Tomada confirmada" : "Ignorada explicitamente"} · ${identityLabel}Tipo: ${kind} · Quantidade: ${conflict?"não confirmada":recorded ? describeHistoricalDose(dose).replace(/^Quantidade registrada: /,'') : "não administrada"} · Horário do evento: ${isoTime(recorded ? dose.tomado_em : dose.ignorado_em) || "não registrado"}${dose.motivo ? ` · Motivo informado: ${clean(dose.motivo)}` : ""}`, "dose_log", dose.id || `${dose.medicamento_id}:${dose.data}:${dose.horario}`));
+      rows.push(row("doses", dose.data, clock(dose.horario), pharma?.nome || meds.get(dose.medicamento_id)?.nome || "Medicamento sem cadastro acessível", `${conflict?"Registro contraditório · revisão necessária":recorded ? "Tomada confirmada" : "Ignorada explicitamente"} · ${identityLabel}Tipo: ${kind} · Quantidade: ${conflict?"não confirmada":recorded ? describeHistoricalDose(dose).replace(/^Quantidade registrada: /,'') : "não administrada"} · Horário do evento: ${isoTime(evidence.confirmedAt??undefined) || "não registrado"}${dose.motivo ? ` · Motivo informado: ${clean(dose.motivo)}` : ""}`, "dose_log", dose.id || `${dose.medicamento_id}:${dose.data}:${dose.horario}`));
     }
   }
   for (const entry of context.registrosSaude) {

@@ -12,6 +12,7 @@ function pure(rel){
  const file=path.join(root,'lib/a10',rel+'.ts'),code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
  const mod={exports:{}};loaded.set(rel,mod);
  new Function('require','module','exports',code)((name)=>{
+  if(name==='../dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(name);
   if(name.startsWith('./'))return pure(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name.slice(2))));
   throw new Error(`Import runtime unexpectedly required: ${name}`);
  },mod,mod.exports);return mod.exports;

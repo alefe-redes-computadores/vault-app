@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 import {historicalPharmaceuticalIdentity} from '../dose-premium/pharmaceutical-snapshot';
 import {readDoseUnit} from "../dose-premium/historical-unit";
 import type { HealthInsightContext } from "@/lib/health-insights";
@@ -63,8 +64,9 @@ export function buildCanonicalClinicalTimeline(
   const events: ClinicalTimelineEvent[] = [];
 
   for (const dose of context.doseLogs) {
-    const contradictory=Boolean(dose.tomado_em&&dose.ignorado_em);
-    const actual=contradictory?null:dose.tomado_em||dose.ignorado_em||null;
+    const evidence=classifyDoseRealization(dose);
+    const contradictory=evidence.state==='conflict';
+    const actual=evidence.confirmedAt;
     const occurredAt = actual || isoAt(dose.data, dose.horario);
     const instant=actual?new Date(actual):null;
     const date = instant&&Number.isFinite(instant.valueOf())?`${instant.getFullYear()}-${String(instant.getMonth()+1).padStart(2,'0')}-${String(instant.getDate()).padStart(2,'0')}`:dateOnly(dose.data);
@@ -79,7 +81,7 @@ export function buildCanonicalClinicalTimeline(
       entityType: "medicamento",
       entityId: dose.medicamento_id,
       relatedEntityIds: related(dose.medicamento_id),
-      label: contradictory?"Registro de dose conflitante":dose.dose_kind === "sos" ? "Dose SOS" : dose.dose_kind === "extra" ? "Dose extra" : dose.dose_kind==="planned"?"Dose planejada":dose.dose_kind==="scheduled"?"Dose programada":"Dose com origem não informada",
+      label: contradictory?"Registro de dose conflitante":evidence.state==='unknown'?"Registro com temporalidade não confirmada":dose.dose_kind === "sos" ? "Dose SOS" : dose.dose_kind === "extra" ? "Dose extra" : dose.dose_kind==="planned"?"Dose planejada":dose.dose_kind==="scheduled"?"Dose programada":"Dose com origem não informada",
       facts: safeFacts({
         doseKind: dose.dose_kind ?? null,
         medicamentoNoRegistro:pharma?.nome??null,concentracaoNoRegistro:pharma?.dosagem??null,identidadeRegistradaEm:pharma?.captured_at??null,
@@ -87,9 +89,10 @@ export function buildCanonicalClinicalTimeline(
         unidade:unit.state==='known'?unit.fields.unidade_dose:null,
         unidadeRotulo:unit.state==='known'?unit.fields.unidade_dose_rotulo:null,
         fonteUnidade:unit.state==='known'?unit.fields.fonte_unidade:null,
-        horarioPrevisto:dose.horario,instanteReal:actual,
-        tomada: Boolean(dose.tomado_em)&&!contradictory,
-        ignorada: Boolean(dose.ignorado_em)&&!contradictory,
+        dataPrevista:dose.data,horarioPrevisto:dose.horario,instanteReal:actual,
+        tomada: evidence.state==='taken',
+        ignorada: evidence.state==='ignored',
+        temporalidade: actual?'confirmada':evidence.state==='pending'?'prevista':'desconhecida',
         conflito:contradictory,
       }),
       source: "doseLogs",

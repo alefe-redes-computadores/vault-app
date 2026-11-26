@@ -112,7 +112,7 @@ function testBrain(){
  const logs=[];
  for(let d=0;d<8;d++){
   const day=`2026-10-${String(15+d).padStart(2,'0')}`;
-  logs.push({person_id:'p',user_id:'u',medicamento_id:'a',data:day,horario:'21:00',dose_kind:'scheduled',...(d%2?{tomado_em:day+'T21:00:00'}:{ignorado_em:day+'T21:00:00'})});
+  logs.push({person_id:'p',user_id:'u',medicamento_id:'a',data:day,horario:'21:00',dose_kind:'scheduled',...(d%2?{tomado_em:day+'T21:00:00-03:00'}:{ignorado_em:day+'T21:00:00-03:00'})});
  }
  const ctx={personId:'p',hoje:'2026-10-22',medicamentos:meds,doseLogs:logs};
  let insights=brain.buildRecordedDoseRoutineInsights(ctx);

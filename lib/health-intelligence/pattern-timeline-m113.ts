@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /**
  * VAULT M113 · Linhas do tempo e tendências observacionais, em memória.
  * Dados do snapshot já autenticado; zero I/O, zero notificações, zero diagnósticos.
@@ -65,9 +66,9 @@ export function buildPatternTimelineM113(ctx: HealthInsightContext, today=ctx.ho
   };
   for(const d of ctx.doseLogs){
     if(!own(d,ctx)||!d.id||!medNames.has(d.medicamento_id)||!inMonth(d.data))continue;
-    const taken=Boolean(d.tomado_em&&Number.isFinite(Date.parse(d.tomado_em)));
-    const skipped=Boolean(d.ignorado_em&&Number.isFinite(Date.parse(d.ignorado_em)));
-    if(taken===skipped || d.dose_kind==="planned")continue;
+    const evidence=classifyDoseRealization(d);
+    const taken=evidence.state==='taken',skipped=evidence.state==='ignored';
+    if(!taken&&!skipped)continue;
     const suffix=taken?(d.dose_kind==="extra"||d.dose_kind==="sos"?"dose SOS/extra registrada":"tomada registrada"):"dose explicitamente ignorada";
     add({key:`dose:${d.id}`,sourceId:d.id,date:d.data,kind:"medication",nature:"documented_action",label:`${medNames.get(d.medicamento_id)} · ${suffix}`});
   }

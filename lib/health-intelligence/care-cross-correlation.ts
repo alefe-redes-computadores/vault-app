@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from "../dose-slot-authority";
 /**
  * VAULT M97 / Brain V5.1-B — evidence-only, read-only cross-domain observations.
  * These are NOT new clinical alerts. No diagnosis, automatic treatment advice,
@@ -40,7 +41,6 @@ const validDay = (day: string): boolean => {
   return new Date(Date.UTC(year, month - 1, date)).toISOString().slice(0, 10) === day;
 };
 const dayIndex = (day: string): number | null => validDay(day) ? Date.parse(`${day}T00:00:00.000Z`) / DAY_MS : null;
-const validTime = (time: unknown): time is string => typeof time === "string" && !Number.isNaN(Date.parse(time));
 const linkedTreatment = (a: readonly string[] | undefined, b: readonly string[] | undefined): boolean =>
   Boolean(a?.length && b?.length && a.some(value => Boolean(value) && b.includes(value)));
 
@@ -78,8 +78,8 @@ export function buildCareCrossCorrelations(
   for (const med of meds) {
     if (!med.id || med.tipo_uso !== "continuo" || med.status === "descontinuado") continue;
     const own = doseGroups.get(med.id) || [];
-    const ignored = own.filter(d => inRecent(d.data) && !d.tomado_em && validTime(d.ignorado_em) &&
-      d.dose_kind !== "sos" && d.dose_kind !== "extra" && d.dose_kind !== "planned");
+    const ignored = own.filter(d => inRecent(d.data) && classifyDoseRealization(d).state === "ignored" &&
+      d.dose_kind !== "sos" && d.dose_kind !== "extra");
     const ignoredDays = new Set(ignored.map(d => d.data)).size;
     const failed = pickups.filter(r => r.medicamento_id === med.id);
     if (ignoredDays < 2 && failed.length === 0) continue;
@@ -88,7 +88,7 @@ export function buildCareCrossCorrelations(
     const linkedIds = new Set(meds.filter(other => other.id === med.id ||
       linkedTreatment(med.tratamento_ids, other.tratamento_ids)).map(other => other.id!));
     const allSos = [...linkedIds].flatMap(id => doseGroups.get(id) || []).filter(d =>
-      Boolean(d.tomado_em) && validTime(d.tomado_em) && (d.dose_kind === "sos" || d.dose_kind === "extra"));
+      classifyDoseRealization(d).state === "taken" && (d.dose_kind === "sos" || d.dose_kind === "extra"));
     const recentSos = allSos.filter(d => inRecent(d.data));
     const previousSos = allSos.filter(d => inPrevious(d.data));
     // A modest increase may reflect recording habits, not a medication change.

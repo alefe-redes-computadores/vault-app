@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /** CI360 P6/P6 MACRO3 — projeção factual na autoridade do Brain V7.
  * Consome APENAS os eventos canônicos da pessoa; nenhuma escrita, dose,
  * prescrição, diagnóstico, causalidade, notificação ou movimentação de estoque.
@@ -123,13 +124,12 @@ export function buildBrainClinicalReviewP6(input:BrainClinicalInputP6):BrainClin
     missingClockExcluded:0,plannedExcluded:0,recordDays30d:0,doseDays30d:0};
   const confirmedDays=new Set<string>();
   for(const log of logs){
-    if(log.dose_kind==='planned'){counts.plannedExcluded++;continue;}
-    if(log.tomado_em&&log.ignorado_em){counts.conflictLogsExcluded++;continue;}
-    if(log.ignorado_em){counts.explicitlyIgnored30d++;confirmedDays.add(log.data);continue;}
-    if(!log.tomado_em)continue;
-    if(!validActualTime(log.tomado_em)){counts.missingClockExcluded++;continue;}
-    const takenDay=new Date(Date.parse(log.tomado_em)).toISOString().slice(0,10);
-    if(takenDay>todayISO||Date.parse(log.tomado_em)>now)continue;
+    const evidence=classifyDoseRealization(log);
+    if(evidence.state==='conflict'){counts.conflictLogsExcluded++;continue;}
+    if(evidence.state==='pending'){if(log.dose_kind==='planned')counts.plannedExcluded++;continue;}
+    if(evidence.state==='unknown'||!evidence.confirmedAt||!validActualTime(evidence.confirmedAt)){counts.missingClockExcluded++;continue;}
+    if(Date.parse(evidence.confirmedAt)>now)continue;
+    if(evidence.state==='ignored'){counts.explicitlyIgnored30d++;confirmedDays.add(log.data);continue;}
     counts.confirmedTaken30d++;confirmedDays.add(log.data);
     if(log.dose_kind==='sos'||log.dose_kind==='extra')counts.rescueTaken30d++;
   }

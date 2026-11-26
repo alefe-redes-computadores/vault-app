@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /** CI360 P3 / B05.2+B05.4+B05.5: longitudinal, estritamente observacional.
  * Nao diagnostica, nao atribui causalidade, nao presume adesao ou falta de dose.
  * Leitura da pessoa e conta ativa; sem banco, escrita ou nova fonte de dados.
@@ -28,6 +29,7 @@ export type BrainWindowEvidenceCI360 = {
   confirmedSos: number;
   confirmedExtra: number;
   confirmedUnspecified: number;
+  confirmedPlanned: number;
   explicitlyIgnored: number;
   plannedExcluded: number;
   conflictsExcluded: number;
@@ -108,25 +110,26 @@ export function buildBrainLongitudinalCI360(context:HealthInsightContext|null|un
   const currentRecordsDays=new Set(activeRecords.map(r=>r.data)),pastRecordDays=new Set(pastRecords.map(r=>r.data));
   const currentDoseDays=new Set<string>(),pastDoseDays=new Set<string>();
   const daily=new Map<string,{confirmed:number;sos:number}>();
-  let scheduled=0,sos=0,extra=0,unspecified=0,ignored=0,planned=0,conflict=0,unknownClock=0,futureClock=0,pendingSync=0,previousConfirmed=0;
+  let scheduled=0,sos=0,extra=0,unspecified=0,confirmedPlanned=0,ignored=0,planned=0,conflict=0,unknownClock=0,futureClock=0,pendingSync=0,previousConfirmed=0;
   for (const log of logs) {
    const d=log.data;if(!dayValue(d))continue;
    const current=d>=from&&d<=day,prior=d>=previousFrom&&d<=previousThrough;
    if(!current&&!prior)continue;
-   const taken=Boolean(log.tomado_em),explicitlyIgnored=Boolean(log.ignorado_em);
-   if(taken&&explicitlyIgnored){if(current)conflict++;continue;}
-   if(log.dose_kind==="planned"){if(current)planned++;continue;}
-   if(explicitlyIgnored){if(current){ignored++;currentDoseDays.add(d)}else pastDoseDays.add(d);continue;}
-   if(!taken)continue;
-   const t=instant(log.tomado_em);
+   const evidence=classifyDoseRealization(log);
+   if(evidence.state==='conflict'){if(current)conflict++;continue;}
+   if(evidence.state==='unknown'){if(current)unknownClock++;continue;}
+   if(evidence.state==='pending'){if(current&&log.dose_kind==='planned')planned++;continue;}
+   const t=instant(evidence.confirmedAt);
    if(t===null){if(current)unknownClock++;continue;}
    if(t>now!){if(current)futureClock++;continue;}
+   if(evidence.state==='ignored'){if(current){ignored++;currentDoseDays.add(d)}else pastDoseDays.add(d);continue;}
    if(prior){previousConfirmed++;pastDoseDays.add(d);continue;}
    currentDoseDays.add(d);
    const previous=daily.get(d)??{confirmed:0,sos:0};previous.confirmed++;
    if(log.dose_kind==="sos"){sos++;previous.sos++}
    else if(log.dose_kind==="extra")extra++;
    else if(log.dose_kind==="scheduled")scheduled++;
+   else if(log.dose_kind==="planned")confirmedPlanned++;
    else unspecified++;
    daily.set(d,previous);
    if(log.synced===false)pendingSync++;
@@ -144,7 +147,7 @@ export function buildBrainLongitudinalCI360(context:HealthInsightContext|null|un
   });
   const days=Array.from({length:periodDays},(_,i)=>{const date=dayShift(from,i),item=daily.get(date);return {day:date,confirmed:item?.confirmed??0,sos:item?.sos??0,record:currentRecordsDays.has(date)};});
   return {periodDays,from,through:day,previousFrom,previousThrough,
-   confirmedScheduled:scheduled,confirmedSos:sos,confirmedExtra:extra,confirmedUnspecified:unspecified,
+   confirmedScheduled:scheduled,confirmedSos:sos,confirmedExtra:extra,confirmedUnspecified:unspecified,confirmedPlanned,
    explicitlyIgnored:ignored,plannedExcluded:planned,conflictsExcluded:conflict,unverifiedClockExcluded:unknownClock,futureClockExcluded:futureClock,
    pendingSync,confirmedDays:currentDoseDays.size,healthRecordDays:currentRecordsDays.size,
    documentedDays:new Set([...currentDoseDays,...currentRecordsDays]).size,

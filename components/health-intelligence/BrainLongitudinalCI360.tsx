@@ -20,7 +20,7 @@ export function BrainLongitudinalCI360({context,onNavigate}:{
  const view=evidence.periods.find(p=>p.periodDays===days);
  const [showAxes,setShowAxes]=useState(false);
  const date=(value:string)=>value.split("-").reverse().join("/");
- const total=view?view.confirmedScheduled+view.confirmedSos+view.confirmedExtra+view.confirmedUnspecified:0;
+ const total=view?view.confirmedScheduled+view.confirmedSos+view.confirmedExtra+view.confirmedUnspecified+view.confirmedPlanned:0;
  return <details className="group overflow-hidden rounded-[20px] border border-cyan-300/20 bg-gradient-to-br from-cyan-300/[.045] to-surface" aria-label="Painel longitudinal do VAULT Brain">
   <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3.5 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
     <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-cyan-300/10 text-cyan-200"><TrendingUp size={17} aria-hidden="true"/></span>

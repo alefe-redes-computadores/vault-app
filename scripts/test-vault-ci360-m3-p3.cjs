@@ -11,7 +11,7 @@ function load(path,aliases={}){
   const js=ts.transpileModule(read(path),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
   const m={exports:{}};
   const sandbox={exports:m.exports,module:m,require:id=>{
-    if(Object.prototype.hasOwnProperty.call(aliases,id))return aliases[id];
+    if(Object.prototype.hasOwnProperty.call(aliases,id))return aliases[id];if(id==='./dose-slot-authority')return loadMacro02Pure(id);
     if(['@/lib/dose-premium/historical-unit','@/lib/dose-premium/pharmaceutical-snapshot'].includes(id))return loadMacro02Pure(id);
     throw Error(`M3 P3: dependência inesperada no núcleo puro ${id}`);
   },Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,encodeURIComponent};

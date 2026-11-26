@@ -16,7 +16,7 @@ function loadPure(file){
 const {buildCareRhythm,buildCareRhythmInsights}=loadPure(process.env.V225_ENGINE_FILE || 'lib/health-intelligence/care-rhythm.ts');
 const today='2026-10-22';
 const rec=(id,date,type,value,options={})=>({id,user_id:'u1',person_id:'p1',data:date,horario:'08:00',categoria:type==='sono'||type==='caminhada'?'habito':type==='humor'?'humor':'sintoma',tipo:type,nome:type,unidade_medida:'min',duracao_minutos:value,...options});
-const dose=(id,date,kind='scheduled',taken=true,options={})=>({id,user_id:'u1',person_id:'p1',medicamento_id:'med1',data:date,horario:'10:00',dose_kind:kind,tomado_em:taken?`${date}T10:00:00`:undefined,...options});
+const dose=(id,date,kind='scheduled',taken=true,options={})=>({id,user_id:'u1',person_id:'p1',medicamento_id:'med1',data:date,horario:'10:00',dose_kind:kind,tomado_em:taken?`${date}T10:00:00-03:00`:undefined,...options});
 const dates=['2026-10-18','2026-10-19','2026-10-20','2026-10-21','2026-10-22'];
 const records=dates.flatMap((date,index)=>[rec(`sleep${index}`,date,'sono',360+index*15),rec(`walk${index}`,date,'caminhada',20)]);
 records.push(rec('mood1',dates[0],'humor',undefined,{contexto:'[humor:v1]bem'}));
@@ -29,7 +29,7 @@ records.push(rec('impossible','2026-02-30','sono',500));
 records.push(rec('other','2026-10-22','sono',700,{person_id:'p2'}));
 records.push(rec('wrong-unit','2026-10-21','sono',600,{unidade_medida:'h'}));
 records.push(rec('zero','2026-10-22','caminhada',0));
-const ctx={personId:'p1',hoje:today,medicamentos:[],tratamentos:[],consultas:[],exames:[],cids:[],cirurgias:[],documentos:[],renovacoes:[],retiradas:[],registrosSaude:records,doseLogs:[dose('a',dates[0],'sos'),dose('b',dates[1],'extra'),dose('c',dates[2],'planned'),dose('d',dates[2],'scheduled',false),dose('e',dates[2],'scheduled',false,{ignorado_em:`${dates[2]}T10:00:00`}),dose('x',dates[2],'sos',true,{person_id:'p2'})]};
+const ctx={personId:'p1',hoje:today,medicamentos:[],tratamentos:[],consultas:[],exames:[],cids:[],cirurgias:[],documentos:[],renovacoes:[],retiradas:[],registrosSaude:records,doseLogs:[dose('a',dates[0],'sos'),dose('b',dates[1],'extra'),dose('c',dates[2],'planned',false),dose('d',dates[2],'scheduled',false),dose('e',dates[2],'scheduled',false,{ignorado_em:`${dates[2]}T10:00:00-03:00`}),dose('x',dates[2],'sos',true,{person_id:'p2'})]};
 const summary=buildCareRhythm(ctx,30,today);
 assert.equal(summary.sleep.days,5);
 assert.equal(summary.sleep.averageMinutes,390);

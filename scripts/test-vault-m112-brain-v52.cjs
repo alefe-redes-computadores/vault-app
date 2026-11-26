@@ -8,7 +8,7 @@ const ast = ts.createSourceFile("brain-v52-context.ts", source, ts.ScriptTarget.
 assert.equal(ast.parseDiagnostics.length, 0, "M112: sintaxe TS válida");
 const compiled = ts.transpileModule(source, {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 const moduleObject = {exports:{}};
-new Function("module","exports",compiled)(moduleObject,moduleObject.exports);
+new Function("module","exports","require",compiled)(moduleObject,moduleObject.exports,require("./vault-macro02-test-pure-loader.cjs").loadMacro02Pure);
 const {buildBrainV52ContextInsights: build,v52ExplicitSkippedDays: skipped} = moduleObject.exports;
 let passed=0;
 const ok = (condition, name) => {assert.ok(condition, `M112: ${name}`); console.log(`M112 OK ${++passed}: ${name}`);};

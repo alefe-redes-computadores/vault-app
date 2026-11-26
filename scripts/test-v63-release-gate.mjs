@@ -566,6 +566,7 @@ const contracts = [
   "scripts/test-vault-guardian3-ux.cjs", // G4-03: uma unica vez
   "scripts/test-vault-frente-b-video-relacional.cjs", // R02.1: vacina relacional permanente
   "scripts/test-vault-vital-integral.cjs", // Evolution: behavioral + IndexedDB integration
+  "scripts/test-vault-macro02-a10-dose-origin.cjs", // Guardian origin, realization and temporal provenance
   "scripts/test-vault-macro02-atomic-transport.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-backup-snapshot.cjs", // Macro02: real consistent backup snapshot (Dexie mandatory)
   "scripts/test-vault-macro02-canonical-writer.cjs", // Evolution Macro02: cumulative clinical and UX vaccine

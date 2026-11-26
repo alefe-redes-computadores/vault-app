@@ -25,7 +25,7 @@ ok(!src.includes('applyStockDelta')&&!src.includes('fetch(')&&!src.includes('sup
 ok(src.includes('buildMedicationSafetyCoverage(scoped)')&&src.includes('AUDITED_INTERACTION_KNOWLEDGE')&&src.includes('dose24hComparisonP6({})'),'Reusa cobertura e comparador já existentes');
 ok(gate.split('"scripts/test-vault-ci360-p2-safety.cjs"').length===2,'Contrato P2 inserido uma vez');
 ok(gate.includes('"scripts/test-vault-ci360-p1-evidence.cjs"')&&gate.includes('"scripts/test-vault-m153-p71b-closure.cjs"'),'P1 e P7.1-B permanecem no gate');
-const cache={};function load(file){if(cache[file])return cache[file];const abs=path.resolve(file);const code=ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const m=new Module(abs,module);m.paths=Module._nodeModulePaths(path.dirname(abs));cache[file]=m.exports;m.require=id=>id.startsWith('./')?load(path.posix.join(path.posix.dirname(file),id)+'.ts'):require(id);m._compile(code,abs);cache[file]=m.exports;return m.exports;}
+const cache={};function load(file){if(cache[file])return cache[file];const abs=path.resolve(file);const code=ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const m=new Module(abs,module);m.paths=Module._nodeModulePaths(path.dirname(abs));cache[file]=m.exports;m.require=id=>(id.startsWith('./')||id.startsWith('../'))?load(path.posix.join(path.posix.dirname(file),id)+'.ts'):require(id);m._compile(code,abs);cache[file]=m.exports;return m.exports;}
 const run=load(engine).buildBrainSafetyEvidenceCI360;
 const runP1=load(p1).buildBrainEvidenceWindowCI360;
 const at='2026-11-16T12:00:00.000Z';
@@ -33,7 +33,7 @@ const med=(id,name,owner='u',person='p',status='ativo')=>({id,nome:name,user_id:
 const dose=(id,medId,kind='scheduled',when='2026-11-16T10:00:00.000Z',more={})=>({id,user_id:'u',person_id:'p',medicamento_id:medId,tomado_em:when,data:'2026-11-16',dose_kind:kind,...more});
 const context=(meds=[],logs=[])=>({userId:'u',personId:'p',hoje:'2026-11-16',medicamentos:meds,doseLogs:logs,registrosSaude:[]});
 const meds=[med('z','Zolpidem 10 mg'),med('m','Metadona'),med('c','Clorpromazina'),med('x','Medicamento não catalogado'),med('q','Zolpidem 10 mg','u','outro'),med('f','Zolpidem 10 mg','outro','p')];
-const logs=[dose('z1','z'),dose('m1','m','sos'),dose('c1','c','extra'),dose('x1','x'),dose('duplicate','z'),dose('duplicate','z'),dose('other-person','q','sos',undefined,{person_id:'outro'}),dose('other-owner','f','sos',undefined,{user_id:'outro'}),dose('future','z','scheduled','2026-11-17T14:00:00.000Z'),dose('invalid','z','scheduled','16/11/2026 11:00'),dose('conflict','m','scheduled',at,{ignorado_em:at}),dose('plan','z','planned',at),dose('ignored','z','scheduled',undefined,{tomado_em:undefined,ignorado_em:at}),dose('old','m','scheduled','2026-11-15T11:59:59.000Z',{data:'2026-11-15'})];
+const logs=[dose('z1','z'),dose('m1','m','sos'),dose('c1','c','extra'),dose('x1','x'),dose('duplicate','z'),dose('duplicate','z'),dose('other-person','q','sos',undefined,{person_id:'outro'}),dose('other-owner','f','sos',undefined,{user_id:'outro'}),dose('future','z','scheduled','2026-11-17T14:00:00.000Z'),dose('invalid','z','scheduled','16/11/2026 11:00'),dose('conflict','m','scheduled',at,{ignorado_em:at}),dose('plan','z','planned',at,{tomado_em:undefined}),dose('ignored','z','scheduled',undefined,{tomado_em:undefined,ignorado_em:at}),dose('old','m','scheduled','2026-11-15T11:59:59.000Z',{data:'2026-11-15'})];
 const snapshot=context(meds,logs),snapshotJSON=JSON.stringify(snapshot);
 const res=run(snapshot,at);
 ok(res.state==='ready'&&res.items.length===4,'Somente quatro medicamentos da pessoa ativa');
@@ -56,7 +56,7 @@ ok(run(context([med('z','Zolpidem')],[dose('only','z','sos','2026-11-15T12:00:00
 ok(run(context([med('z','Zolpidem')],[dose('only','z','sos','2026-11-15T11:59:59.999Z',{data:'2026-11-15'})]),at).observedTaken24h===0,'Janela exclui evento fora do limite');
 ok(run(context([med('z','Zolpidem')],[dose('local','z','scheduled','2026-11-16 11:00')]),at).observedTaken24h===0,'Horário sem timezone não vira confirmação');
 ok(run(context([med('z','Zolpidem')],[dose('offset','z','scheduled','2026-11-16T09:00:00-03:00')]),at).observedTaken24h===1,'Offset temporal aceita mesmo instante UTC');
-ok(run(context([med('z','Zolpidem')],[dose('planned','z','planned',at)]),at).observedTaken24h===0,'Agendada não vira tomada');
+ok(run(context([med('z','Zolpidem')],[dose('planned','z','planned',at,{tomado_em:undefined})]),at).observedTaken24h===0,'Agendada não vira tomada');
 ok(run(context([med('z','Zolpidem')],[dose('dual','z','scheduled',at,{ignorado_em:at})]),at).observedTaken24h===0,'Conflito não vira tomada');
 ok(runP1(snapshot,at).confirmed24h===res.observedTaken24h,'P1 e P2 concordam na amostra factual 24h');
 ok(run(context([],[]),at).items.length===0,'Sem medicamentos, zero cobertura e sem inventar regra');

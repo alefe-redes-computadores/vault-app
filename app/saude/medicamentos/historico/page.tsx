@@ -502,7 +502,7 @@ function HistoryContent() {
                           ? event.origin === "extra"
                             ? "Dose extra registrada"
                             : "Dose SOS / avulsa registrada"
-                          : event.kind==='unknown_origin' ? (event.tomadoEm ? 'Tomada registrada · origem não informada' : event.ignoradoEm ? 'Não tomada registrada · origem não informada' : 'Registro com origem não informada') : event.kind==='conflict' ? 'Registros conflitantes · revisão necessária' : event.kind==='planned' ? 'Planejada, sem confirmação' : 'Registro fora da rotina atual' }
+                          : event.kind==='unknown_origin' ? (event.tomadoEm ? 'Tomada registrada · origem não informada' : event.ignoradoEm ? 'Não tomada registrada · origem não informada' : 'Registro com origem não informada') : event.kind==='conflict' ? 'Registros conflitantes · revisão necessária' : event.kind==='planned' ? (event.origin==='scheduled'?'Pendência da rotina, sem confirmação':'Planejada, sem confirmação') : 'Registro fora da rotina atual' }
                       </p>
                       {event.pharmaceuticalSnapshot && <p className="mt-1 break-words text-[11px] text-ink-muted">{event.pharmaceuticalSnapshot.nome} · {event.pharmaceuticalSnapshot.dosagem || 'Concentração não informada'} · Cadastro no registro</p>}
                     </div>

@@ -1,3 +1,4 @@
+import {classifyDoseRealization} from '../dose-slot-authority';
 /** CI360 P6 — observações factuais, somente leitura, sem causalidade ou adesão inferida. */
 import type { Consulta,DoseLog,Medicamento,RegistroSaude,Retirada,Renovacao } from "@/lib/types";
 
@@ -19,8 +20,8 @@ export function clinicalLongitudinalEvidenceP6(input:ClinicalLongitudinalInputP6
   const inRange=(v?:string|null)=>valid(day(v))&&day(v)>=start&&day(v)<=today;
   const owned=(x:{user_id?:string|null;person_id?:string|null})=>x.user_id===owner.user_id&&x.person_id===owner.person_id;
   const doses=input.doses.filter(x=>owned(x)&&inRange(x.data));
-  const taken=doses.filter(x=>Boolean(x.tomado_em));
-  const ignored=doses.filter(x=>!x.tomado_em&&Boolean(x.ignorado_em));
+  const taken=doses.filter(x=>classifyDoseRealization(x).state==='taken');
+  const ignored=doses.filter(x=>classifyDoseRealization(x).state==='ignored');
   const extra=taken.filter(x=>x.dose_kind==='sos'||x.dose_kind==='extra');
   const observations=input.symptoms.filter(x=>owned(x)&&inRange(x.data));
   const consultations=input.consultations.filter(x=>owned(x)&&inRange(x.data));

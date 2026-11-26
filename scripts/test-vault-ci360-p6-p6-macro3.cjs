@@ -26,7 +26,7 @@ transpile(ui,'BrainClinicalReviewMacro3.tsx',true);
 const mockStock=(med)=>({state:typeof med.estoque_quantidade==='number'?(med.estoque_quantidade<0?'negative':med.estoque_quantidade===0?'empty':'available'):'unknown',
  registeredQuantity:med.estoque_quantidade??null,hasReliableDoseEstimate:Number.isFinite(med._mockDays),daysRemaining:Number.isFinite(med._mockDays)?med._mockDays:null});
 const m=new Module(path.join(ROOT,name),module);m.filename=path.join(ROOT,name);m.paths=module.paths;
-m.require=function(dep){if(dep==='@/lib/health-intelligence/clinical-stock')return {getClinicalStockSnapshot:mockStock};return require(dep)};
+m.require=function(dep){if(dep==='@/lib/health-intelligence/clinical-stock')return {getClinicalStockSnapshot:mockStock};if(dep==='../dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(dep);return require(dep)};
 m._compile(code,m.filename);
 const {buildBrainClinicalReviewP6,brainClinicalReturnBriefP6}=m.exports;
 const DAY='2026-11-18',UID='user-one',PID='person-one';
@@ -41,7 +41,7 @@ equal(buildBrainClinicalReviewP6(base({nowISO:'invalid'})).state,'unavailable');
 equal(buildBrainClinicalReviewP6(base({doseLogs:[log('future',{tomado_em:'2026-11-18T23:30:00-03:00'})]})).documented.confirmedTaken30d,0);
 equal(buildBrainClinicalReviewP6(base({medications:[medicine('a',{user_id:'foreign'})]})).medicationCount,0);
 equal(buildBrainClinicalReviewP6(base({medications:[medicine('a'),medicine('a')]})).medicationCount,1);
-let x=buildBrainClinicalReviewP6(base({doseLogs:[log('taken'),log('planned',{dose_kind:'planned'}),log('ignored',{tomado_em:undefined,ignorado_em:'2026-11-18T12:00:00-03:00'}),log('conflict',{ignorado_em:'2026-11-18T12:00:00-03:00'}),log('bad',{tomado_em:'invalid'}),log('foreign',{user_id:'other'})]}));
+let x=buildBrainClinicalReviewP6(base({doseLogs:[log('taken'),log('planned',{dose_kind:'planned',tomado_em:undefined}),log('ignored',{tomado_em:undefined,ignorado_em:'2026-11-18T12:00:00-03:00'}),log('conflict',{ignorado_em:'2026-11-18T12:00:00-03:00'}),log('bad',{tomado_em:'invalid'}),log('foreign',{user_id:'other'})]}));
 equal(x.documented.confirmedTaken30d,1);equal(x.documented.explicitlyIgnored30d,1);equal(x.documented.plannedExcluded,1);equal(x.documented.conflictLogsExcluded,1);equal(x.documented.missingClockExcluded,1);equal(x.documented.doseDays30d,1);
 equal(buildBrainClinicalReviewP6(base({doseLogs:[log('sos',{dose_kind:'sos'}),log('extra',{dose_kind:'extra'})]})).documented.rescueTaken30d,2);
 equal(buildBrainClinicalReviewP6(base({doseLogs:[log('unscoped',{medicamento_id:'other'})]})).documented.confirmedTaken30d,0);

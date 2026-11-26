@@ -16,7 +16,7 @@ function pure(path, dependencies = {}) {
   const exports = {};
   const module = {exports};
   new Function("module", "exports", "require", compile(path))(module, exports, (key) => {
-    if (Object.prototype.hasOwnProperty.call(dependencies, key)) return dependencies[key];
+    if (Object.prototype.hasOwnProperty.call(dependencies, key)) return dependencies[key];if(key==='./dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(key);
     throw new Error(`Importação inesperada no teste hermético: ${key}`);
   });
   return module.exports;
