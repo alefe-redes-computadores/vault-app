@@ -1,0 +1,74 @@
+name: Macro02 QA03 — diagnostico isolado (NÃO PUBLICAR)
+on:
+  push:
+    branches: ['vault-lab/macro02-app-qa03-*']
+permissions:
+  contents: read
+concurrency:
+  group: macro02-qa03-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      VAULT_V63_COLLECT_ALL: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fixar checkout da candidata exata (sem envelope CI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate=$(git rev-parse HEAD^)
+          test "$(git rev-parse "$candidate^" )" = 1c01cd49f721cc416e1752a8cb56fe8b3d91ed29
+          test "$(git rev-parse "$candidate^{tree}")" = 5981f7dec4384022cd0a3b31fdea300cdac391b3
+          git -c advice.detachedHead=false checkout --detach "$candidate"
+          test -z "$(git status --porcelain)"
+          echo "CANDIDATE_SHA=$candidate" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias fixadas pelo lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/m02-qa03"
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/m02-qa03/npm-ci.log"
+          node -e 'require("fake-indexeddb/auto"); require("dexie"); console.log("INDEXEDDB_DEPENDENCIES_OK")'
+      - name: V63 cumulativo, offline, V70 e TypeScript (diagnostico)
+        shell: bash
+        run: |
+          set -uo pipefail
+          d="$RUNNER_TEMP/m02-qa03"
+          printf 'CANDIDATE_SHA=%s\nTREE=%s\nRELEASE=BLOCKED\n' "$CANDIDATE_SHA" "$(git rev-parse HEAD^{tree})" > "$d/status.txt"
+          node scripts/test-v63-release-gate.mjs 2>&1 | tee "$d/v63.log"
+          v63=${PIPESTATUS[0]}
+          grep -Fq 'V63_COLETA_INTEGRAL_APROVADA | executadas=578 | falhas=0' "$d/v63.log" || v63=1
+          grep -Fq 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' "$d/v63.log" || v63=1
+          grep -Fq 'V63_R06_STATIC_OFFLINE_EXTENSION=PASS' "$d/v63.log" || v63=1
+          grep -Fq 'MACRO02_BACKUP_SNAPSHOT_GATE_OK' "$d/v63.log" || v63=1
+          node node_modules/typescript/bin/tsc --noEmit --incremental false 2>&1 | tee "$d/tsc.log"
+          tsc=${PIPESTATUS[0]}
+          v70a=0; v70b=0
+          if [ "$v63" -ne 0 ]; then
+            node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee "$d/v70-super.log"; v70a=${PIPESTATUS[0]}
+            node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee "$d/v70-final.log"; v70b=${PIPESTATUS[0]}
+          fi
+          printf 'V63_EXIT=%s\nTSC_EXIT=%s\nV70_SUPER_EXIT=%s\nV70_FINAL_EXIT=%s\n' "$v63" "$tsc" "$v70a" "$v70b" >> "$d/status.txt"
+          cat "$d/status.txt"
+          test "$v63" -eq 0 && test "$tsc" -eq 0 && test "$v70a" -eq 0 && test "$v70b" -eq 0
+      - name: Evidencias (nenhum dado clinico ou segredo)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro02-qa03-diagnostico-${{ github.run_id }}
+          path: ${{ runner.temp }}/m02-qa03/
+          if-no-files-found: warn
+          retention-days: 7
