@@ -35,7 +35,7 @@ ok(home.includes('selectHomeOverdueWithdrawals(retiradasHoje, hoje)')&&home.incl
 ok(today.includes('remindersForaDaAgenda.length > 0')&&today.includes('<TodayRemindersPanel')&&today.includes('!reminder.careflow_m2?.plan_id'),'Hoje mantém origem e extrai render de lembretes');
 ok(today.includes('aria-label="Lembretes de saúde do dia"')===false&&read('components/hoje/TodayRemindersPanel.tsx').includes('aria-label="Lembretes de saúde do dia"'),'rótulo semântico transferido ao componente real');
 ok(read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Programadas para depois · ainda não estão atrasadas')&&read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas')&&today.includes('todayTimelineGroupPresentation'),'V229 e V277 preservados no Hoje');
-ok(today.includes('groupTimelineItems(dosesParaExibir')&&today.includes('await marcarDose(')&&/const metricItems\s*=\s*useMemo\(\s*\(\)\s*=>\s*doses\.filter\(/.test(today),'fila, ações e métricas preservadas');
+ok(today.includes('groupTimelineItems(dosesParaExibir')&&today.includes('await doseLogsRepository.setStatus(')&&today.includes('openIndividualReview(item)')&&today.includes('expected:review.expected')&&/const metricItems\s*=\s*useMemo\(\s*\(\)\s*=>\s*doses\.filter\(/.test(today),'fila, ações e métricas preservadas');
 ok(read('components/hoje/TodayRemindersPanel.tsx').includes('onNavigate(reminder.target_route)'),'lembretes mantêm destino original');
 const detail=read('components/saude/MedicationJourneySummary.tsx');
 ok(detail.includes('journeyHeadline(snapshot)')&&detail.includes('Receita, aquisição e retirada são eventos independentes'),'autoridades clínicas históricas preservadas');

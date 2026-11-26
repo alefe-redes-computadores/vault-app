@@ -8,6 +8,8 @@ import {
 
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
+import {readMacro02DoseReceipts} from "@/lib/sync/macro02-dose-receipts";
+import { checkDoseIngress, acceptDosePage, verifyRemoteDoseReceipt } from "@/lib/dose-premium/ingress-guard";
 import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
 import {mergeTreatmentRemoteR03} from "@/lib/sync/treatment-visual-transport-r03";
 import { preserveA0Cirurgia, preserveA0Tratamento, preserveA0Hospital } from "@/lib/sync/a0-preserve-local-parity";
@@ -339,6 +341,15 @@ async function performPullAllData(userId: string): Promise<void> {
             for(const row of rows)await mergeTreatmentRemoteR03(row,userId);
             return;
           }
+          const proofIds:string[]=[];
+          if(remoteTable==="dose_logs"){const local=await localTable.bulkGet(rows.map(row=>row.id as string));for(let i=0;i<rows.length;i++)if(checkDoseIngress(userId,local[i] as Record<string,unknown>|undefined,rows[i])==="review"&&local[i])proofIds.push(rows[i].id as string);}
+          const proofs=await readMacro02DoseReceipts(userId,proofIds);
+          const mergeRows = async () => {
+          // Dose reads, current queue protection and bulk write are one local transaction.
+          const freshDosePending = remoteTable === "dose_logs" ? new Set((await db.syncQueue.filter(item=>item.table==="doseLogs").toArray()).map(getPayloadId).filter((id): id is string => !!id)) : null;
+          const freshMedicationPending=remoteTable==='medicamentos'?new Set((await db.syncQueue.filter(item=>item.payload.user_id===userId&&(item.table==='medicamentos'||item.payload.macro02_atomic!==undefined)).toArray()).map(item=>item.table==='medicamentos'?item.payload.id:item.payload.medicamento_id).filter((id):id is string=>typeof id==='string')):null;
+
+          const freshWithdrawalPending=remoteTable==='retiradas'?new Set((await db.syncQueue.filter(item=>item.payload.user_id===userId&&item.payload.macro02_atomic!==undefined).toArray()).map(item=>(item.payload.macro02_atomic as {withdrawalId?:string})?.withdrawalId).filter((id):id is string=>typeof id==='string')):null;
           const rowIds = rows.map(
             (row) => row.id as string
           );
@@ -356,12 +367,17 @@ async function performPullAllData(userId: string): Promise<void> {
             const remoteItem = rows[index];
             const remoteId = remoteItem.id as string;
 
-            if (hasPendingOperation(queueTable, remoteId)) {
+            if (hasPendingOperation(queueTable, remoteId) || freshDosePending?.has(remoteId) || freshMedicationPending?.has(remoteId) || freshWithdrawalPending?.has(remoteId)) {
               ignoredPending += 1;
               continue;
             }
 
             const localItem = localItems[index];
+            if (remoteTable === "dose_logs" && checkDoseIngress(userId, localItem as Record<string,unknown> | undefined, remoteItem) === "review" && !verifyRemoteDoseReceipt(userId,localItem as Record<string,unknown>|undefined,remoteItem,proofs.get(remoteId))) {
+              tableOk = false;
+              if (!criticalPullErrors.includes("Evidência de dose divergente; revisão necessária.")) criticalPullErrors.push("Evidência de dose divergente; revisão necessária.");
+              continue;
+            }
 
             if (localItem) {
               const localRecord = localItem as Record<string, unknown>;
@@ -423,6 +439,11 @@ async function performPullAllData(userId: string): Promise<void> {
           console.log(
             `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados em lote, ${ignored} preservados (${ignoredPending} com fila pendente, ${ignoredUnsynced} não sincronizados, ${ignoredNewerLocal} locais mais recentes, ${ignoredUnchanged} sem alteração)`
           );
+          };
+          if (remoteTable === "dose_logs") await db.transaction("rw", [db.doseLogs, db.syncQueue], mergeRows);
+          else if(remoteTable==='medicamentos')await db.transaction("rw",[db.medicamentos,db.syncQueue],mergeRows);
+          else if(remoteTable==='retiradas')await db.transaction('rw',[db.retiradas,db.syncQueue],mergeRows);
+          else await mergeRows();
         } catch (
           error: unknown
         ) {
@@ -1220,13 +1241,15 @@ async function performPullAllData(userId: string): Promise<void> {
       // V234: completa todas as páginas; nenhuma dose pode sumir no limite REST.
       query: async () => {
         const rows: RemoteRow[] = [];
+        const seenDoseIds = new Set<string>();
         const size = 400;
         for (let offset = 0; offset < 100000; offset += size) {
           const result = await supabase.from("dose_logs").select("*")
             .eq("user_id", userId).order("id", { ascending: true })
             .range(offset, offset + size - 1);
           if (result.error) return { data: null, error: result.error };
-          const batch = (result.data || []) as RemoteRow[];
+          acceptDosePage(userId, result.data, seenDoseIds);
+          const batch = result.data as RemoteRow[];
           rows.push(...batch);
           if (batch.length < size) return { data: rows, error: null };
         }

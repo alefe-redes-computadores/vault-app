@@ -1,5 +1,32 @@
 # Histórico de versões do VAULT
 
+## [1.4.0] — Preparação 2026-11-26 (não distribuída)
+
+Versão de produto preparada; não equivale a Release GitHub, Action, APK instalado ou homologação física.
+
+### Novidades
+
+- Central de Doses Premium com revisão individual e coletiva, histórico e contexto da pessoa ativa.
+
+- Unidades históricas e snapshots farmacêuticos dos novos registros factuais.
+
+### Melhorias
+
+- Brain observacional e balanço diário distinguindo adesão de resolução.
+
+- Contagens, aquisições e alterações de estoque integradas à fila causal de doses.
+
+### Correções
+
+- Preservação de horários reais, filtros, formulários e identidade por ID; reconciliação das vacinas históricas.
+
+### Segurança
+
+- Proteção local de evidência de estoque, escopo clínico, operações idempotentes e recuperação de intenções pendentes.
+
+- Implantação remota condicionada a homologação PostgreSQL 17 e aceite Guardian; sem ativação automática ou reinterpretação de histórico.
+
+
 ## [1.3.0] — Preparação 2026-11-25 (não distribuída)
 
 Versão de produto preparada; não equivale a Release GitHub, Action, APK instalado ou homologação física.

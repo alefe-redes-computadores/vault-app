@@ -1,9 +1,17 @@
 "use client";
 import { isVaultNative } from "@/lib/native-runtime";
+import { useRouter } from "next/navigation";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useToast } from "@/components/ToastProvider";
+import { db } from "@/lib/db";
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
+import { stageNativeDoseReview } from "@/lib/dose-premium/native-review";
+import { captureHomeDoseReview } from "@/lib/dose-premium/home-review";
+import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 // hooks/useDoseNotificationActions.ts
 
 import {
-  useEffect,
+  useEffect, useRef,
 } from "react";
 
 import {
@@ -145,6 +153,11 @@ function getDoseReminderExtra(
 }
 
 export function useDoseNotificationActions() {
+  const router=useRouter();
+  const {activePersonId,changePerson}=useActivePersonId();
+  const {showToast}=useToast();
+  const currentNavigation=useRef({router,activePersonId,changePerson,showToast});
+  currentNavigation.current={router,activePersonId,changePerson,showToast};
   useEffect(
     () => {
       if (
@@ -252,53 +265,38 @@ export function useDoseNotificationActions() {
               if ((event.actionId === "TOMEI" || event.actionId === "IGNORAR") &&
                   !canApplyNativeDoseActionM103({data: exactNotificationDate, horario, personId, medicamentoId})) return;
 
-              if (
-                event.actionId ===
-                "TOMEI"
-              ) {
-                await doseLogsRepository.setStatus({
-                  personId,
-                  medicamentoId,
-                  data:
-                    slotDate,
-                  horario,
-                  status:
-                    "taken",
-                  onlyIfPending: true,
-                });
-
-                await cancelOverdueDoseNotification({
-                  personId,
-                  medicamentoId,
-                  data: slotDate,
-                  horario,
-                });
-
+              if(event.actionId!=="TOMEI"&&event.actionId!=="IGNORAR")return;
+              // A native action does not carry the administered quantity or unit.
+              // Verify real ownership first; never infer a person from the active profile.
+              const {data:session,error:sessionError}=await getLocalFirstAuthUser();
+              const uid=session.user?.id;
+              if(cancelled||sessionError||!uid)return;
+              const [person,medication]=await Promise.all([db.persons.get(personId),db.medicamentos.get(medicamentoId)]);
+              if(cancelled||!person||person.user_id!==uid||!medication||medication.user_id!==uid||medication.person_id!==personId)return;
+              const scope={user_id:uid,person_id:personId,medicamento_id:medicamentoId,data:slotDate,horario};
+              const rows=await doseLogsRepository.getAll(personId,slotDate,uid);
+              const review=captureHomeDoseReview(scope,rows,undefined);
+              if(review.blocked)return;
+              const latest=await getLocalFirstAuthUser();
+              if(cancelled||latest.error||latest.data.user?.id!==uid)return;
+              if(event.actionId==="TOMEI"){
+                // The foreground review uses today's canonical timeline. No fabricated
+                // quantity, no automatic debit and no cancellation before a real save.
+                if(currentNavigation.current.activePersonId!==personId)await currentNavigation.current.changePerson(personId);
+                const afterSwitch=await getLocalFirstAuthUser();
+                if(cancelled||afterSwitch.error||afterSwitch.data.user?.id!==uid)return;
+                const href=stageNativeDoseReview({user_id:uid,person_id:personId,medicationId:medicamentoId,day:slotDate,hour:horario});
+                runAfterVaultBiometricUnlock(()=>currentNavigation.current.router.push(href));
                 return;
               }
-
-              if (
-                event.actionId ===
-                "IGNORAR"
-              ) {
-                await doseLogsRepository.setStatus({
-                  personId,
-                  medicamentoId,
-                  data:
-                    slotDate,
-                  horario,
-                  status:
-                    "ignored",
-                  onlyIfPending: true,
-                });
-
-                await cancelOverdueDoseNotification({
-                  personId,
-                  medicamentoId,
-                  data: slotDate,
-                  horario,
-                });
-              }
+              // Ignorar is an explicit non-administration, but not a future clinical fact.
+              if(new Date(`${slotDate}T${horario}:00`).getTime()>Date.now())return;
+              // A stale recurring notification is not proof of an expected slot.
+              // For absent rows, require an active current schedule on the current day.
+              // Older absent slots are reviewed in Hoje, never reconstructed here.
+              if(!review.expected&&(slotDate!==getLocalTodayISO()||medication.status==='descontinuado'||medication.tipo_uso==='temporario'||medication.tipo_uso==='sos'||medication.tipo_uso==='esporadico'||!medication.estoque_horarios?.includes(horario)||[medication.created_at?.slice(0,10),medication.estoque_data_referencia,medication.data_receita].some(start=>start&&start>slotDate)))return;
+              await doseLogsRepository.setStatus({personId,medicamentoId,data:slotDate,horario,status:"ignored",expected:review.expected,onlyIfPending:true,adjustStock:false});
+              await cancelOverdueDoseNotification({personId,medicamentoId,data:slotDate,horario});
             } catch (
               error
             ) {
@@ -306,6 +304,7 @@ export function useDoseNotificationActions() {
                 "[useDoseNotificationActions] Erro ao processar ação da notificação:",
                 error
               );
+              if(!cancelled)currentNavigation.current.showToast("Não foi possível resolver a dose pela notificação. Confira em Hoje.","error");
             }
           }
         );

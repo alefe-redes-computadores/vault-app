@@ -8,5 +8,5 @@ ok(t.includes('Math.abs(delta) <= windowMinutes'),"janela Agora ausente");
 ok(t.includes('return delta < 0 ? "past" : "upcoming"'),"classificação temporal ausente");
 ok(hoje.includes("groupTimelineItems")&&timeline.includes("classifyClinicalSchedule"),"Hoje não usa motor temporal");
 ok(timeline.includes("nowWindowMinutes: 15"),"janela operacional não explícita");
-ok(hoje.includes("marcarComoTomadaEm"),"horário real V46 regrediu");
+ok(hoje.includes("civilDoseInstant(dataSelecionada,hour,startedAt)")&&hoje.includes("tomadoEm:takenAt"),"horário real V46 regrediu");
 console.log("V48 CLINICAL TIME CONTRACT: OK");

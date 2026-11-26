@@ -201,10 +201,10 @@ async function registerNotificationActions(): Promise<void> {
                 ACTION_TAKEN,
 
               title:
-                "Tomei",
+                "Tomei · revisar",
 
               foreground:
-                false,
+                true,
             },
 
             {

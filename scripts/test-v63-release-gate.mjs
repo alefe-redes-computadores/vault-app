@@ -566,6 +566,21 @@ const contracts = [
   "scripts/test-vault-guardian3-ux.cjs", // G4-03: uma unica vez
   "scripts/test-vault-frente-b-video-relacional.cjs", // R02.1: vacina relacional permanente
   "scripts/test-vault-vital-integral.cjs", // Evolution: behavioral + IndexedDB integration
+  "scripts/test-vault-macro02-atomic-transport.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-backup-snapshot.cjs", // Macro02: real consistent backup snapshot (Dexie mandatory)
+  "scripts/test-vault-macro02-canonical-writer.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-dose-premium-p1.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-dose-premium-p2.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-dose-premium-p3.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-historical-consumers.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-home-review.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-host-integration.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-host-review-p4.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-ingress.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-premium-closure.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-stability-reconciliation.cjs", // Separate CAS and clinical ACK dispatch
+  "scripts/test-vault-macro02-stock-chain-recovery.cjs", // Evolution Macro02: shared stock chain and recovery
+  "scripts/test-vault-macro02-stock-cycle.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
 ];
 
 // CI permanece fail-fast por padrao. Para homologacao no Termux, o modo

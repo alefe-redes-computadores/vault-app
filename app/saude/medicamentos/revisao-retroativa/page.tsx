@@ -14,8 +14,11 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
 import { addDaysToLocalDate, getLocalTodayISO } from "@/lib/health-utils";
-import { buildRetroBatchSlots, mayDebitHistoricalStock, retroDateTimeISO, validRetroDate } from "@/lib/today/retro-batch-review";
+import { buildRetroBatchSlots, mayDebitHistoricalStock, validRetroDate } from "@/lib/today/retro-batch-review";
 import { retroReviewExitAction } from "@/lib/today/retro-review-navigation";
+import { DoseHistoricalUnitField, unitDraftSnapshot, type UnitDraft } from "@/components/hoje/DoseHistoricalUnitField";
+import { cycleIdentity } from "@/lib/dose-premium/stock-cycle";
+import { civilDoseInstant } from "@/lib/dose-premium/review-intent";
 import { safeReturnTarget } from "@/lib/navigation/return-context";
 
 function RetroBatchReviewContent() {
@@ -40,6 +43,8 @@ function RetroBatchReviewContent() {
   const [attestSchedule, setAttestSchedule] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [quantityText, setQuantityText] = useState("");
+  const [unitDraft,setUnitDraft]=useState<UnitDraft>({code:null,customLabel:""});
+  const [unitReviewed,setUnitReviewed]=useState(false);
   const [stockAction, setStockAction] = useState<"preserve" | "debit">("preserve");
   const [confirmReal, setConfirmReal] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(stockMode === "manual");
@@ -59,10 +64,11 @@ function RetroBatchReviewContent() {
     setAttestSchedule(false);
     setConfirmReal(false);
     setStockAction("preserve");
+    setUnitDraft({code:null,customLabel:""});setUnitReviewed(false);
     setReviewOpen(stockMode === "manual");
     setResult(null);
   }, [identity, initialStart, yesterday, stockMode]);
-  useEffect(() => { setQuantityText(medication?.estoque_unidade_por_dose ? String(medication.estoque_unidade_por_dose) : ""); }, [medication?.id, medication?.estoque_unidade_por_dose]);
+  useEffect(() => {setQuantityText("");},[identity]);
   useEffect(() => { setSelected([]); setConfirmReal(false); setResult(null); }, [from, to, attestSchedule]);
 
   const savedSnapshot = useLiveQuery(async () => {
@@ -83,7 +89,7 @@ function RetroBatchReviewContent() {
   }), [plan.slots]);
   const quantity = Number(quantityText.trim().replace(",", "."));
   const quantityValid = quantityText.trim() !== "" && Number.isFinite(quantity) && quantity > 0;
-  const canDebit = Boolean(medication && mayDebitHistoricalStock(medication) && stockMode !== "counted");
+  const canDebit = Boolean(medication && cycleIdentity(medication.estoque_ciclo_id) && unitReviewed && unitDraft.code!==null && mayDebitHistoricalStock(medication) && stockMode !== "counted");
   const debit = stockAction === "debit" && canDebit;
 
   // M67 HF1: fechar a revisão não pode empilhar outro detalhe no histórico.
@@ -104,11 +110,12 @@ function RetroBatchReviewContent() {
     setResult(null);
   }
   async function commit() {
-    if (lock.current || saving || !user?.id || !activePersonId || !medication?.id || !snapshotReady || !quantityValid || !confirmReal || !selectedSlots.length || plan.error) return;
+    if (lock.current || saving || !user?.id || !activePersonId || !medication?.id || !snapshotReady || !quantityValid || !unitReviewed || !confirmReal || !selectedSlots.length || plan.error) return;
     if (stockAction === "debit" && !canDebit) {
       showToast("Não é possível descontar do saldo atual sem uma contagem confiável.", "error");
       return;
     }
+    let unit;try{unit=unitDraftSnapshot(unitDraft);}catch(e){showToast(e instanceof Error?e.message:"Confira a unidade.","error");return;}
     const startIdentity = identity;
     const confirmed = selectedSlots.map(slot => ({ ...slot }));
     lock.current = true;
@@ -127,13 +134,13 @@ function RetroBatchReviewContent() {
           if (!latestMed || latestMed.user_id !== user.id || latestMed.person_id !== activePersonId) throw new Error("Medicamento não pertence mais à pessoa ativa.");
           if (latestMed.tipo_uso === "sos" || latestMed.tipo_uso === "esporadico") throw new Error("O tipo de uso mudou. Revise individualmente.");
           if (attestSchedule && (latestMed.tipo_uso === "temporario" || latestMed.status === "descontinuado")) throw new Error("O tratamento mudou ou foi encerrado. A rotina atual não pode ser aplicada ao histórico.");
-          if (debit && !mayDebitHistoricalStock(latestMed)) throw new Error("Saldo atualizado ou desconhecido. Confira antes de descontar.");
-          const latest = await db.doseLogs.where("medicamento_id").equals(medication.id).filter(log => log.user_id === user.id && log.person_id === activePersonId && log.data === slot.date && log.horario === slot.time).toArray();
-          if (latest.length > 1 || latest.some(log => Boolean(log.tomado_em || log.ignorado_em) || log.dose_kind === "sos" || log.dose_kind === "extra")) throw new Error("Um horário já foi registrado ou entrou em conflito. Nenhuma dose duplicada.");
+          if (debit && (!cycleIdentity(latestMed.estoque_ciclo_id)||!mayDebitHistoricalStock(latestMed))) throw new Error("Saldo atualizado ou desconhecido. Confira antes de descontar.");
+          const latest = await db.doseLogs.where("medicamento_id").equals(medication.id).filter(log => log.user_id === user.id && log.person_id === activePersonId && log.data === slot.date && log.horario === slot.time && log.dose_kind!=="sos" && log.dose_kind!=="extra").toArray();
+          if (latest.length > 1 || latest.some(log => Boolean(log.tomado_em || log.ignorado_em) )) throw new Error("Um horário já foi registrado ou entrou em conflito. Nenhuma dose duplicada.");
           if (attestSchedule && !(latestMed.estoque_horarios ?? []).includes(slot.time) && latest.length === 0) throw new Error("A rotina mudou. Reabra a revisão.");
           await doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId: medication.id,
-            data: slot.date, horario: slot.time, status: "taken", tomadoEm: retroDateTimeISO(slot.date, slot.time),
-            quantidade: quantity, onlyIfPending: true, adjustStock: debit, requireRegisteredStock: debit });
+            data: slot.date, horario: slot.time, status: "taken", tomadoEm: civilDoseInstant(slot.date,slot.time,new Date().toISOString()),
+            quantidade: quantity, unit, expected:latest[0]?.id&&latest[0].person_id?{...latest[0],id:latest[0].id,person_id:latest[0].person_id}:null, onlyIfPending: true, adjustStock: debit, requireRegisteredStock: debit });
           saved++;
           setSelected(previous => previous.filter(key => key !== slot.key));
         } catch (err) {
@@ -151,7 +158,7 @@ function RetroBatchReviewContent() {
     } finally { lock.current = false; setSaving(false); }
   }
 
-  return <PageTransition><main className="min-h-[100dvh] bg-void px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5 header-safe-top text-ink-primary">
+  return <PageTransition><main className="vault-adaptive-tail min-h-[100dvh] bg-void px-4 pt-5 header-safe-top text-ink-primary">
     <div className="mx-auto max-w-2xl space-y-4">
       <header className="flex items-center gap-3">
         <button type="button" onClick={goBack} aria-label="Voltar ao medicamento" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={18}/></button>
@@ -191,10 +198,11 @@ function RetroBatchReviewContent() {
         {selectedSlots.length > 0 && <section className="space-y-3 rounded-3xl border border-ice/20 bg-surface p-4" aria-label="Revisar antes de confirmar">
           <h2 className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck size={17} className="text-ice"/>Conferir antes de salvar</h2>
           <label className="block text-xs text-ink-muted">Quantidade realmente tomada por horário (na unidade da dose)<input type="number" inputMode="decimal" min="0.001" step="any" value={quantityText} disabled={saving} onChange={e => {setQuantityText(e.target.value);setConfirmReal(false);}} placeholder="Ex.: 1" className="mt-1 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary"/></label>
-          <p className="text-xs text-ink-muted">{selectedSlots.length} horário(s) selecionado(s){quantityValid ? ` · ${Number((selectedSlots.length * quantity).toFixed(5))} unidade(s) de dose informada(s)` : " · informe a quantidade real por tomada"}. Horário real presumido igual ao horário exibido apenas após sua confirmação; se foi diferente, abra o dia para ajustar individualmente.</p>
+          <DoseHistoricalUnitField value={unitDraft} onChange={v=>{setUnitDraft(v);setUnitReviewed(true);setConfirmReal(false);}} disabled={saving}/>
+          <p className="text-xs text-ink-muted">{selectedSlots.length} horário(s) selecionado(s){quantityValid ? ` · ${Number((selectedSlots.length * quantity).toFixed(5))} na unidade declarada` : " · informe a quantidade real por tomada"}. Horário real presumido igual ao horário exibido apenas após sua confirmação; se foi diferente, abra o dia para ajustar individualmente.</p>
           {stockMode !== "counted" ? <fieldset className="space-y-2"><legend className="text-xs font-semibold">Como o saldo atual deve reagir?</legend><label className="flex items-start gap-2 rounded-xl border border-surface-border p-3 text-xs"><input type="radio" name="retro-stock" checked={stockAction === "preserve"} disabled={saving} onChange={()=>{setStockAction("preserve");setConfirmReal(false);}} className="mt-0.5 size-4 accent-cyan-400"/><span>Preservar saldo atual. As tomadas já estavam refletidas na contagem, ou não sei se devem ser descontadas.</span></label><label className={`flex items-start gap-2 rounded-xl border p-3 text-xs ${canDebit ? "border-surface-border" : "border-amber-400/20 text-ink-muted"}`}><input type="radio" name="retro-stock" checked={stockAction === "debit"} disabled={saving || !canDebit} onChange={()=>{setStockAction("debit");setConfirmReal(false);}} className="mt-0.5 size-4 accent-cyan-400"/><span>Descontar agora: confirmo que essas unidades ainda estão incluídas no estoque registrado. {canDebit ? "O repositório validará cada saldo antes de gravar." : "Indisponível: saldo desconhecido/negativo ou conversão de gotas não configurada."}</span></label></fieldset> : null}
           <label className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-400/[.035] p-3 text-xs leading-relaxed"><input type="checkbox" checked={confirmReal} disabled={saving} onChange={e=>setConfirmReal(e.target.checked)} className="mt-0.5 size-5 accent-amber-400"/><span><strong>Confirmo que tomei cada dose selecionada na data e horário indicados, na quantidade informada.</strong> Não marque doses das quais não tem certeza.</span></label>
-          <button type="button" disabled={saving || !confirmReal || !quantityValid || !!plan.error || (stockAction === "debit" && !canDebit)} onClick={()=>void commit()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-ice px-4 text-sm font-bold text-void disabled:opacity-40"><ClipboardCheck size={18}/>{saving ? "Registrando, não feche a tela…" : `Registrar ${selectedSlots.length} tomada(s)`}</button>
+          <button type="button" disabled={saving || !confirmReal || !quantityValid || !unitReviewed || !!plan.error || (stockAction === "debit" && !canDebit)} onClick={()=>void commit()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-ice px-4 text-sm font-bold text-void disabled:opacity-40"><ClipboardCheck size={18}/>{saving ? "Registrando, não feche a tela…" : `Registrar ${selectedSlots.length} tomada(s)`}</button>
         </section>}
         {result && <div role="status" aria-live="polite" className={`rounded-2xl border p-4 text-xs ${result.failed ? "border-amber-400/25 bg-amber-400/5" : "border-emerald-400/25 bg-emerald-400/5"}`}><strong>{result.saved} concluída(s) · {result.failed} pendente(s)</strong><p className="mt-1 leading-relaxed">{result.message}</p><p className="mt-1 text-ink-muted">O histórico foi salvo localmente e entra na fila de sincronização. A confirmação entre dispositivos precisa ser verificada separadamente.</p></div>}
         <aside className="flex items-start gap-2 rounded-xl border border-surface-border bg-surface-raised/30 p-3 text-[11px] leading-relaxed text-ink-muted"><Info size={16} className="mt-0.5 shrink-0 text-ice"/>Selecionar um dia não confirma a retirada, uma compra ou uma prescrição. Aquisições anteriores permanecem salvas mesmo se você sair sem revisar doses.</aside>

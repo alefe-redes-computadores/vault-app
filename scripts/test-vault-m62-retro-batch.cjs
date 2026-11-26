@@ -92,7 +92,7 @@ const scopeErrors=ts.getPreEmitDiagnostics(semanticProgram).filter(d=>
   [18004,2304,2552].includes(d.code)
 );
 check(scopeErrors.length===0,'R4: TypeScript sem variáveis locais fora de escopo na página de revisão');
-check(view.includes('quantidade: quantity, onlyIfPending: true'), 'R4: dose utiliza quantidade numérica validada, não identificador inexistente');
+check(/quantidade:\s*quantity,\s*unit,\s*expected:[^;]*?onlyIfPending:\s*true/.test(view), 'R4: dose utiliza quantidade numérica validada, não identificador inexistente');
 
 const details=fs.readFileSync(files[3],'utf8');
 // V112: all visible date/time inputs use the existing accessible VAULT picker.
@@ -102,7 +102,7 @@ check((view.match(/<CustomDatePicker\b/g) || []).length === 2, 'data inicial e f
 check(view.includes('minDate={from}') && view.includes('maxDate={yesterday}'), 'limites de início/fim de período preservados');
 check(!/<input\b[^>]*type\s*=\s*["'](?:date|time|datetime-local)["'][^>]*>/gs.test(view), 'V112: sem campos nativos visíveis de data e hora');
 
-for(const fragment of ['stock_mode','counted','Revisar doses','onlyIfPending: true','adjustStock: debit','requireRegisteredStock: debit','retroDateTimeISO','doseLogsRepository.setStatus','Confirmo que tomei cada dose selecionada','A pessoa ou conta foi alterada'])check(view.includes(fragment),`UI protege ${fragment}`);
+for(const fragment of ['stock_mode','counted','Revisar doses','onlyIfPending: true','adjustStock: debit','requireRegisteredStock: debit','civilDoseInstant(slot.date,slot.time','doseLogsRepository.setStatus','Confirmo que tomei cada dose selecionada','A pessoa ou conta foi alterada'])check(view.includes(fragment),`UI protege ${fragment}`);
 check(view.includes('attestSchedule && (latestMed.tipo_uso === "temporario" || latestMed.status === "descontinuado")'),'rotina histórica revalidada antes de gravar');
 check(!view.includes('setSelected(eligible.map('),'lote não auto-seleciona todas as doses');
 check(view.includes('slot.status === "ignored"')&&view.includes('slot.status === "conflict"'),'situações especiais exigem correção individual');

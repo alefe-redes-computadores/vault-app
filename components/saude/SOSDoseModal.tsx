@@ -1,8 +1,15 @@
 // components/saude/SOSDoseModal.tsx
 "use client";
+import { useAuth } from "@/hooks/useAuth";
+import { DoseHistoricalUnitField, unitDraftSnapshot, type UnitDraft } from "@/components/hoje/DoseHistoricalUnitField";
+import { cycleIdentity } from "@/lib/dose-premium/stock-cycle";
+import { civilDoseInstant } from "@/lib/dose-premium/review-intent";
+import { readDoseUnit } from "@/lib/dose-premium/historical-unit";
+import { observedStockContext, observedStockConversion } from "@/lib/dose-premium/stock-context";
+import { comparableDebit } from "@/lib/dose-premium/stock-evidence";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -32,6 +39,7 @@ interface SOSDoseModalProps {
 
 export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
   const router = useRouter();
+  const {user}=useAuth();
   const saveLock=useRef(false);
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
@@ -45,15 +53,20 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
     new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false })
   );
   const [quantidade, setQuantidade] = useState("1");
+  const [unitDraft,setUnitDraft]=useState<UnitDraft>({code:null,customLabel:''});
+  const [unitReviewed,setUnitReviewed]=useState(false);
+  const [preserveStock,setPreserveStock]=useState(false);
+  const scopeKey=JSON.stringify([user?.id,activePersonId]);
+  useEffect(()=>{setSelectedMedId(null);setIsSelectOpen(false);setUnitDraft({code:null,customLabel:''});setUnitReviewed(false);setPreserveStock(false);setAlertMessage(null);setObservacoes('');setQuantidade('1');setEstoqueZerado(false);},[scopeKey]);
   const [observacoes, setObservacoes] = useState("");
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [estoqueZerado, setEstoqueZerado] = useState(false);
 
   const sosMedicamentos = useMemo(() => {
     return (medicamentos || []).filter(
-      (med: Medicamento) => med.tipo_uso === "esporadico" || med.tipo_uso === "sos"
+      (med: Medicamento) => Boolean(user?.id&&activePersonId&&med.user_id===user.id&&med.person_id===activePersonId&&(med.tipo_uso === "esporadico" || med.tipo_uso === "sos"))
     );
-  }, [medicamentos]);
+  }, [medicamentos,user?.id,activePersonId]);
 
   const selectedMed = sosMedicamentos.find((m) => m.id === selectedMedId) || null;
 
@@ -63,6 +76,7 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
     setIsSelectOpen(false);
     setHora(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }));
     setQuantidade("1");
+    setUnitDraft({code:null,customLabel:""});setUnitReviewed(false);setPreserveStock(false);
     setObservacoes("");
     setAlertMessage(null);
     setEstoqueZerado(false);
@@ -72,6 +86,7 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
   const handleMedSelect = (medId: string) => {
     trigger("vibrate");
     setSelectedMedId(medId);
+    setUnitDraft({code:null,customLabel:""});setUnitReviewed(false);setPreserveStock(false);
     setIsSelectOpen(false);
     setAlertMessage(null);
     setEstoqueZerado(false);
@@ -85,22 +100,30 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
       return;
     }
 
-    const qtd = Number(quantidade);
+    const qtd = Number(quantidade.trim().replace(",","."));
     if(!Number.isFinite(qtd)||qtd<=0){showToast("Informe uma quantidade válida.","error");return;}
-    if(!activePersonId||selectedMed.person_id!==activePersonId){showToast("Confira a pessoa ativa.","error");return;}
+    if(!user?.id||!activePersonId||selectedMed.user_id!==user.id||selectedMed.person_id!==activePersonId){showToast("Confira a pessoa ativa.","error");return;}
+    if(!unitReviewed){showToast("Confira a unidade realmente administrada.","error");return;}
+    let unit,actualAt;
+    const date=getLocalTodayISO();
+    try{unit=unitDraftSnapshot(unitDraft);actualAt=civilDoseInstant(date,hora,new Date().toISOString());}catch(e){showToast(e instanceof Error?e.message:"Confira a dose.","error");return;}
     const doseUsual = Number(selectedMed.estoque_unidade_por_dose) || 1;
+    const scope={user_id:user.id,person_id:activePersonId,medicationId:selectedMed.id!};
+    const stock=observedStockContext(selectedMed,scope);
+    const debit=comparableDebit(qtd,unit,stock,observedStockConversion(selectedMed,stock));
+    if(!preserveStock&&(!cycleIdentity(selectedMed.estoque_ciclo_id)||debit===null||readDoseUnit(unit).state!=='known')){showToast("Confira o estoque ou escolha registrar sem movimentá-lo.","error");return;}
 
     // Alerta de saúde
     if (qtd > doseUsual * 5) {
       setAlertMessage(
-        `A quantidade informada (${qtd}) é ${Math.round(qtd / doseUsual)}x maior que a dose usual (${doseUsual}). Se estiver passando por um momento difícil, fale com alguém agora. CVV: 188.`
+        `A quantidade numérica informada (${qtd}) está muito acima da referência cadastrada (${doseUsual}); as unidades podem ser diferentes. Confira o que realmente tomou. Se estiver passando por um momento difícil, fale com alguém agora. CVV: 188.`
       );
       trigger("vibrate");
       return;
     }
 
     // Estoque zerado
-    if (selectedMed.estoque_quantidade !== undefined && selectedMed.estoque_quantidade <= 0) {
+    if (!preserveStock && selectedMed.estoque_quantidade != null && selectedMed.estoque_quantidade <= 0) {
       setEstoqueZerado(true);
       trigger("error");
       return;
@@ -109,9 +132,9 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
     saveLock.current=true;
     try { await run(
       async () => {
-        await doseLogsRepository.registrarTomadaAvulsa({personId:activePersonId,medicamentoId:selectedMed.id!,data:getLocalTodayISO(),horario:hora,quantidade:qtd,doseKind:"sos",motivo:observacoes.trim()||undefined});
+        await doseLogsRepository.registrarTomadaAvulsa({personId:activePersonId,medicamentoId:selectedMed.id!,data:date,horario:hora,quantidade:qtd,doseKind:"sos",motivo:observacoes.trim()||undefined,tomadoEm:actualAt,unit,adjustStock:!preserveStock});
         trigger("success");
-        showToast("Dose registrada com sucesso!", "success");
+        showToast("Dose registrada neste aparelho. Sincronização pendente de confirmação.", "success");
         handleClose();
       },
       {
@@ -145,7 +168,7 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.95 }}
             transition={{ type: "spring", damping: 20, stiffness: 250 }}
-            className="fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-md rounded-t-[32px] bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-md max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-[32px] bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl"
           >
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -215,23 +238,21 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
               {/* Quantidade */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                  Quantidade{" "}
-                  {selectedMed?.formato === "gota"
-                    ? "(gotas)"
-                    : selectedMed?.formato === "comprimido"
-                    ? "(comprimidos)"
-                    : ""}
+                  Quantidade realmente administrada
                 </label>
                 <input
                   type="number"
-                  inputMode="numeric"
-                  min="1"
+                  inputMode="decimal"
+                  step="any"
+                  min="0.000001"
                   value={quantidade}
                   onChange={(e) => setQuantidade(e.target.value)}
                   className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
                 />
               </div>
 
+              <DoseHistoricalUnitField value={unitDraft} onChange={v=>{setUnitDraft(v);setUnitReviewed(true);setAlertMessage(null);}} disabled={isSubmitting}/>
+              <label className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-xs text-ink-primary"><input type="checkbox" checked={preserveStock} disabled={isSubmitting} onChange={e=>setPreserveStock(e.target.checked)} className="mt-1 size-5 accent-amber-400"/><span>Registrar sem movimentar o saldo atual. A quantidade e a unidade ficam no histórico; não será criado um débito presumido.</span></label>
               {/* Observações */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-ink-primary">
@@ -313,7 +334,7 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 40 }}
-                  className="fixed bottom-0 left-0 right-0 z-[70] mx-auto w-full max-w-md rounded-t-[32px] bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl"
+                  className="fixed bottom-0 left-0 right-0 z-[70] mx-auto w-full max-w-md max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-[32px] bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display text-lg font-bold text-ink-primary">

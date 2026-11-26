@@ -16,6 +16,22 @@ import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentat
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
 import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
+import { DosePremiumCenter } from "@/components/hoje/DosePremiumCenter";
+import { DoseHistoricalUnitField, unitDraftSnapshot, type UnitDraft } from "@/components/hoje/DoseHistoricalUnitField";
+import { readDoseUnit, describeHistoricalDose } from "@/lib/dose-premium/historical-unit";
+import { civilDoseInstant } from "@/lib/dose-premium/review-intent";
+import { doseLogsRepository } from "@/lib/repositories/doseLogs";
+import type { DoseSnapshot } from "@/lib/dose-premium/compatibility";
+import type { Medicamento } from "@/lib/types";
+import { captureHomeDoseReview, prepareHomeDoseConfirmation, assertHomeReviewScope, type HomeDoseReview } from "@/lib/dose-premium/home-review";
+import { observedStockContext, observedStockConversion } from "@/lib/dose-premium/stock-context";
+import { comparableDebit } from "@/lib/dose-premium/stock-evidence";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { adaptTodayDoseCenter } from "@/lib/dose-premium/today-adapter";
+import { defaultCenterSelection, restoreCenterSelection, projectDoseHistory, type DoseCenterSelection, type CenterRow } from "@/lib/dose-premium/center-view";
+import { classifyPlannedDose } from "@/lib/dose-plan-authority";
+import { summarizeRecordedDoseTiming, summarizeRecordedStockCoverage } from "@/lib/health-intelligence/dose-routine-insights";
+import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 import { TodayUnscheduledRoutine } from "@/components/hoje/TodayUnscheduledRoutine";
 import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
 import { VaccinationAccessA8 } from "@/components/saude/VaccinationAccessA8";
@@ -28,7 +44,6 @@ import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
 import { DoseMonthOverview } from "@/components/saude/DoseMonthOverview";
 import { eligibleGroupDoseKeys } from "@/lib/dose-schedule-groups";
-import { partitionDoseBatchByStock } from "@/lib/today/dose-batch-stock";
 import { WithdrawalPreparationView } from "@/components/saude/WithdrawalPreparationSummary";
 import { useSupplyOverview } from "@/hooks/useSupplyOverview";
 
@@ -69,7 +84,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Bell,
-  PackageX,
   SmilePlus,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -81,7 +95,7 @@ import { PageTransition } from "@/components/PageTransition";
 import {VitalContextCard} from "@/components/vital/VitalContextCard";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { addDaysToLocalDate, getLocalTodayISO } from "@/lib/health-utils";
+import { addDaysToLocalDate, getLocalTodayISO, formatLocalDateISO } from "@/lib/health-utils";
 import {
   isReceitaVencidaSegura,
   analisarRotinaDiaria,
@@ -90,6 +104,7 @@ import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { readNativeDoseReview, discardNativeDoseReview, findNativeReviewItem } from "@/lib/dose-premium/native-review";
 import { LazyQuickDoseModal as QuickDoseModal } from "@/components/saude/LazyQuickDoseModal";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
@@ -175,7 +190,8 @@ export default function HojePage() {
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
 
-  const hoje = getLocalTodayISO();
+  const presentationNow = new Date();
+  const hoje = formatLocalDateISO(presentationNow);
 
   const requestedDate = searchParams.get("data");
 
@@ -206,7 +222,7 @@ export default function HojePage() {
       appointment: filtroCompromisso,
       showResolved: mostrarConcluidas,
     });
-  const navigateWithReturnM120 = (href: string) => {
+  const navigateWithReturnM120 = (href: string, premiumState?: DoseCenterSelection) => {
     try {
       sessionStorage.setItem(
         "vault:today:r4-return",
@@ -216,6 +232,7 @@ export default function HojePage() {
           date: dataSelecionada,
           query: buildTimelineUrl(dataSelecionada),
           y: Math.max(0, window.scrollY),
+          ...(premiumState ? {premium: premiumState}: {}),
         })
       );
     } catch {
@@ -223,46 +240,6 @@ export default function HojePage() {
     }
     router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)));
   };
-  // R4: retorno com contexto igual; filtros/dia/perfil diferentes nunca reaproveitam scroll.
-  useEffect(() => {
-    let saved: {
-      user?: string;
-      person?: string;
-      date?: string;
-      query?: string;
-      y?: number;
-    } | null = null;
-    try {
-      const raw = sessionStorage.getItem("vault:today:r4-return");
-      if (raw) saved = JSON.parse(raw);
-      sessionStorage.removeItem("vault:today:r4-return");
-    } catch {
-      return;
-    }
-    if (
-      !saved ||
-      saved.user !== user?.id ||
-      saved.person !== activePersonId ||
-      saved.date !== dataSelecionada ||
-      saved.query !== buildTimelineUrl(dataSelecionada) ||
-      !Number.isFinite(saved.y)
-    )
-      return;
-    const frame = requestAnimationFrame(() =>
-      window.scrollTo({ top: Math.max(0, saved!.y || 0), behavior: "auto" })
-    );
-    const late = window.setTimeout(
-      () =>
-        window.scrollTo({ top: Math.max(0, saved!.y || 0), behavior: "auto" }),
-      180
-    );
-    return () => {
-      cancelAnimationFrame(frame);
-      clearTimeout(late);
-    };
-    // Retorno apenas na montagem; o marcador e consumido uma vez.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const originM120 = todayOriginM120(searchParams);
 
   const navegarData = (delta: number) => {
@@ -298,7 +275,7 @@ export default function HojePage() {
     router.replace(buildTimelineUrl(hoje));
   };
 
-  const { medicamentos: rawMedicamentos } = useMedicamentos();
+  const { medicamentos: rawMedicamentos, medicamentosIncluindoDescontinuados: allMedications, isLoading: medicationsLoading } = useMedicamentos();
 
   const { retiradas } = useRetiradas();
 
@@ -333,14 +310,7 @@ export default function HojePage() {
 
   const {
     doseLogs,
-    marcarComoTomada: marcarDose,
-    marcarComoTomadaEm,
-    marcarComoTomadaHistoricaEm,
-    marcarComoIgnorada,
-    marcarComoIgnoradaHistorica,
-    desmarcarDose,
-    desmarcarDoseHistorica,
-    removerDosePorId,
+    isLoading: doseSnapshotLoading,
   } = useDoseLogs(
     dataSelecionada,
     // M20: require an authenticated owner before exposing day dose rows.
@@ -359,6 +329,7 @@ export default function HojePage() {
     examesHoje,
     registrosHoje,
     historicoDosesCompleto,
+    ready: todayOwnerReady, historyReady,
   } = useTodayOwnerData({
     userId: user?.id,
     personId: activePersonId,
@@ -520,7 +491,10 @@ export default function HojePage() {
   const batchOwnerRef = useRef(`${user?.id || ""}:${activePersonId || ""}`);
   const [batchTargetKeys, setBatchTargetKeys] = useState<string[] | null>(null);
 
-  const [loteConfirmado, setLoteConfirmado] = useState<DoseItemExt[]>([]);
+  const [batchFrozen,setBatchFrozen]=useState<{context:string;entries:{item:DoseItemExt;review:HomeDoseReview;key:string;excluded:string|null;knownEmpty:boolean}[]}|null>(null);
+  const [batchQuantities,setBatchQuantities]=useState<Record<string,string>>({});
+  const [batchDeselected,setBatchDeselected]=useState<string[]>([]);
+  const [batchResults,setBatchResults]=useState<{context:string;rows:{key:string;name:string;hour:string;state:'saved'|'excluded'|'failed';detail:string}[]}|null>(null);
 
   // VAULT_MOTOR_TEMPORAL_V46
   // Slot programado e instante real da tomada são conceitos distintos.
@@ -531,13 +505,24 @@ export default function HojePage() {
     if (batchOwnerRef.current === key) return;
     batchOwnerRef.current = key;
     setBatchTargetKeys(null);
-    setLoteConfirmado([]);
+    setBatchFrozen(null);setBatchResults(null);setBatchDeselected([]);
     if (!batchOperationLock.current) setIsBatchTimeModalOpen(false);
   }, [user?.id, activePersonId]);
 
   const [batchCustomTime, setBatchCustomTime] = useState("");
+  const [batchUnits,setBatchUnits]=useState<Record<string,UnitDraft>>({});
+  const [historicalUnitDraft,setHistoricalUnitDraft]=useState<UnitDraft|null>(null);
+  const [historicalReviewScope,setHistoricalReviewScope]=useState<string|null>(null);
+  const [historicalExpected,setHistoricalExpected]=useState<DoseSnapshot|null>(null);
+  const [historicalQuantity,setHistoricalQuantity]=useState('');
+  const historicalLock=useRef(false);
+  const [doseCorrection,setDoseCorrection]=useState<{context:string;item:DoseItemExt;expected:DoseSnapshot;action:'cancel'|'remove'|'clear'}|null>(null);
+  const correctionLock=useRef(false);
+  const [quickDoseSlot,setQuickDoseSlot]=useState<{context:string;medicationId:string;day:string;hour:string}|null>(null);
 
   const [isDoseModalOpen, setIsDoseModalOpen] = useState(false);
+  const [premiumNavigation,setPremiumNavigation]=useState<{context:string;selection:DoseCenterSelection}|null>(null);
+  const [premiumReview, setPremiumReview] = useState<{context:string;key:string}|null>(null);
 
   const [historicalDoseReviewItem, setHistoricalDoseReviewItem] =
     useState<DoseItemExt | null>(null);
@@ -638,8 +623,8 @@ export default function HojePage() {
   };
 
   const horaAtual = [
-    String(agora.getHours()).padStart(2, "0"),
-    String(agora.getMinutes()).padStart(2, "0"),
+    String(presentationNow.getHours()).padStart(2, "0"),
+    String(presentationNow.getMinutes()).padStart(2, "0"),
   ].join(":");
 
   // M18: past/future timelines have no moving "now" bucket. Keep their
@@ -895,9 +880,7 @@ export default function HojePage() {
                 !dose.tomada &&
                 !dose.ignorada &&
                 !dose.isDataConflict &&
-                (selectedKeys
-                  ? selectedKeys.has(`${dose.medicamentoId}-${dose.horario}`)
-                  : dose.horario <= operationalMinute)
+                dose.horario <= operationalMinute && (!selectedKeys || selectedKeys.has(`${dose.medicamentoId}-${dose.horario}`))
             )
             .reduce((map, dose) => {
               const key = `${dose.medicamentoId}-${dose.horario}`;
@@ -909,22 +892,96 @@ export default function HojePage() {
       : [];
   }, [isHoje, metricItems, batchTargetKeys, operationalMinute]);
 
-  // V141: pending stockless doses are visible, but never silently marked taken or ignored.
-  // P9: uma passagem para separar lote com/sem saldo, sem inferir tomada.
-  const {
-    withoutStock: dosesSemEstoqueNoLote,
-    withStock: dosesComEstoqueNoLote,
-  } = useMemo(
-    () =>
-      partitionDoseBatchByStock(dosesElegiveisLote, (d) => {
-        const med = d.medicamentoId
-          ? medicamentosById.get(d.medicamentoId)
-          : undefined;
-        return med ? hasKnownEmptyMedicationStock(med) : false;
-      }),
-    [dosesElegiveisLote, medicamentosById]
-  );
-
+  // Macro02: the premium center consumes the same owner/day timeline and the same
+  // schedule/stock authorities. A pending Dexie scope switch cannot appear as empty.
+  const premiumKey = (item: DoseItemExt) => item.logId ? `log:${item.logId}` : JSON.stringify([item.medicamentoId,dataSelecionada,item.horario]);
+  const premiumScope = {user_id:user?.id||"",person_id:activePersonId||""};
+  const premiumSlots = buildDoseSlotIndex(doseLogs||[],{userId:user?.id,personId:activePersonId||undefined});
+  const premiumEligible = new Set(eligibleGroupDoseKeys(metricItems));
+  const premiumSelection=premiumNavigation?.context===doseIdentityContext?premiumNavigation.selection:defaultCenterSelection();
+  const premiumHistoryMedications=useMemo(()=>medicationsForOwner<Medicamento>(allMedications,activePersonId,user?.id).flatMap(m=>m.id&&m.person_id&&m.user_id?[{id:m.id,user_id:m.user_id,person_id:m.person_id,name:m.nome,format:m.formato,colors:m.cores,concentration:m.dosagem,relationColor:m.cor_principal}]:[]),[allMedications,activePersonId,user?.id]);
+  const premiumView = adaptTodayDoseCenter({
+    scope:premiumScope,snapshotScope:premiumScope,snapshotDay:dataSelecionada,day:dataSelecionada,today:hoje,now:horaAtual,asOf:presentationNow.toISOString(),
+    load:doseSnapshotLoading||medicationsLoading||!todayOwnerReady?"loading":"ready",items:doses,logs:doseLogs||[],
+    keyOf:premiumKey,isRoutine:item=>item.scheduleOrigin==="continuous"||item.scheduleOrigin==="temporary_course"||item.scheduleOrigin==="ad_hoc"||isScheduledRoutineEvidence(item)||Boolean(item.isExpectedUnconfirmed&&!item.isAvulsa&&!item.isSintoma),
+    isEligible:item=>isHoje&&item.horario<=operationalMinute&&premiumEligible.has(`${item.medicamentoId}-${item.horario}`),
+    stockState:item=>{const med=item.medicamentoId?medicamentosById.get(item.medicamentoId):undefined;const q=med?.estoque_quantidade;return typeof q!=="number"||!Number.isFinite(q)?"unknown":q<=0?"unavailable":"available";},
+    resolveSlot:item=>resolveDoseSlot(premiumSlots,item.medicamentoId||"",dataSelecionada,item.horario),
+    plannedQuantityLabel:item=>typeof item.unidadePorDose==="number"&&Number.isFinite(item.unidadePorDose)&&item.unidadePorDose>0?`${item.unidadePorDose.toLocaleString("pt-BR")} ${item.unidadeDose||"· unidade prevista não informada"}`:undefined,
+  });
+  const premiumHistory=useMemo(()=>projectDoseHistory({scope:{user_id:user?.id||"",person_id:activePersonId||""},today:hoje,end:dataSelecionada,range:premiumSelection.range,asOf:new Date().toISOString(),load:historyReady&&!medicationsLoading?"ready":"loading",logs:historicoDosesCompleto,medications:premiumHistoryMedications,plannedOrigin:log=>{const origin=classifyPlannedDose(log);return origin==='temporary_course'||origin==='ad_hoc'?origin:'unknown';}}),[user?.id,activePersonId,hoje,dataSelecionada,premiumSelection.range,historyReady,medicationsLoading,historicoDosesCompleto,premiumHistoryMedications,horaAtual]);
+  const premiumBrain=useMemo(()=>summarizeRecordedDoseTiming({scope:{user_id:user?.id||"",person_id:activePersonId||""},today:hoje,asOf:new Date().toISOString(),logs:historyReady?historicoDosesCompleto:[],medicationIds:premiumHistoryMedications.map(m=>m.id)}),[user?.id,activePersonId,hoje,horaAtual,historyReady,historicoDosesCompleto,premiumHistoryMedications]);
+  const premiumStockCoverage=useMemo(()=>historyReady&&!medicationsLoading?summarizeRecordedStockCoverage({scope:{user_id:user?.id||"",person_id:activePersonId||""},today:hoje,asOf:new Date().toISOString(),logs:historicoDosesCompleto,medications:medicamentos}):[],[user?.id,activePersonId,hoje,horaAtual,historyReady,medicationsLoading,historicoDosesCompleto,medicamentos]);
+  // R4: retorno com contexto igual; filtros/dia/perfil diferentes nunca reaproveitam scroll.
+  useEffect(() => {
+    if(!user?.id||!activePersonId||!filtersHydrated||!premiumView.ready||!historyReady)return;
+    let saved: {
+      user?: string;
+      person?: string;
+      date?: string;
+      query?: string;
+      y?: number;
+      premium?: unknown;
+    } | null = null;
+    try {
+      const raw = sessionStorage.getItem("vault:today:r4-return");
+      if (raw) saved = JSON.parse(raw);
+      if(saved&&(saved.user!==user?.id||saved.person!==activePersonId||saved.date!==dataSelecionada))sessionStorage.removeItem("vault:today:r4-return");
+    } catch {
+      return;
+    }
+    if (
+      !saved ||
+      saved.user !== user?.id ||
+      saved.person !== activePersonId ||
+      saved.date !== dataSelecionada ||
+      saved.query !== buildTimelineUrl(dataSelecionada) ||
+      !Number.isFinite(saved.y)
+    )
+      return;
+    try { sessionStorage.removeItem("vault:today:r4-return"); } catch { /* optional navigation cache */ }
+    if(saved.premium)setPremiumNavigation({context:doseIdentityContext,selection:restoreCenterSelection(saved.premium)});
+    const frame = requestAnimationFrame(() =>
+      window.scrollTo({ top: Math.max(0, saved!.y || 0), behavior: "auto" })
+    );
+    const late = window.setTimeout(
+      () =>
+        window.scrollTo({ top: Math.max(0, saved!.y || 0), behavior: "auto" }),
+      180
+    );
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(late);
+    };
+    // Consumir somente após a leitura vinculada ao escopo e a hidratação dos filtros.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id,activePersonId,filtersHydrated,premiumView.ready,historyReady,doseIdentityContext,buildTimelineUrl(dataSelecionada)]);
+  const premiumItemsByKey = new Map<string,DoseItemExt[]>();
+  for(const item of doses){const key=premiumKey(item),list=premiumItemsByKey.get(key)||[];list.push(item);premiumItemsByKey.set(key,list);}
+  const resolvePremiumItem = (row:CenterRow) => {
+    if(!premiumView.ready||row.user_id!==premiumScope.user_id||row.person_id!==premiumScope.person_id||row.day!==dataSelecionada)return undefined;
+    const matches=premiumItemsByKey.get(row.key)||[];
+    return matches.length===1&&matches[0].medicamentoId===row.medication_id&&matches[0].horario===row.hour?matches[0]:undefined;
+  };
+  const premiumSelected = premiumReview?.context===doseIdentityContext&&premiumView.ready&&premiumItemsByKey.get(premiumReview.key)?.length===1?premiumItemsByKey.get(premiumReview.key)![0]:null;
+  const nativeReviewToken=searchParams.get('native_review');
+  const consumedNativeReview=useRef<string|null>(null);
+  // A notification opens the exact pending item, never a direct clinical write.
+  // Keep any currently open QuickDose draft until the person closes it.
+  useEffect(()=>{
+    if(!nativeReviewToken||consumedNativeReview.current===nativeReviewToken||!premiumView.ready||isDoseModalOpen)return;
+    const request=readNativeDoseReview(nativeReviewToken,premiumScope,dataSelecionada);
+    consumedNativeReview.current=nativeReviewToken;
+    discardNativeDoseReview(nativeReviewToken);
+    if(request){
+      const med=medicamentosById.get(request.medicationId);
+      const slot=resolveDoseSlot(premiumSlots,request.medicationId,request.day,request.hour);
+      const item=med?.user_id===premiumScope.user_id&&med?.person_id===premiumScope.person_id?findNativeReviewItem(request,doses,slot):null;
+      if(item){setPremiumReview(null);setQuickDoseSlot({context:doseIdentityContext,medicationId:request.medicationId,day:request.day,hour:request.hour});setIsDoseModalOpen(true);}
+      else showToast('O horário já foi resolvido ou mudou. Confira as doses no histórico.','info');
+    }else showToast('O contexto da notificação não está mais disponível. Confira a pessoa e as doses.','info');
+    router.replace(consumeTodayActionM120(searchParams,dataSelecionada,hoje));
+  },[nativeReviewToken,premiumView.ready,doseIdentityContext,isDoseModalOpen,doses,dataSelecionada,router,searchParams,hoje]);
   const isLoading = rawMedicamentos === undefined || doseLogs === undefined;
 
   if (isLoading) {
@@ -936,9 +993,11 @@ export default function HojePage() {
       return;
     }
 
-    trigger("vibrate");
-
+    try{setHistoricalExpected(reviewSnapshot(item));}catch(error){showToast(error instanceof Error?error.message:'Registro inconsistente.','info');return;}
+    trigger("vibrate");setHistoricalQuantity('');
     setHistoricalDoseReviewItem(item);
+    setHistoricalUnitDraft(null);
+    setHistoricalReviewScope(doseIdentityContext);
 
     setHistoricalCustomTakenAt(`${dataSelecionada}T${item.horario || "00:00"}`);
 
@@ -962,13 +1021,21 @@ export default function HojePage() {
   ) => {
     const item = historicalDoseReviewItem;
 
-    if (!item?.medicamentoId || !isPassado || isHistoricalProcessing) {
+    if (!item?.medicamentoId || !isPassado || isHistoricalProcessing || historicalLock.current || historicalReviewScope!==doseIdentityContext || !premiumScope.user_id || !premiumScope.person_id) {
       return;
     }
 
-    setIsHistoricalProcessing(true);
+    historicalLock.current=true;setIsHistoricalProcessing(true);
 
     try {
+      const expected=historicalExpected;
+      const prior=readDoseUnit(expected??{});
+      if(prior.state==='invalid')throw Error("Unidade histórica requer revisão.");
+      const unit=prior.state==='known'?prior.fields:historicalUnitDraft?unitDraftSnapshot(historicalUnitDraft):undefined;
+      if((action==='scheduled'||action==='custom')&&unit===undefined)throw Error("Declare a unidade administrada ou indique que não foi informada.");
+      const quantity=historicalQuantity.trim();
+      if((action==='scheduled'||action==='custom')&&(!/^\d+(?:[.,]\d+)?$/.test(quantity)||!Number.isFinite(Number(quantity.replace(',','.')))||Number(quantity.replace(',','.'))<=0))throw Error('Informe a quantidade realmente administrada.');
+      const writeHistorical=(status:'taken'|'ignored'|'clear',actualAt?:string)=>doseLogsRepository.setStatus({personId:premiumScope.person_id,medicamentoId:item.medicamentoId!,data:dataSelecionada,horario:item.horario,status,quantidade:status==='taken'?Number(quantity.replace(',','.')):undefined,tomadoEm:actualAt,unit,expected,adjustStock:false});
       if (action === "scheduled") {
         const scheduledLocal = `${dataSelecionada}T${
           item.horario || "00:00"
@@ -980,12 +1047,7 @@ export default function HojePage() {
           throw new Error("Horário histórico inválido.");
         }
 
-        await marcarComoTomadaHistoricaEm(
-          item.medicamentoId,
-          item.horario,
-          takenAt.toISOString(),
-          item.unidadePorDose
-        );
+        await writeHistorical("taken",civilDoseInstant(dataSelecionada,item.horario,new Date().toISOString()));
 
         trigger("success");
 
@@ -999,15 +1061,6 @@ export default function HojePage() {
 
         const customDate = historicalCustomTakenAt.slice(0, 10);
 
-        if (customDate !== dataSelecionada) {
-          showToast(
-            "O horário informado precisa pertencer ao dia selecionado",
-            "error"
-          );
-
-          return;
-        }
-
         const takenAt = new Date(historicalCustomTakenAt);
 
         if (Number.isNaN(takenAt.getTime())) {
@@ -1016,28 +1069,19 @@ export default function HojePage() {
           return;
         }
 
-        await marcarComoTomadaHistoricaEm(
-          item.medicamentoId,
-          item.horario,
-          takenAt.toISOString(),
-          item.unidadePorDose
-        );
+        await writeHistorical("taken",civilDoseInstant(customDate,historicalCustomTakenAt.slice(11,16),new Date().toISOString()));
 
         trigger("success");
 
         showToast("Horário histórico atualizado", "success");
       } else if (action === "ignored") {
-        await marcarComoIgnoradaHistorica(
-          item.medicamentoId,
-          item.horario,
-          item.unidadePorDose
-        );
+        await writeHistorical("ignored");
 
         trigger("vibrate");
 
         showToast("Dose marcada como não tomada", "info");
       } else {
-        await desmarcarDoseHistorica(item.medicamentoId, item.horario);
+        await writeHistorical("clear");
 
         trigger("vibrate");
 
@@ -1054,34 +1098,29 @@ export default function HojePage() {
 
       trigger("error");
 
-      showToast("Erro ao atualizar histórico", "error");
+      showToast(error instanceof Error?error.message:"Erro ao atualizar histórico", "error");
     } finally {
-      setIsHistoricalProcessing(false);
+      historicalLock.current=false;setIsHistoricalProcessing(false);
     }
   };
 
-  const handleCancelPlannedDose = async (item: DoseItemExt) => {
-    if (processandoDoseId || item.doseKind !== "planned" || !item.logId) return;
-
-    const confirmed = window.confirm(
-      `Cancelar a dose de ${
-        item.medicamentoNome || "medicamento"
-      } agendada para ${item.horario}? O estoque não será alterado.`
-    );
-    if (!confirmed) return;
-
-    setProcessandoDoseId(`log-${item.logId}`);
-    try {
-      await removerDosePorId(item.logId);
-      trigger("success");
-      showToast("Agendamento cancelado. O estoque não foi alterado.", "info");
-    } catch (error) {
-      console.error("Erro ao cancelar dose agendada:", error);
-      trigger("error");
-      showToast("Não foi possível cancelar o agendamento", "error");
-    } finally {
-      setProcessandoDoseId(null);
-    }
+  const openDoseCorrection=(item:DoseItemExt,action:'cancel'|'remove'|'clear')=>{
+    if(processandoDoseId||!item.medicamentoId||!premiumScope.user_id||!premiumScope.person_id)return;
+    try{
+      let expected:DoseSnapshot|null=null;
+      if(item.logId){const matches=(doseLogs||[]).filter(log=>log.id===item.logId&&log.user_id===premiumScope.user_id&&log.person_id===premiumScope.person_id&&log.medicamento_id===item.medicamentoId&&log.data===dataSelecionada);const row=matches.length===1?matches[0]:undefined;if(row?.id&&row.person_id)expected={...row,id:row.id,person_id:row.person_id};}
+      else expected=reviewSnapshot(item);
+      if(!expected||action==='cancel'&&(expected.dose_kind!=='planned'||expected.tomado_em||expected.ignorado_em))throw Error('Registro mudou. Confira o histórico.');
+      setPremiumReview(null);setDoseCorrection({context:doseIdentityContext,item,expected,action});trigger('vibrate');
+    }catch(error){showToast(error instanceof Error?error.message:'Registro indisponível.','info');}
+  };
+  const handleCancelPlannedDose=async(item:DoseItemExt)=>openDoseCorrection(item,'cancel');
+  const confirmDoseCorrection=async()=>{
+    const target=doseCorrection;if(!target||target.context!==doseIdentityContext||correctionLock.current||processandoDoseId)return;
+    const expected=target.expected;correctionLock.current=true;setProcessandoDoseId(`log-${expected.id}`);
+    try{await doseLogsRepository.removeById({personId:expected.person_id,id:expected.id,expected,adjustStock:target.action!=='cancel'});if(committedTimeline.current?.scopeKey!==target.context)return;trigger('vibrate');showToast('Correção registrada neste aparelho. Aguardando sincronização.','info');setDoseCorrection(null);}
+    catch(error){showToast(error instanceof Error?error.message:'Não foi possível corrigir com segurança.','error');}
+    finally{correctionLock.current=false;setProcessandoDoseId(null);}
   };
 
   const handleToggle = async (item: DoseItemExt) => {
@@ -1102,391 +1141,124 @@ export default function HojePage() {
       return;
     }
 
-    const chaveDose = item.logId
-      ? `log-${item.logId}`
-      : `${item.medicamentoId}-${item.horario}`;
-
-    setProcessandoDoseId(chaveDose);
-
-    try {
-      // ======================================================
-      // DOSE AVULSA / SOS
-      //
-      // A remoção passa obrigatoriamente pelo repository.
-      //
-      // Ele é responsável por:
-      //
-      // - validar person_id;
-      // - validar usuário;
-      // - recuperar a quantidade histórica;
-      // - restaurar estoque quando calculável;
-      // - excluir o DoseLog;
-      // - enfileirar DELETE para sincronização.
-      // ======================================================
-
-      if (item.isAvulsa && item.logId && item.doseKind !== "planned") {
-        await removerDosePorId(item.logId);
-
-        trigger("vibrate");
-
-        showToast("Dose avulsa removida", "info");
-
-        return;
-      }
-
-      // ======================================================
-      // DOSE PROGRAMADA JÁ TOMADA → DESFAZER
-      //
-      // Nenhuma alteração manual de estoque é feita aqui.
-      //
-      // O repository usa a quantidade histórica do DoseLog para
-      // restaurar exatamente o consumo que havia sido registrado.
-      // ======================================================
-
-      if (item.tomada) {
-        await desmarcarDose(item.medicamentoId, item.horario);
-
-        trigger("vibrate");
-
-        return;
-      }
-
-      // ======================================================
-      // DOSE PROGRAMADA PENDENTE → TOMADA
-      //
-      // O repository registra o DoseLog e movimenta o estoque.
-      // ======================================================
-
-      const medicamentoDaDose = medicamentosById.get(item.medicamentoId);
-      if (
-        medicamentoDaDose &&
-        hasKnownEmptyMedicationStock(medicamentoDaDose)
-      ) {
-        showToast(
-          "Estoque registrado zerado. Confira o saldo ou registre que a dose não foi tomada.",
-          "info"
-        );
-        return;
-      }
-
-      // VAULT_HOJE_DOSES_V45 — ação individual e lote usam
-      // a quantidade real da dose; o repository continua dono do estoque.
-      await marcarDose(item.medicamentoId, item.horario, item.unidadePorDose);
-
-      trigger("success");
-    } catch (error) {
-      console.error("Erro ao atualizar dose:", error);
-
-      trigger("error");
-
-      showToast("Erro ao atualizar dose", "error");
-    } finally {
-      setProcessandoDoseId(null);
-    }
+    if(item.isAvulsa&&item.logId&&item.doseKind!=='planned'){openDoseCorrection(item,'remove');return;}
+    if(item.tomada){openDoseCorrection(item,'clear');return;}
+    if(item.ignorada){openDoseCorrection(item,'clear');return;}
+    openIndividualReview(item);trigger('vibrate');
   };
 
-  // V223: a group opens the existing temporal review, never writes dose logs
-  // directly. The repository remains the sole stock/sync authority.
-  const handleRevisarHorario = (items: DoseItemExt[]) => {
-    if (
-      !isHoje ||
-      !user?.id ||
-      !activePersonId ||
-      processandoTodos ||
-      processandoDoseId ||
-      batchOperationLock.current
-    )
-      return;
-    const keys = eligibleGroupDoseKeys(items);
-    if (keys.length < 2) return;
-    setBatchTargetKeys(keys);
-    const hhmm = `${String(agora.getHours()).padStart(2, "0")}:${String(
-      agora.getMinutes()
-    ).padStart(2, "0")}`;
-    setBatchCustomTime(hhmm);
-    trigger("vibrate");
-    setIsBatchTimeModalOpen(true);
+  const openBatchReview=(items:readonly DoseItemExt[])=>{
+    if(!isHoje||!premiumScope.user_id||!premiumScope.person_id||processandoTodos||processandoDoseId||batchOperationLock.current||!premiumView.ready)return;
+    const seen=new Set<string>();
+    const entries=items.flatMap(item=>{
+      if(!item.medicamentoId||item.isAvulsa||item.isSintoma||item.doseKind==='sos'||item.doseKind==='extra')return [];
+      const key=JSON.stringify([item.medicamentoId,dataSelecionada,item.horario]);if(seen.has(key))return [];seen.add(key);
+      const slot=resolveDoseSlot(premiumSlots,item.medicamentoId,dataSelecionada,item.horario);
+      const review=captureHomeDoseReview({...premiumScope,medicamento_id:item.medicamentoId,data:dataSelecionada,horario:item.horario},slot.records,item.unidadePorDose);
+      const med=medicamentosById.get(item.medicamentoId);
+      let excluded=review.blocked;
+      if(item.tomada||item.ignorada||item.isDataConflict||item.horario>operationalMinute)excluded='Não é uma pendência vencida elegível.';
+      const knownEmpty=!excluded&&Boolean(med&&med.user_id===premiumScope.user_id&&med.person_id===premiumScope.person_id&&hasKnownEmptyMedicationStock(med));
+      if(!excluded){try{if(!med)throw Error('Medicamento indisponível.');const stock=observedStockContext(med,{...premiumScope,medicationId:item.medicamentoId});if(!stock.basis||!stock.unit||stock.balance===null||stock.balance<=0)throw Error('Estoque não comprovado ou indisponível; revise individualmente.');}catch(error){excluded=error instanceof Error?error.message:'Estoque requer revisão.';}}
+      return [{item,review,key,excluded,knownEmpty}];
+    });
+    if(entries.length<2)return;
+    setBatchTargetKeys(entries.map(({item})=>`${item.medicamentoId}-${item.horario}`));
+    setBatchUnits({});setBatchQuantities({});setBatchResults(null);setBatchDeselected(entries.filter(entry=>entry.knownEmpty).map(entry=>entry.key));
+    setBatchFrozen({context:doseIdentityContext,entries});setBatchCustomTime(`${dataSelecionada}T${operationalMinute}`);
+    trigger('vibrate');setIsBatchTimeModalOpen(true);
   };
+  const handleRevisarHorario=(items:DoseItemExt[])=>openBatchReview(items);
+  const handleTomarTodos=()=>openBatchReview(dosesElegiveisLote);
 
-  const handleTomarTodos = () => {
-    setBatchTargetKeys(null);
-    if (
-      processandoTodos ||
-      processandoDoseId ||
-      dosesElegiveisLote.length < 2
-    ) {
-      return;
-    }
-
-    trigger("vibrate");
-
-    const hhmm = `${String(agora.getHours()).padStart(2, "0")}:${String(
-      agora.getMinutes()
-    ).padStart(2, "0")}`;
-
-    setBatchCustomTime(hhmm);
-    setIsBatchTimeModalOpen(true);
+  const reviewSnapshot=(item:DoseItemExt):DoseSnapshot|null=>{
+    const slot=resolveDoseSlot(premiumSlots,item.medicamentoId||"",dataSelecionada,item.horario);
+    if(slot.state==='conflict'||slot.records.length>1)throw Error("Há mais de um registro neste horário. Revise o histórico.");
+    const row=slot.records[0];if(!row)return null;
+    if(!row.id||!row.person_id||row.user_id!==premiumScope.user_id||row.person_id!==premiumScope.person_id)throw Error("O registro não pertence à pessoa ativa.");
+    return {...row,id:row.id,person_id:row.person_id};
   };
-
+  const frozenEntries=batchFrozen?.context===doseIdentityContext?batchFrozen.entries:[];
+  const reviewUnitFor=(entry:typeof frozenEntries[number])=>{
+    if(entry.excluded)throw Error(entry.excluded);
+    const known=readDoseUnit(entry.review.expected??{}),draft=batchUnits[entry.key];
+    return prepareHomeDoseConfirmation(entry.review,{quantity:batchQuantities[entry.key]??'',code:draft?.code??null,customLabel:draft?.customLabel??'',unitReviewed:known.state==='known'||Boolean(draft),noStock:false},false,true);
+  };
+  const batchReadyEntries=frozenEntries.filter(e=>!e.excluded&&!batchDeselected.includes(e.key));
+  const batchReviewReady=batchReadyEntries.length>0&&batchReadyEntries.every(e=>{try{reviewUnitFor(e);return true;}catch{return false;}});
+  const openIndividualReview=(item:DoseItemExt)=>{
+    if(!item.medicamentoId||!premiumScope.person_id||!premiumScope.user_id)return;
+    setPremiumReview(null);setQuickDoseSlot({context:doseIdentityContext,medicationId:item.medicamentoId,day:dataSelecionada,hour:item.horario});setIsDoseModalOpen(true);
+  };
   type BatchTimeMode = "now" | "scheduled" | "custom";
 
-  const executarTomadaEmLote = async (mode: BatchTimeMode) => {
-    if (
-      batchOperationLock.current ||
-      processandoTodos ||
-      processandoDoseId ||
-      dosesComEstoqueNoLote.length < 1
-    ) {
-      return;
-    }
-
-    if (
-      mode === "scheduled" &&
-      dosesComEstoqueNoLote.some(
-        (dose) =>
-          new Date(`${dataSelecionada}T${dose.horario}:00`).getTime() >
-          Date.now()
-      )
-    ) {
-      showToast(
-        "Esse horário ainda não chegou. Use Tomei agora ou informe a hora real.",
-        "error"
-      );
-      return;
-    }
-
-    let customTakenAt: Date | null = null;
-
-    if (mode === "custom") {
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(batchCustomTime)) {
-        showToast("Informe um horário válido", "error");
-        return;
+  const executarTomadaEmLote=async(mode:BatchTimeMode)=>{
+    if(batchOperationLock.current||processandoTodos||processandoDoseId||!batchReviewReady||batchFrozen?.context!==doseIdentityContext)return;
+    const startedAt=new Date().toISOString(),contextAtStart=doseIdentityContext,ownerAtStart=batchOwnerRef.current;
+    let actual:string|null=null;
+    try{actual=mode==='now'?startedAt:mode==='custom'?civilDoseInstant(batchCustomTime.slice(0,10),batchCustomTime.slice(11,16),startedAt):null;}catch(error){showToast(error instanceof Error?error.message:'Horário inválido.','error');return;}
+    const entries=[...frozenEntries];const rows:NonNullable<typeof batchResults>['rows']=[];
+    const confirmed=new Map<string,ReturnType<typeof reviewUnitFor>>();
+    try{for(const entry of batchReadyEntries)confirmed.set(entry.key,reviewUnitFor(entry));}catch(error){showToast(error instanceof Error?error.message:'Revise as doses.','error');return;}
+    batchOperationLock.current=true;setProcessandoTodos(true);
+    try{
+      for(const entry of entries){
+        const {item,review,key,excluded}=entry,name=item.medicamentoNome||'Medicamento',hour=item.horario;
+        const report=(state:'saved'|'excluded'|'failed',detail:string)=>rows.push({key,name,hour,state,detail});
+        if(batchOwnerRef.current!==ownerAtStart||committedTimeline.current?.scopeKey!==contextAtStart){report('excluded','Contexto alterado durante o lote.');continue;}
+        if(excluded||!confirmed.has(key)){report('excluded',excluded??'Não selecionada nesta revisão.');continue;}
+        try{
+          assertHomeReviewScope(review,premiumScope,{medicamentoId:item.medicamentoId!,data:dataSelecionada,horario:hour});
+          const current=committedTimeline.current?.items.filter(x=>x.medicamentoId===item.medicamentoId&&x.horario===hour&&!x.isAvulsa&&!x.isSintoma&&x.doseKind!=='sos'&&x.doseKind!=='extra')??[];
+          if(current.length!==1||current[0].tomada||current[0].ignorada||current[0].isDataConflict)throw Error('Ocorrência mudou. Confira individualmente.');
+          const dose=confirmed.get(key)!;const scheduledAt=civilDoseInstant(dataSelecionada,hour,startedAt);const takenAt=actual??scheduledAt;
+          const id=await doseLogsRepository.setStatus({personId:review.scope.person_id,medicamentoId:review.scope.medicamento_id,data:review.scope.data,horario:hour,status:'taken',tomadoEm:takenAt,quantidade:dose.quantity,unit:dose.unit,expected:review.expected,requireRegisteredStock:true,onlyIfPending:true});
+          const saved=await doseLogsRepository.getById(id,review.scope.person_id);
+          const savedUnit=readDoseUnit(saved??{});
+          if(!saved||saved.id!==id||saved.user_id!==review.scope.user_id||saved.person_id!==review.scope.person_id||saved.medicamento_id!==review.scope.medicamento_id||saved.data!==review.scope.data||saved.horario.slice(0,5)!==hour||saved.quantidade!==dose.quantity||Boolean(saved.ignorado_em)||savedUnit.state!=='known'||savedUnit.fields.unidade_dose!==dose.unit.unidade_dose||savedUnit.fields.unidade_dose_rotulo!==dose.unit.unidade_dose_rotulo||savedUnit.fields.fonte_unidade!==dose.unit.fonte_unidade||Date.parse(saved.tomado_em??'')!==Date.parse(takenAt))throw Error('Registro local requer conferência antes de nova tentativa.');
+          report('saved',`${new Date(takenAt).toLocaleString('pt-BR')} · ${describeHistoricalDose(saved)} · ${saved.estoque_movimento?.state==='applied'?'movimentação registrada':'estoque requer conferência'} · ${saved.synced?'sincronizado':'aguardando sincronização'}`);
+        }catch(error){report('failed',error instanceof Error?error.message:'Falha ao registrar. Confira o histórico antes de tentar novamente.');}
       }
-
-      customTakenAt = new Date(`${dataSelecionada}T${batchCustomTime}:00`);
-
-      if (
-        Number.isNaN(customTakenAt.getTime()) ||
-        customTakenAt.getTime() > Date.now()
-      ) {
-        showToast("O horário da tomada não pode estar no futuro", "error");
-        return;
-      }
-    }
-
-    // Um único instante para todo o lote no modo "agora".
-    const batchNow = mode === "now" ? new Date() : null;
-
-    batchOperationLock.current = true;
-    setProcessandoTodos(true);
-    setLoteConfirmado([]);
-
-    const confirmadas: DoseItemExt[] = [];
-    let falhas = 0;
-    const snapshotLote = [...dosesComEstoqueNoLote];
-    const ownerAtStart = batchOwnerRef.current;
-    let interrompidoPorTrocaDePessoa = false;
-
-    try {
-      // Serial de propósito: protege duas doses do mesmo medicamento
-      // contra disputa de leitura/gravação do saldo.
-      for (const dose of snapshotLote) {
-        if (batchOwnerRef.current !== ownerAtStart) {
-          interrompidoPorTrocaDePessoa = true;
-          break;
-        }
-        if (!dose.medicamentoId) continue;
-
-        try {
-          let takenAt: Date;
-
-          if (mode === "scheduled") {
-            takenAt = new Date(`${dataSelecionada}T${dose.horario}:00`);
-          } else if (mode === "custom") {
-            takenAt = customTakenAt!;
-          } else {
-            takenAt = batchNow!;
-          }
-
-          if (Number.isNaN(takenAt.getTime())) {
-            throw new Error("Horário real da tomada inválido.");
-          }
-
-          await marcarComoTomadaEm(
-            dose.medicamentoId,
-            dose.horario,
-            takenAt.toISOString(),
-            dose.unidadePorDose,
-            true
-          );
-
-          confirmadas.push(dose);
-        } catch (error) {
-          falhas += 1;
-          console.error("Erro ao registrar dose no lote temporal:", error);
-        }
-      }
-    } finally {
-      // Nenhuma exceção inesperada pode deixar a tela travada em processamento.
-      setLoteConfirmado(
-        batchOwnerRef.current === ownerAtStart ? confirmadas : []
-      );
-      setProcessandoTodos(false);
-      batchOperationLock.current = false;
-    }
-
-    if (confirmadas.length > 0) {
-      setIsBatchTimeModalOpen(false);
-      trigger("success");
-
-      const descricao =
-        mode === "scheduled"
-          ? "nos horários programados"
-          : mode === "custom"
-          ? `às ${batchCustomTime}`
-          : "agora";
-
-      showToast(
-        interrompidoPorTrocaDePessoa
-          ? `${confirmadas.length} registradas antes da troca de pessoa; lote interrompido por segurança`
-          : falhas > 0
-          ? `${confirmadas.length} doses registradas ${descricao}; ${falhas} falharam`
-          : `${confirmadas.length} doses registradas ${descricao}`,
-        falhas > 0 || interrompidoPorTrocaDePessoa ? "info" : "success"
-      );
-    } else {
-      trigger("error");
-      showToast("Nenhuma dose pôde ser registrada", "error");
-    }
+    }finally{batchOperationLock.current=false;setProcessandoTodos(false);}
+    if(batchOwnerRef.current!==ownerAtStart||committedTimeline.current?.scopeKey!==contextAtStart){setIsBatchTimeModalOpen(false);return;}
+    setBatchResults({context:contextAtStart,rows});
+    const count=rows.filter(x=>x.state==='saved').length,remaining=rows.length-count;
+    trigger(remaining?'vibrate':'success');showToast(`${count} registro(s) local(is); ${remaining} não confirmado(s). Consulte o resultado.`,remaining?'info':'success');
   };
 
-  const confirmarDosesNaoTomadasPorEstoque = async () => {
-    if (
-      batchOperationLock.current ||
-      processandoTodos ||
-      !dosesSemEstoqueNoLote.length
-    )
-      return;
-    batchOperationLock.current = true;
-    setProcessandoTodos(true);
-    let registradas = 0,
-      falhas = 0;
-    try {
-      for (const dose of [...dosesSemEstoqueNoLote]) {
-        if (!dose.medicamentoId) continue;
-        try {
-          await marcarComoIgnorada(
-            dose.medicamentoId,
-            dose.horario,
-            dose.unidadePorDose,
-            "sem_estoque",
-            true
-          );
-          registradas++;
-        } catch (error) {
-          console.error(
-            "Falha ao registrar dose não tomada por falta de estoque",
-            error
-          );
-          falhas++;
-        }
+  const stockNonTakeEntries=frozenEntries.filter(entry=>entry.knownEmpty&&!batchDeselected.includes(entry.key));
+  const confirmarDosesNaoTomadasPorEstoque=async()=>{
+    if(batchOperationLock.current||processandoTodos||processandoDoseId||batchFrozen?.context!==doseIdentityContext||!stockNonTakeEntries.length)return;
+    const contextAtStart=doseIdentityContext,ownerAtStart=batchOwnerRef.current;
+    const entries=[...frozenEntries],selected=new Set(stockNonTakeEntries.map(entry=>entry.key));
+    const rows:NonNullable<typeof batchResults>['rows']=[];
+    batchOperationLock.current=true;setProcessandoTodos(true);
+    try{
+      for(const {item,review,key} of entries){
+        const name=item.medicamentoNome||'Medicamento',hour=item.horario;
+        const report=(state:'saved'|'excluded'|'failed',detail:string)=>rows.push({key,name,hour,state,detail});
+        if(!selected.has(key)){report('excluded','Não selecionada para declaração de falta de estoque.');continue;}
+        if(batchOwnerRef.current!==ownerAtStart||committedTimeline.current?.scopeKey!==contextAtStart){report('excluded','Contexto alterado durante o lote.');continue;}
+        try{
+          assertHomeReviewScope(review,premiumScope,{medicamentoId:item.medicamentoId!,data:dataSelecionada,horario:hour});
+          const current=committedTimeline.current?.items.filter(x=>x.medicamentoId===item.medicamentoId&&x.horario===hour&&!x.isAvulsa&&!x.isSintoma&&x.doseKind!=='sos'&&x.doseKind!=='extra')??[];
+          if(current.length!==1||current[0].tomada||current[0].ignorada||current[0].isDataConflict)throw Error('Ocorrência mudou. Confira individualmente.');
+          const id=await doseLogsRepository.setStatus({personId:review.scope.person_id,medicamentoId:review.scope.medicamento_id,data:review.scope.data,horario:hour,status:'ignored',motivo:'sem_estoque',expected:review.expected,onlyIfPending:true,requireKnownEmptyStock:true,adjustStock:false});
+          const saved=await doseLogsRepository.getById(id,review.scope.person_id);
+          if(!saved||saved.id!==id||saved.user_id!==review.scope.user_id||saved.person_id!==review.scope.person_id||saved.medicamento_id!==review.scope.medicamento_id||saved.data!==review.scope.data||saved.horario.slice(0,5)!==hour||!saved.ignorado_em||saved.tomado_em||saved.motivo!=='sem_estoque')throw Error('Registro local requer conferência antes de nova tentativa.');
+          report('saved',`Não tomada por falta de estoque · sem débito · ${saved.synced?'sincronizado':'aguardando sincronização'}`);
+        }catch(error){report('failed',error instanceof Error?error.message:'Falha ao registrar. Confira o histórico.');}
       }
-    } finally {
-      batchOperationLock.current = false;
-      setProcessandoTodos(false);
-    }
-    if (registradas)
-      showToast(
-        `${registradas} dose${registradas === 1 ? "" : "s"} não tomada${
-          registradas === 1 ? "" : "s"
-        } registrada${registradas === 1 ? "" : "s"} com motivo: sem estoque`,
-        "info"
-      );
-    if (falhas)
-      showToast(
-        `${falhas} registro${falhas === 1 ? "" : "s"} não ${
-          falhas === 1 ? "pôde" : "puderam"
-        } ser salvo${falhas === 1 ? "" : "s"}`,
-        "error"
-      );
+    }finally{batchOperationLock.current=false;setProcessandoTodos(false);}
+    if(batchOwnerRef.current!==ownerAtStart||committedTimeline.current?.scopeKey!==contextAtStart){setIsBatchTimeModalOpen(false);return;}
+    setBatchResults({context:contextAtStart,rows});
+    const count=rows.filter(row=>row.state==='saved').length;
+    trigger(count?'success':'error');showToast(`${count} declaração(ões) local(is) de não tomada. Confira o resultado.`,count?'info':'error');
   };
 
-  const handleDesfazerLote = async () => {
-    if (
-      batchOperationLock.current ||
-      processandoTodos ||
-      processandoDoseId ||
-      loteConfirmado.length === 0
-    ) {
-      return;
-    }
-
-    batchOperationLock.current = true;
-    setProcessandoTodos(true);
-
-    const naoDesfeitas: DoseItemExt[] = [];
-
-    try {
-      for (const dose of loteConfirmado) {
-        if (!dose.medicamentoId) continue;
-
-        try {
-          await desmarcarDose(dose.medicamentoId, dose.horario);
-        } catch (error) {
-          naoDesfeitas.push(dose);
-          console.error("Erro ao desfazer dose do lote:", error);
-        }
-      }
-    } finally {
-      setLoteConfirmado(naoDesfeitas);
-      setProcessandoTodos(false);
-      batchOperationLock.current = false;
-    }
-
-    if (naoDesfeitas.length === 0) {
-      trigger("vibrate");
-      showToast("Lote desfeito com segurança", "info");
-    } else {
-      trigger("error");
-      showToast("Algumas doses não puderam ser desfeitas", "error");
-    }
-  };
-
-  const handleIgnorar = async (item: DoseItemExt) => {
-    if (!isHoje) {
-      trigger("vibrate");
-
-      showToast(
-        isPassado
-          ? "Histórico em modo de consulta."
-          : "Ainda não é possível ignorar uma dose futura.",
-        "info"
-      );
-
-      return;
-    }
-
-    if (processandoDoseId || !item.medicamentoId) {
-      return;
-    }
-
-    setProcessandoDoseId(`${item.medicamentoId}-${item.horario}`);
-
-    trigger("vibrate");
-
-    try {
-      await marcarComoIgnorada(item.medicamentoId, item.horario);
-
-      showToast("Dose ignorada", "info");
-    } catch (error) {
-      console.error("Erro ao ignorar dose:", error);
-
-      trigger("error");
-
-      showToast("Erro ao ignorar dose", "error");
-    } finally {
-      setProcessandoDoseId(null);
-    }
+  const handleIgnorar=async(item:DoseItemExt)=>{
+    if(!isHoje||processandoDoseId||!item.medicamentoId||item.isDataConflict||item.horario>operationalMinute){showToast('Confira a ocorrência no histórico ou aguarde o horário programado.','info');return;}
+    openIndividualReview(item);trigger('vibrate');
   };
 
   const filtrosAtivosCount =
@@ -1760,6 +1532,19 @@ export default function HojePage() {
             className="block scroll-mt-24"
             aria-hidden="true"
           />
+          <DosePremiumCenter view={premiumView} history={premiumHistory} selection={premiumSelection}
+            onSelectionChange={selection=>setPremiumNavigation({context:doseIdentityContext,selection})}
+            brain={{...premiumBrain,stockCoverage:premiumStockCoverage,loading:!historyReady||medicationsLoading,periodLabel:premiumBrain.start?`${premiumBrain.start.split('-').reverse().join('/')} – ${hoje.split('-').reverse().join('/')}`:'Últimos 30 dias'}}
+            busy={Boolean(processandoTodos||processandoDoseId||isHistoricalProcessing)}
+            onOpenMedication={row=>{if(row.user_id!==premiumScope.user_id||row.person_id!==premiumScope.person_id||!premiumHistoryMedications.some(m=>m.id===row.medication_id)){showToast("Medicamento não disponível no contexto atual.","info");return;}trigger("vibrate");navigateWithReturnM120(`/saude/medicamentos/detalhes?id=${encodeURIComponent(row.medication_id)}`,premiumSelection);}}
+            onNewRecord={()=>{setQuickDoseSlot(null);setIsDoseModalOpen(true);trigger("vibrate");}}
+            onReview={row=>{if(row.user_id!==premiumScope.user_id||row.person_id!==premiumScope.person_id){showToast("O contexto mudou. Confira novamente.","info");return;}
+              if(row.log_id&&["confirmed","ignored","conflict"].includes(row.status)){if(premiumHistoryMedications.some(m=>m.id===row.medication_id))navigateWithReturnM120(`/saude/medicamentos/historico?id=${encodeURIComponent(row.medication_id)}&month=${encodeURIComponent(row.day.slice(0,7))}&day=${encodeURIComponent(row.day)}`,premiumSelection);return;}
+              const target=resolvePremiumItem(row);if(!target){showToast("O contexto mudou. Confira novamente.","info");return;}trigger("vibrate");setPremiumReview({context:doseIdentityContext,key:row.key});}}
+            onReviewGroup={rows=>{const items=rows.map(resolvePremiumItem);if(items.some(item=>!item)){showToast("As doses mudaram. Confira novamente.","info");return;}handleRevisarHorario(items as DoseItemExt[]);}}
+            onRetry={()=>{if(typeof window!=="undefined")window.dispatchEvent(new Event("sync:process"));}}/>
+          {/* Original clinical timeline remains available, including detailed cards and filters. */}
+          <ClinicalDisclosure key={JSON.stringify([doseIdentityContext,hasFiltrosAtivos,focusDoseTime,retroReviewMode])} id="hoje-detalhes-doses" title="Detalhes da linha do tempo" description="Filtros, registros clínicos e ações individuais completas" icon={<ListChecks size={19}/>} defaultOpen={Boolean(hasFiltrosAtivos||focusDoseTime||retroReviewMode)}>
           {isHoje && filtroStatus === "todos" && concluidasOcultas > 0 && (
             <p className="px-1 text-xs text-ink-muted">
               {formatPtBrQuantity(
@@ -1840,6 +1625,7 @@ export default function HojePage() {
             })
           )}
 
+          </ClinicalDisclosure>
           {/* M150 P5 P5 — depois das doses, orientacoes e agenda reais permanecem acessiveis. */}
           {/* M150 P5 P5: comando do Brain permanece visivel, mas depois da fila de doses. */}
           {/* Conteudo de evidencias separado da autoridade do registro de doses. */}
@@ -2231,248 +2017,26 @@ export default function HojePage() {
         {/* =========================================================
             V46 — CONFIRMAÇÃO TEMPORAL DO LOTE
         ========================================================= */}
-        <AnimatePresence>
-          {isBatchTimeModalOpen && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Fechar confirmação de doses"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => {
-                  if (!processandoTodos) {
-                    setIsBatchTimeModalOpen(false);
-                  }
-                }}
-                className="fixed inset-0 z-[98] bg-black/70 backdrop-blur-sm"
-              />
-
-              <motion.div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Quando as doses foram tomadas"
-                initial={{ opacity: 0, y: 24, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 24, scale: 0.98 }}
-                className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[99] mx-auto max-h-[calc(100dvh-env(safe-area-inset-bottom)-8rem)] max-w-md overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
-                    <Clock size={19} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-emerald-400">
-                      Revisão de doses
-                    </p>
-                    <h3 className="mt-1 text-base font-bold text-ink-primary">
-                      Como registrar estas {dosesElegiveisLote.length} doses?
-                    </h3>
-                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                      O horário programado continua como referência. O horário
-                      real é salvo separadamente para o histórico e para a
-                      inteligência do Vault. Se a dose for antecipada, use
-                      "Tomei agora" ou informe o horário real; o Vault não
-                      altera a programação original.
-                    </p>
-                  </div>
-                </div>
-
-                {dosesSemEstoqueNoLote.length > 0 && (
-                  <div className="mt-3 overflow-hidden rounded-xl border border-amber-400/25 bg-amber-400/[0.055]">
-                    <div className="flex items-start gap-2 p-3">
-                      <PackageX
-                        size={16}
-                        className="mt-0.5 shrink-0 text-amber-300"
-                      />
-                      <div>
-                        <p className="text-xs font-bold text-amber-200">
-                          Saldo insuficiente em {dosesSemEstoqueNoLote.length}{" "}
-                          {dosesSemEstoqueNoLote.length === 1
-                            ? "dose"
-                            : "doses"}
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                          Saldo zerado não comprova que a dose deixou de ser
-                          tomada. Revise o que aconteceu.
-                        </p>
-                      </div>
-                    </div>
-                    <ul className="border-y border-amber-400/15 bg-void/15 px-3 py-2 text-xs text-ink-primary">
-                      {dosesSemEstoqueNoLote.map((d) => (
-                        <li
-                          key={`${d.medicamentoId}-${d.horario}`}
-                          className="flex min-h-8 items-center justify-between gap-2"
-                        >
-                          <span className="truncate">{d.medicamentoNome}</span>
-                          <span className="shrink-0 text-ink-muted">
-                            {d.horario}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      type="button"
-                      disabled={processandoTodos}
-                      onClick={() => void confirmarDosesNaoTomadasPorEstoque()}
-                      className="min-h-11 w-full px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40"
-                    >
-                      Confirmar que não tomei por falta de estoque
-                    </button>
-                  </div>
-                )}
-                {dosesComEstoqueNoLote.length > 0 ? (
-                  <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/[0.06] p-2.5 text-xs text-emerald-300">
-                    <CheckCircle2 size={14} />
-                    {dosesComEstoqueNoLote.length}{" "}
-                    {dosesComEstoqueNoLote.length === 1
-                      ? "dose disponível"
-                      : "doses disponíveis"}{" "}
-                    para confirmar
-                  </p>
-                ) : (
-                  <p className="mt-3 text-xs text-amber-300">
-                    Nenhuma dose com saldo confirmado para registrar como tomada
-                    neste lote.
-                  </p>
-                )}
-                <div className="mt-4 space-y-2">
-                  <button
-                    type="button"
-                    disabled={
-                      processandoTodos || dosesComEstoqueNoLote.length === 0
-                    }
-                    onClick={() => void executarTomadaEmLote("now")}
-                    className="flex min-h-[58px] w-full items-center justify-between rounded-xl bg-emerald-400 px-4 py-3 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
-                  >
-                    <div>
-                      <p className="text-xs font-bold">Tomei agora</p>
-                      <p className="mt-0.5 text-xs opacity-70">
-                        Mesmo instante real para as doses disponíveis
-                      </p>
-                    </div>
-                    {processandoTodos ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <CheckCircle2 size={18} />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={
-                      processandoTodos ||
-                      dosesComEstoqueNoLote.length === 0 ||
-                      dosesComEstoqueNoLote.some(
-                        (dose) =>
-                          new Date(
-                            `${dataSelecionada}T${dose.horario}:00`
-                          ).getTime() > Date.now()
-                      )
-                    }
-                    onClick={() => void executarTomadaEmLote("scheduled")}
-                    className="flex min-h-[58px] w-full items-center justify-between rounded-xl border border-ice/20 bg-ice/5 px-4 py-3 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
-                  >
-                    <div>
-                      <p className="text-xs font-bold">
-                        Tomei nos horários programados
-                      </p>
-                      <p className="mt-0.5 text-xs text-ink-muted">
-                        Cada dose mantém seu próprio horário previsto
-                      </p>
-                    </div>
-                    <Clock size={18} className="text-ice" />
-                  </button>
-
-                  <div className="rounded-xl border border-surface-border bg-surface-raised p-3">
-                    <label
-                      htmlFor="vault-batch-real-time"
-                      className="text-xs font-semibold text-ink-muted"
-                    >
-                      Tomei as disponíveis em outro horário
-                    </label>
-                    <div className="mt-2 flex gap-2">
-                      <fieldset
-                        disabled={processandoTodos}
-                        className="min-w-0 flex-1"
-                      >
-                        <HealthTimePicker
-                          value={batchCustomTime}
-                          onChange={setBatchCustomTime}
-                        />
-                      </fieldset>
-                      <button
-                        type="button"
-                        disabled={
-                          processandoTodos ||
-                          dosesComEstoqueNoLote.length === 0 ||
-                          !batchCustomTime
-                        }
-                        onClick={() => void executarTomadaEmLote("custom")}
-                        className="rounded-xl border border-ice/25 bg-ice/10 px-4 py-2.5 text-xs font-bold text-ice transition-all active:scale-[0.98] disabled:opacity-40"
-                      >
-                        Registrar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={processandoTodos}
-                  onClick={() => setIsBatchTimeModalOpen(false)}
-                  className="mt-3 w-full rounded-2xl px-4 py-2.5 text-xs font-semibold text-ink-muted transition-all active:scale-[0.99] disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+        <BottomSheet isOpen={isBatchTimeModalOpen&&batchFrozen?.context===doseIdentityContext} onClose={()=>{if(!processandoTodos)setIsBatchTimeModalOpen(false);}} title={batchResults?.context===doseIdentityContext?'Resultado da revisão':'Revisar doses selecionadas'} height="auto">
+          <div className="space-y-3">
+          {batchResults?.context===doseIdentityContext?<><p role="status" className="text-sm text-ink-muted">A confirmação local não equivale à confirmação da nuvem. Revise cada resultado antes de repetir uma ação.</p>{batchResults.rows.map(row=><section key={row.key} className="rounded-xl border border-surface-border p-3"><p className="break-words text-sm font-semibold">{row.name} · {row.hour}</p><p className={`mt-1 text-xs ${row.state==='saved'?'text-emerald-300':'text-amber-300'}`}>{row.state==='saved'?'Registro local confirmado':row.state==='excluded'?'Excluída':'Não confirmada'} · {row.detail}</p></section>)}<button type="button" onClick={()=>setIsBatchTimeModalOpen(false)} className="min-h-12 w-full rounded-xl bg-surface-raised text-sm font-bold">Voltar à Central</button></>:<>
+          <p className="text-sm text-ink-muted">{batchReadyEntries.length} elegíveis para conferência, {frozenEntries.length-batchReadyEntries.length} excluídas. Informe o que aconteceu; a quantidade prevista não é uma confirmação.</p>
+          {frozenEntries.map(entry=>{const {item,key,review,excluded,knownEmpty}=entry;const selected=!batchDeselected.includes(key);const known=readDoseUnit(review.expected??{});let stockLabel:string|null=null;try{const dose=reviewUnitFor(entry),med=medicamentosById.get(item.medicamentoId!);if(med){const stock=observedStockContext(med,{...premiumScope,medicationId:item.medicamentoId!});const debit=comparableDebit(dose.quantity,dose.unit,stock,observedStockConversion(med,stock));stockLabel=debit!==null&&stock.balance!==null&&stock.basis?`Movimentação prevista: ${debit.toLocaleString('pt-BR')} ${med.estoque_unidade_medida}. Sujeita à conferência transacional.`:'Movimentação não comprovada; o escritor revalidará.';}}catch{}return <section key={key} className="space-y-3 rounded-2xl border border-surface-border bg-surface-raised/60 p-3"><div className="flex min-w-0 items-center gap-3"><MedicationFormatIcon formato={item.formato} cores={item.cores} size={32}/><div className="min-w-0 flex-1"><p className="break-words text-sm font-bold">{item.medicamentoNome}</p><p className="break-words text-xs text-ink-muted">{item.dosagem||'Concentração não informada'}</p></div><span className="shrink-0 text-sm text-ice">{item.horario}</span></div>{(!excluded||knownEmpty)&&<button type="button" aria-pressed={selected} disabled={processandoTodos} onClick={()=>setBatchDeselected(old=>old.includes(key)?old.filter(x=>x!==key):[...old,key])} className={`flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${selected?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>{selected?<CheckCircle2 size={18} aria-hidden="true"/>:<Circle size={18} aria-hidden="true"/>}{knownEmpty?(selected?'Selecionada para declarar não tomada':'Selecionar para declarar não tomada'):(selected?'Incluída na revisão':'Incluir nesta revisão')}</button>}{excluded?<><p className="text-xs text-amber-300">Excluída · {excluded}</p><button type="button" disabled={processandoTodos} className="min-h-11 w-full rounded-xl border border-surface-border text-sm font-semibold" onClick={()=>{setIsBatchTimeModalOpen(false);openIndividualReview(item);}}>Revisar individualmente</button></>:!selected?<p className="text-xs text-ink-muted">Excluída por você; nenhum registro será alterado.</p>:<><label className="block text-xs text-ink-muted">Quantidade realmente administrada<input inputMode="decimal" value={batchQuantities[key]??''} disabled={processandoTodos} onChange={e=>setBatchQuantities(old=>({...old,[key]:e.target.value}))} placeholder={review.suggestedQuantity?.toLocaleString('pt-BR')||'Informe a quantidade'} className="mt-1 min-h-11 w-full rounded-xl border border-surface-border bg-void px-3 text-sm text-ink-primary"/></label>{known.state==='known'?<p className="text-xs text-emerald-300">Unidade registrada: {describeHistoricalDose({...known.fields,quantidade:1})}</p>:<DoseHistoricalUnitField value={batchUnits[key]??{code:null,customLabel:''}} disabled={processandoTodos} onChange={draft=>setBatchUnits(old=>({...old,[key]:draft}))}/>}<p className="text-xs text-ink-muted">{stockLabel||'Informe quantidade e unidade para conferir o impacto no saldo.'}</p></>}</section>;})}
+          {frozenEntries.some(entry=>entry.knownEmpty)&&<section className="space-y-2 rounded-xl border border-amber-300/30 bg-amber-300/5 p-3"><p className="text-sm font-semibold text-amber-200">{stockNonTakeEntries.length} ocorrência(s) selecionada(s) com saldo registrado zerado.</p><p className="text-xs text-ink-muted">Saldo zerado não confirma que a dose não foi tomada. Selecione somente as que realmente não tomou por falta de estoque.</p><button type="button" disabled={processandoTodos||!stockNonTakeEntries.length} onClick={()=>void confirmarDosesNaoTomadasPorEstoque()} className="min-h-12 w-full rounded-xl border border-amber-300/30 text-sm font-bold text-amber-200 disabled:opacity-40">Confirmar que não tomei as selecionadas por falta de estoque</button></section>}
+          <button type="button" disabled={processandoTodos||!batchReviewReady} onClick={()=>void executarTomadaEmLote('scheduled')} className="min-h-12 w-full rounded-xl border border-emerald-300/30 bg-emerald-300/10 text-sm font-bold text-emerald-200 disabled:opacity-40">Tomei nos horários previstos</button>
+          <button type="button" disabled={processandoTodos||!batchReviewReady} onClick={()=>void executarTomadaEmLote('now')} className="min-h-12 w-full rounded-xl border border-ice/30 bg-ice/10 text-sm font-bold text-ice disabled:opacity-40">Tomei agora</button>
+          <label className="block text-sm text-ink-muted">Outra data e horário reais<HealthDateTimePicker value={batchCustomTime} onChange={setBatchCustomTime} max={`${hoje}T23:59`} disabled={processandoTodos}/></label>
+          <button type="button" disabled={processandoTodos||!batchReviewReady||!batchCustomTime} onClick={()=>void executarTomadaEmLote('custom')} className="min-h-12 w-full rounded-xl border border-surface-border text-sm font-bold disabled:opacity-40">Registrar neste horário</button>
+          {processandoTodos&&<p role="status" className="text-sm text-ice">Conferindo e registrando uma dose de cada vez…</p>}
+          </>}
+          </div>
+        </BottomSheet>
 
         {/* =========================================================
             MODAL — DOSE AVULSA
         ========================================================= */}
-        <AnimatePresence>
-          {historicalDoseReviewItem && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Fechar revisão histórica"
-                initial={{
-                  opacity: 0,
-                }}
-                animate={{
-                  opacity: 1,
-                }}
-                exit={{
-                  opacity: 0,
-                }}
-                onClick={fecharRevisaoHistorica}
-                className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm"
-              />
-
-              <motion.div
-                initial={{
-                  opacity: 0,
-
-                  y: 36,
-                }}
-                animate={{
-                  opacity: 1,
-
-                  y: 0,
-                }}
-                exit={{
-                  opacity: 0,
-
-                  y: 36,
-                }}
-                transition={{
-                  duration: 0.18,
-                }}
-                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[120] mx-auto max-w-lg rounded-[30px] border border-surface-border bg-surface p-5 shadow-2xl"
-              >
+        <BottomSheet isOpen={Boolean(historicalDoseReviewItem&&historicalReviewScope===doseIdentityContext)} onClose={fecharRevisaoHistorica} title="Revisão histórica" height="auto">
+          {historicalDoseReviewItem&&historicalReviewScope===doseIdentityContext&&<div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                     <Clock size={20} />
@@ -2532,6 +2096,8 @@ export default function HojePage() {
                   </div>
                 )}
 
+                {(()=>{const row=historicalExpected;const known=readDoseUnit(row??{});return <div className="mt-3 rounded-xl border border-surface-border bg-surface p-3">{known.state==='known'?<p className="text-sm text-ink-primary">{describeHistoricalDose(row!)}</p>:known.state==='invalid'?<p className="text-sm text-amber-300">Unidade requer revisão.</p>:<DoseHistoricalUnitField value={historicalUnitDraft??{code:null,customLabel:''}} disabled={isHistoricalProcessing} onChange={setHistoricalUnitDraft}/>}</div>;})()}
+                <label className="block text-xs text-ink-muted">Quantidade realmente administrada<input inputMode="decimal" value={historicalQuantity} onChange={e=>setHistoricalQuantity(e.target.value)} disabled={isHistoricalProcessing} placeholder={historicalExpected?.quantidade?.toLocaleString('pt-BR')||'Informe a quantidade'} className="mt-1 min-h-11 w-full rounded-xl border border-surface-border bg-void px-3 text-sm text-ink-primary"/></label>
                 {!historicalCustomMode ? (
                   <div className="mt-4 space-y-2">
                     <button
@@ -2619,8 +2185,7 @@ export default function HojePage() {
                       <HealthDateTimePicker
                         value={historicalCustomTakenAt}
                         onChange={setHistoricalCustomTakenAt}
-                        min={`${dataSelecionada}T00:00`}
-                        max={`${dataSelecionada}T23:59`}
+                        max={`${hoje}T23:59`}
                         disabled={isHistoricalProcessing}
                         className="mt-2"
                       />
@@ -2656,55 +2221,20 @@ export default function HojePage() {
                   “Não lembro” não cria nenhum registro e permanece fora das
                   métricas de adesão.
                 </p>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+              </div>}
+        </BottomSheet>
+        <BottomSheet isOpen={Boolean(doseCorrection&&doseCorrection.context===doseIdentityContext)} onClose={()=>{if(!correctionLock.current)setDoseCorrection(null);}} title="Conferir correção do registro" height="auto">
+          {doseCorrection&&doseCorrection.context===doseIdentityContext&&<div className="space-y-3"><div className="flex items-center gap-3"><MedicationFormatIcon formato={doseCorrection.item.formato} cores={doseCorrection.item.cores} size={34}/><div className="min-w-0"><p className="break-words font-semibold">{doseCorrection.item.medicamentoNome}</p><p className="text-xs text-ink-muted">{doseCorrection.expected.data.split('-').reverse().join('/')} · {doseCorrection.expected.horario} · {describeHistoricalDose(doseCorrection.expected)}</p></div></div><p className="rounded-xl border border-amber-300/25 bg-amber-300/5 p-3 text-sm text-amber-200">{doseCorrection.action==='cancel'?'Cancelar este agendamento sem alterar o estoque.':'A correção só será aplicada se o registro continuar idêntico ao revisado. Uma restituição exige o débito original comprovado e o mesmo ciclo de estoque.'}</p><button type="button" disabled={Boolean(processandoDoseId)} onClick={()=>void confirmDoseCorrection()} className="min-h-12 w-full rounded-xl border border-coral/40 bg-coral/10 text-sm font-semibold text-coral disabled:opacity-40">{doseCorrection.action==='cancel'?'Cancelar agendamento':'Remover este registro'}</button><button type="button" disabled={Boolean(processandoDoseId)} onClick={()=>setDoseCorrection(null)} className="min-h-11 w-full rounded-xl border border-surface-border text-sm font-semibold">Manter registro</button></div>}
+        </BottomSheet>
 
-        <AnimatePresence>
-          {loteConfirmado.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.96 }}
-              className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md rounded-[22px] border border-emerald-400/25 bg-surface/95 p-3 shadow-2xl backdrop-blur-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-400">
-                  <CheckCircle2 size={17} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-ink-primary">
-                    {loteConfirmado.length}{" "}
-                    {loteConfirmado.length === 1
-                      ? "dose registrada"
-                      : "doses registradas"}
-                  </p>
-                  <p className="mt-0.5 text-xs text-ink-muted">
-                    Estoque movimentado pela quantidade real de cada dose.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleDesfazerLote()}
-                  disabled={processandoTodos}
-                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-surface-raised px-3 py-2 text-[10px] font-bold text-ice disabled:opacity-50"
-                >
-                  {processandoTodos ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <RotateCcw size={13} />
-                  )}
-                  Desfazer
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+        <BottomSheet isOpen={Boolean(premiumSelected)} onClose={()=>{if(!processandoDoseId)setPremiumReview(null);}} title="Conferir dose" height="auto">
+          {premiumSelected&&<TodayDoseTimelineCard item={premiumSelected} scope={{...doseCardScope,abrirRevisaoHistorica:item=>{setPremiumReview(null);abrirRevisaoHistorica(item);}}}/>}
+        </BottomSheet>
         <QuickDoseModal
-          isOpen={isDoseModalOpen}
-          onClose={() => setIsDoseModalOpen(false)}
+          isOpen={isDoseModalOpen&&(!quickDoseSlot||quickDoseSlot.context===doseIdentityContext)}
+          preselectedMedicamentoId={quickDoseSlot?.context===doseIdentityContext?quickDoseSlot.medicationId:undefined}
+          initialSlot={quickDoseSlot?.context===doseIdentityContext?{day:quickDoseSlot.day,hour:quickDoseSlot.hour}:undefined}
+          onClose={() => {setIsDoseModalOpen(false);setQuickDoseSlot(null);}}
           onSuccess={() => {
             if (typeof window !== "undefined") {
               window.dispatchEvent(new Event("sync:process"));

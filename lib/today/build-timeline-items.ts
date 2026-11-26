@@ -1,3 +1,4 @@
+import { historicalDoseUnitLabel } from "@/lib/dose-premium/historical-unit";
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 // M137: tipo apenas; testes M19/M23/V94 usam importações de runtime fechadas.
 import type { DosePlanOrigin } from "@/lib/dose-plan-authority";
@@ -140,17 +141,22 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     for (const horario of horarios) {
       scheduledKeys.add(`${med.id}-${horario}`);
       const slot = resolveDoseSlot(slotIndex, med.id, input.dataSelecionada, horario);
+      // A persisted planned occurrence is represented once, by its exact ID below.
+      // A second fabricated continuous row for the same slot would distort the denominator.
+      if(slot.records.length===1&&slot.records[0].dose_kind==='planned')continue;
+      const persisted=slot.records.length===1&&(slot.state==='taken'||slot.state==='ignored')?slot.records[0]:undefined;
       list.push({
         medicamentoId: med.id, medicamentoNome: med.nome, dosagem: med.dosagem, formato: med.formato, cores: med.cores,
-        horario, tomada: slot.state === "taken", ignorada: slot.state === "ignored", isDataConflict: slot.state === "conflict",
+        horario, tomada: slot.state === "taken", ignorada: slot.state === "ignored", isDataConflict: slot.state === "conflict" || slot.records.length>1,
         cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock.info?.quantidadeRestante ?? null,
         estoqueTotal: stock.registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
-        unidadePorDose: med.estoque_unidade_por_dose, unidadeDose, medicoNome: doctor?.nome || med.medico,
+        unidadePorDose: persisted ? (persisted.quantidade??undefined) : med.estoque_unidade_por_dose,
+        unidadeDose: persisted ? historicalDoseUnitLabel(persisted) : unidadeDose, medicoNome: doctor?.nome || med.medico,
         medicoId: doctor?.id, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id, tratamentoCor: treatment?.cor,
         farmaciaNome: pharmacy?.nome, farmaciaId: pharmacy?.id, estabelecimentoNome: hospital?.nome,
         estabelecimentoId: hospital?.id, proximaRenovacao: med.proxima_renovacao,
         diasRestantes, insight, receitaVencida, comportamento,
-        isAvulsa: false, scheduleOrigin: "continuous", isExpectedUnconfirmed: !input.isHoje && slot.state === "absent",
+        isAvulsa: false, scheduleOrigin: "continuous", logId: persisted?.id, isExpectedUnconfirmed: !input.isHoje && slot.state === "absent",
       });
     }
   }
@@ -162,12 +168,14 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     // A30: curso curto amanhã nunca aparece como pendência de hoje.
     // O horário selecionado é uma projeção, sem alterar nenhum DoseLog.
     if (log.data && log.data !== input.dataSelecionada) continue;
-    if (input.userId && log.user_id && log.user_id !== input.userId) continue;
-    if (input.personId && log.person_id && log.person_id !== input.personId) continue;
+    if (input.userId && log.user_id !== input.userId) continue;
+    if (input.personId && log.person_id !== input.personId) continue;
     if (!log.medicamento_id) continue;
     const med = medicationById.get(log.medicamento_id);
     if (!med) continue;
-    const scheduled = scheduledKeys.has(`${med.id}-${log.horario}`);
+    const hour=typeof log.horario==='string'?log.horario.slice(0,5):'';
+    if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(hour))continue;
+    const scheduled = scheduledKeys.has(`${med.id}-${hour}`);
     // Prefixo canônico de lib/health-supply/temporary-course.ts.
     // Sem import runtime novo: contrato histórico M19/M23/V94 usa loader fechado.
     const courseSlot = log.dose_kind === "planned" && typeof log.motivo === "string" &&
@@ -175,26 +183,27 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     const planOrigin: DosePlanOrigin = log.dose_kind === "planned"
       ? courseSlot ? "temporary_course" : log.motivo?.trim() ? "ad_hoc" : "unknown"
       : log.dose_kind === "sos" ? "sos"
-      : log.dose_kind === "extra" ? "extra" : "unknown";
+      : log.dose_kind === "extra" ? "extra" : log.dose_kind === "scheduled" ? "continuous" : "unknown";
     const displaySeparately = !scheduled || log.dose_kind === "extra" || log.dose_kind === "sos" || log.dose_kind === "planned";
-    if (!displaySeparately || (!log.tomado_em && log.dose_kind !== "planned") || existingLogIds.has(log.id)) continue;
+    if (!displaySeparately || (!log.tomado_em && !log.ignorado_em && log.dose_kind !== "planned") || existingLogIds.has(log.id)) continue;
     const treatment = treatmentById.get((med.tratamento_ids || [])[0]);
     const doctor = doctorById.get(med.medico_id);
     const stock = stockFor(med);
     list.push({
       medicamentoId: med.id, medicamentoNome: med.nome, dosagem: med.dosagem, formato: med.formato, cores: med.cores,
-      horario: log.horario || "00:00", tomada: Boolean(log.tomado_em), ignorada: Boolean(log.ignorado_em),
+      horario: hour, tomada: Boolean(log.tomado_em), ignorada: Boolean(log.ignorado_em),
       cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock.registeredQuantity,
       estoqueTotal: stock.registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
-      unidadePorDose: log.quantidade ?? med.estoque_unidade_por_dose, unidadeDose: doseUnit(med),
+      unidadePorDose: log.quantidade ?? undefined, unidadeDose: log.tomado_em||log.ignorado_em?historicalDoseUnitLabel(log):doseUnit(med),
       medicoNome: doctor?.nome || med.medico, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id,
       tratamentoCor: treatment?.cor,
       // SOS e extra continuam avulsos; só o curso declarado é rotina programada.
-      ...(courseSlot
+      ...(courseSlot||log.dose_kind==="scheduled"
         ? { isAvulsa: false, scheduleOrigin: planOrigin }
         : { isAvulsa: true, scheduleOrigin: planOrigin }),
-      motivoAvulsa: courseSlot ? undefined : log.motivo || (log.dose_kind === "planned" ? "Dose avulsa agendada" : log.dose_kind === "extra" ? "Dose extra" : "Dose avulsa / SOS"),
-      doseKind: log.dose_kind === "planned" ? "planned" : log.dose_kind === "extra" ? "extra" : "sos", logId: log.id,
+      isDataConflict: Boolean(log.tomado_em&&log.ignorado_em)||(log.dose_kind==='planned'||log.dose_kind==='scheduled'?resolveDoseSlot(slotIndex,med.id,input.dataSelecionada,hour).records.length>1:false),
+      motivoAvulsa: courseSlot ? undefined : log.motivo || (log.dose_kind === "planned" ? "Dose avulsa agendada" : log.dose_kind === "extra" ? "Dose extra" : log.dose_kind=== "sos" ? "Dose avulsa / SOS" : log.dose_kind === "scheduled" ? "Registro programado histórico" : "Origem não informada"),
+      doseKind: log.dose_kind === "planned" ? "planned" : log.dose_kind === "extra" ? "extra" : log.dose_kind === "sos" ? "sos" : undefined, logId: log.id,
     });
     existingLogIds.add(log.id);
   }

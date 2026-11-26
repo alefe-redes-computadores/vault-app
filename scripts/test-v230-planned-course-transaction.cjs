@@ -38,7 +38,7 @@ function load(file){const filename=path.resolve(file);if(cache.has(filename))ret
  assert.equal(summary.length,1,'current open course is shown once; settled historical course remains stored without an open alert');
  assert.equal(summary.find(row=>row.pending)?.pending,1);
  assert.deepEqual(load('lib/health-intelligence/temporary-course-insights.ts').temporaryCourseSummaries({personId:'p',userId:'other',hoje:dateOffset(0),medicamentos:[med],doseLogs:before}),[]);
- const home=fs.readFileSync('app/page.tsx','utf8');assert(home.includes('log.data < ontem'));assert(home.includes('doseLogsRepository.setStatus({ personId: activePersonId'));
+ const home=fs.readFileSync('app/page.tsx','utf8');assert(home.includes('log.data < ontem'));assert(home.includes('doseLogsRepository.setStatus({personId:scope.person_id')&&home.includes('assertHomeReviewScope(dose.review,scope,dose)'));
  const avatar=fs.readFileSync('components/saude/HealthAvatar3D.tsx','utf8');assert(!avatar.includes('positions.setX('));
  console.log('V230: real IndexedDB planning, idempotence, stock isolation, preserve taken, cancel future, queue rollback, owner scope, historical Home and WebGL geometry OK');
 })().finally(()=>db.delete()).catch(e=>{console.error(e);process.exitCode=1});

@@ -1,5 +1,6 @@
 // lib/sync/enfileirarOperacao.ts
 
+import { atomicQueueKey,parseMedicationIntent,intentFromQueue } from "@/lib/dose-premium/atomic-envelope";
 import { db } from "@/lib/db";
 
 import type {
@@ -257,8 +258,9 @@ export async function enfileirarOperacao(
     );
   }
 
-  const chave =
-    `${tabela}:${id}`;
+  const atomic=payloadNovo.macro02_atomic===undefined?null:parseMedicationIntent(payloadNovo.macro02_atomic);
+  const chave=atomic?atomicQueueKey(atomic):`${tabela}:${id}`;
+  if(atomic)intentFromQueue({table:tabela,operation:operacao,chave,payload:payloadNovo});
 
   const agora =
     new Date()
@@ -312,6 +314,7 @@ export async function enfileirarOperacao(
     return;
   }
 
+  if(atomic)throw Error("Intenção acoplada imutável já existe; não será mesclada.");
   const operacaoAnterior =
     existente.operation as
       Operacao;

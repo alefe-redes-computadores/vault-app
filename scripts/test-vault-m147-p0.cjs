@@ -53,7 +53,7 @@ ok(home.includes(': "Agenda de hoje"'),'no misleading upcoming heading');
 ok(home.indexOf('id="home-compromissos"')<home.indexOf('id="home-atencao"') && home.indexOf('id="home-atencao"')<home.indexOf('id="home-brain"'),'M145 priority order preserved');
 const today=read(paths[6]);
 ok(today.includes('navigateWithReturnM120("/saude/central-m144")') &&
-   today.includes('const navigateWithReturnM120 = (href: string) =>') &&
+   today.includes('const navigateWithReturnM120 = (href: string, premiumState?: DoseCenterSelection) =>') &&
    today.includes('router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)))') &&
    /onClick=\{\(\)\s*=>\s*\{\s*trigger\("vibrate"\);\s*navigateWithReturnM120\("\/saude\/central-m144"\);\s*\}\}/.test(today) &&
    !today.includes('<a href="/saude/central-m144"'), 'Hoje client navigation');

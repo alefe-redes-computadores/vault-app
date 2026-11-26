@@ -1,10 +1,11 @@
 // lib/health-intelligence/sos-patterns.ts
+import { summarizeHistoricalQuantities, type DoseUnitFields } from "../dose-premium/historical-unit";
 
 import type {
   Medicamento,
 } from "@/lib/types";
 
-type SosDoseLog = {
+type SosDoseLog = Partial<DoseUnitFields>&{
   id?: string;
   medicamento_id?: string;
   data?: string;
@@ -48,6 +49,7 @@ type WindowSummary = {
   peakDayCount: number;
   knownQuantity: number;
   quantityComplete: boolean;
+  quantitySummary:ReturnType<typeof summarizeHistoricalQuantities>;
   logs: SosDoseLog[];
 };
 
@@ -78,7 +80,7 @@ function shiftDate(value: string, days: number): string | null {
 }
 
 function isTaken(log: SosDoseLog): boolean {
-  return Boolean(log.tomado_em);
+  return Boolean(log.tomado_em)&&!log.ignorado_em;
 }
 
 function summarizeWindow(
@@ -90,17 +92,8 @@ function summarizeWindow(
     isTaken(log) && isIsoDate(log.data) && log.data >= start && log.data <= end
   );
   const perDay = new Map<string, number>();
-  let knownQuantity = 0;
-  let knownCount = 0;
-
-  for (const log of selected) {
-    perDay.set(log.data, (perDay.get(log.data) || 0) + 1);
-    const quantity = Number(log.quantidade);
-    if (Number.isFinite(quantity) && quantity > 0) {
-      knownQuantity += quantity;
-      knownCount += 1;
-    }
-  }
+  for(const log of selected)perDay.set(log.data,(perDay.get(log.data)||0)+1);
+  const quantitySummary=summarizeHistoricalQuantities(selected);
 
   const dates = Array.from(perDay.keys()).sort();
 
@@ -109,8 +102,8 @@ function summarizeWindow(
     daysWithUse: dates.length,
     dates,
     peakDayCount: Math.max(0, ...Array.from(perDay.values())),
-    knownQuantity,
-    quantityComplete: selected.length > 0 && knownCount === selected.length,
+    knownQuantity:quantitySummary.comparable?.quantity??0,
+    quantityComplete:quantitySummary.complete,quantitySummary,
     logs: selected,
   };
 }
@@ -193,14 +186,16 @@ export function analyzeSosPattern({
 
   // VAULT_BRAIN_V50_SOS_QUANTITY
   // Quantidade só participa da gravidade quando todos os registros
-  // da janela possuem quantidade conhecida. Nunca inventamos quantidade.
+  // da janela possuem quantidade conhecida e UMA unidade histórica explícita comum.
+  // Os antigos limiares observacionais não representam segurança clínica.
+  const comparablePeriods=current.quantityComplete&&previous.quantityComplete&&current.quantitySummary.comparable?.key===previous.quantitySummary.comparable?.key;
   const quantityDifference =
-    current.quantityComplete && previous.quantityComplete
+    comparablePeriods
       ? current.knownQuantity - previous.knownQuantity
       : null;
 
   const quantityRatio =
-    current.quantityComplete && previous.quantityComplete && previous.knownQuantity > 0
+    comparablePeriods && previous.knownQuantity > 0
       ? current.knownQuantity / previous.knownQuantity
       : null;
 
@@ -208,7 +203,7 @@ export function analyzeSosPattern({
     current.count >= 21 ||
     (current.quantityComplete && current.knownQuantity >= 21) ||
     (ratio !== null && ratio >= 3 && difference >= 10) ||
-    (quantityRatio !== null && quantityRatio >= 3 && quantityDifference !== null && quantityDifference >= 10) ||
+    (quantityRatio !== null && quantityRatio >= 3 && quantityDifference !== null && quantityDifference > 0 && current.count>=4) ||
     intervals.shortIntervals >= 5 ||
     (consecutive >= 7 && current.count >= 14);
 
@@ -216,7 +211,7 @@ export function analyzeSosPattern({
     current.count >= 7 ||
     (current.quantityComplete && current.knownQuantity >= 7) ||
     (ratio !== null && ratio >= 1.5 && difference >= 3) ||
-    (quantityRatio !== null && quantityRatio >= 1.5 && quantityDifference !== null && quantityDifference >= 3) ||
+    (quantityRatio !== null && quantityRatio >= 1.5 && quantityDifference !== null && quantityDifference > 0 && current.count>=3) ||
     intervals.shortIntervals >= 2 ||
     (consecutive >= 4 && current.count >= 4);
 
@@ -250,17 +245,9 @@ export function analyzeSosPattern({
       intervals.shortestIntervalMinutes + " minuto(s)"
     );
   }
-  if (current.knownQuantity > 0) {
-    evidence.push(
-      (current.quantityComplete ? "Quantidade total conhecida: " : "Quantidade parcial conhecida: ") +
-      current.knownQuantity
-    );
-  }
-  if (current.quantityComplete && previous.quantityComplete && previous.count > 0) {
-    evidence.push(
-      "Quantidade no período anterior: " + previous.knownQuantity
-    );
-  }
+  for(const group of current.quantitySummary.groups)evidence.push("Quantidade registrada por unidade: "+group.label);
+  if(current.quantitySummary.unknown)evidence.push(`${current.quantitySummary.unknown} tomada(s) sem quantidade ou unidade comparável`);
+  if(comparablePeriods&&previous.quantitySummary.comparable)evidence.push("Quantidade no período anterior: "+previous.quantitySummary.comparable.label);
 
   const title = level === "strong"
     ? "Mudança forte no padrão de uso SOS"
@@ -273,7 +260,7 @@ export function analyzeSosPattern({
     : " Não há uso registrado no período anterior equivalente para formar uma linha de base.";
 
   // VAULT_SOS_AGGREGATE_QUANTITY_V70
-  const quantityText=current.knownQuantity>0?(current.quantityComplete?" Somadas, essas tomadas registram "+current.knownQuantity+" unidade(s) no período.":" A soma conhecida é "+current.knownQuantity+" unidade(s), mas está incompleta."):"";
+  const quantityText=current.quantitySummary.groups.length?" Quantidades registradas, separadas por unidade: "+current.quantitySummary.groups.map(group=>group.label).join("; ")+(current.quantitySummary.unknown?" (há registros sem unidade ou quantidade comparável).":"."):"";
   const message =
     "Os registros de \"" + medication.nome + "\" mostram " + current.count +
     " tomada(s) nos últimos " + days + " dias, distribuídas em " +

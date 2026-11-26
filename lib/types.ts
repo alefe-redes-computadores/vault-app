@@ -866,6 +866,8 @@ export interface Medicamento {
 
   status?: "ativo" | "descontinuado";
 
+  /** Macro02: only a confirmed stock count may establish a new cycle. */
+  estoque_ciclo_id?: string | null;
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
@@ -913,6 +915,7 @@ export type CreateMedicamentoInput = Omit<
   | "id"
   | "user_id"
   | "person_id"
+  | "estoque_ciclo_id"
   | "data_receita"
   | "proxima_renovacao"
   | "created_at"
@@ -982,6 +985,7 @@ type UpdateMedicamentoBase = Partial<
     | "user_id"
     | "person_id"
     | "created_at"
+    | "estoque_ciclo_id"
     | keyof NullableMedicamentoFields
   >
 >;
@@ -1137,6 +1141,14 @@ export interface Retirada {
 }
 
 export interface DoseLog {
+  /** Cadastro preservado no primeiro registro factual; ausente no legado. */
+  farmaco_snapshot?: import("@/lib/dose-premium/pharmaceutical-snapshot").PharmaceuticalSnapshot | null;
+  /** Macro02: campos aditivos; ausente/null significa desconhecido. Sem backfill. */
+  unidade_dose?: import("@/lib/dose-premium/historical-unit").DoseUnitFields["unidade_dose"];
+  unidade_dose_rotulo?: import("@/lib/dose-premium/historical-unit").DoseUnitFields["unidade_dose_rotulo"];
+  fonte_unidade?: import("@/lib/dose-premium/historical-unit").DoseUnitFields["fonte_unidade"];
+  /** Somente o escritor transacional compatível pode produzir recibo. */
+  estoque_movimento?: import("@/lib/dose-premium/stock-evidence").StockEvidence | null;
   id?: string;
   user_id: string;
   person_id?: string;

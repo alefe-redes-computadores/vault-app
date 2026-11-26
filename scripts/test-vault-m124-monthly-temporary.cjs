@@ -59,7 +59,15 @@ ok(edit.includes("parseTemporaryCourseNote") && edit.includes("firstTime:"), "ed
 const pdf = read("lib/clinical-month-pdf.ts");
 ok(pdf.indexOf('heading("Alertas com evidência preservada")') < pdf.indexOf('heading("Diário de doses por dia")'), "PDF traz alertas e barreiras antes do diário detalhado");
 ok(pdf.includes("report.doseDays") && pdf.includes("report.biometricSourceNote") && pdf.includes("Origem e limitações"), "PDF compacto preserva origem, limitações e fonte biométrica");
-const stock = read("lib/repositories/doseLogs.ts");
-ok(stock.includes('unidade.includes(\n      "frasco"') && stock.includes("return null;"), "gotas não debitam fração de frasco sem conversão confiável");
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
+const {observedStockContext,observedStockConversion}=loadMacro02Pure('@/lib/dose-premium/stock-context');
+const {comparableDebit}=loadMacro02Pure('@/lib/dose-premium/stock-evidence');
+const {declareDoseUnit}=loadMacro02Pure('@/lib/dose-premium/historical-unit');
+const scope={user_id:'u',person_id:'p',medicationId:'m'};
+const row={id:'m',user_id:'u',person_id:'p',estoque_ciclo_id:'11111111-1111-4111-8111-111111111111',estoque_quantidade:2,estoque_unidade_medida:'frasco',estoque_gotas_por_ml:20};
+const drop=declareDoseUnit('drop','declared'),bottle=observedStockContext(row,scope);
+ok(bottle.unit===null&&comparableDebit(5,drop,bottle,observedStockConversion(row,bottle))===null,"gotas não debitam fração de frasco sem conversão confiável");
+const ml={...row,estoque_unidade_medida:'ml'},mlStock=observedStockContext(ml,scope);
+ok(comparableDebit(5,drop,mlStock,observedStockConversion(ml,mlStock))===.25&&comparableDebit(5,drop,mlStock,undefined)===null,"somente conversão explícita no ciclo permite débito em mL");
 ok(read("scripts/test-v63-release-gate.mjs").includes("scripts/test-vault-m124-monthly-temporary.cjs"), "contrato M124 registrado no gate global");
 console.log(`VAULT M124: ${checks} verificações de curso por período e relatório mensal aprovadas.`);

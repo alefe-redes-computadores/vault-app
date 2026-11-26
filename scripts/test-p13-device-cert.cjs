@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,7 +22,7 @@ const db={doseLogs:{where(key){assert.equal(key,'user_id');return query(store.lo
 const file=path.join(root,'lib/sync/p13-device-audit.ts');
 const compiled=ts.transpileModule(content('lib/sync/p13-device-audit.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
 const mod=new Module(file,module);mod.filename=file;
-mod.require=id=>id==='@/lib/db'?{db}:id==='@/lib/supabase/client'?{supabase}:require(id);
+mod.require=id=>id.startsWith('@/lib/dose-premium/')?loadMacro02Pure(id):id==='@/lib/db'?{db}:id==='@/lib/supabase/client'?{supabase}:require(id);
 mod._compile(compiled,file);
 const {compareDeviceDoses,downloadDeviceDoses,inspectDeviceDoses}=mod.exports;
 let count=0;

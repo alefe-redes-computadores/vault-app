@@ -1,4 +1,6 @@
 // lib/medication-dose-history.ts
+import {historicalPharmaceuticalIdentity,type PharmaceuticalSnapshot} from './dose-premium/pharmaceutical-snapshot';
+import { summarizeHistoricalQuantities, type DoseUnitFields } from "./dose-premium/historical-unit";
 
 import type {
   DoseLog,
@@ -9,9 +11,12 @@ export type DoseHistoryEventKind =
   | "scheduled_taken"
   | "scheduled_ignored"
   | "avulsa"
-  | "planned";
+  | "planned"
+  | "unknown_origin"
+  | "conflict";
 
-export type DoseHistoryEvent = {
+export type DoseHistoryEvent = Partial<DoseUnitFields> & {
+  pharmaceuticalSnapshot?: PharmaceuticalSnapshot | null;
   id?: string;
   horario: string;
   tomadoEm?: string;
@@ -48,6 +53,8 @@ export type DoseHistoryMonth = {
     avulsas: number;
     knownQuantity: number;
     logsWithoutQuantity: number;
+    quantityGroups: ReturnType<typeof summarizeHistoricalQuantities>["groups"];
+    logsWithoutComparableQuantity:number;
     recordCoveragePercent: number | null;
   };
 };
@@ -121,28 +128,14 @@ function knownRoutineStart(medication: Medicamento): string | null {
   );
 }
 
-function eventFromLog(log: DoseLog, schedules: string[]): DoseHistoryEvent {
-  const scheduled =
-    log.dose_kind !== "extra" &&
-    log.dose_kind !== "sos" &&
-    schedules.includes(log.horario);
-
-  return {
-    id: log.id,
-    horario: log.horario || "00:00",
-    tomadoEm: log.tomado_em,
-    ignoradoEm: log.ignorado_em,
-    quantidade: log.quantidade,
-    origin: log.dose_kind || (scheduled ? "scheduled" : "sos"),
-    motivo: log.motivo,
-    kind: log.dose_kind === "planned"
-      ? "planned"
-      : scheduled
-      ? log.tomado_em
-        ? "scheduled_taken"
-        : "scheduled_ignored"
-      : "avulsa",
-  };
+function eventFromLog(log: DoseLog, duplicateRoutine:boolean): DoseHistoryEvent {
+  const routine=log.dose_kind==='scheduled'||log.dose_kind==='planned';
+  const independent=log.dose_kind==='sos'||log.dose_kind==='extra';
+  const conflict=Boolean(log.tomado_em&&log.ignorado_em)||duplicateRoutine;
+  const kind:DoseHistoryEventKind=conflict?'conflict':routine?(log.tomado_em?'scheduled_taken':log.ignorado_em?'scheduled_ignored':'planned'):independent?'avulsa':'unknown_origin';
+  return {pharmaceuticalSnapshot:historicalPharmaceuticalIdentity(log),id:log.id,horario:log.horario||"00:00",tomadoEm:log.tomado_em,ignoradoEm:log.ignorado_em,quantidade:log.quantidade,
+    unidade_dose:log.unidade_dose,unidade_dose_rotulo:log.unidade_dose_rotulo,fonte_unidade:log.fonte_unidade,
+    origin:log.dose_kind,motivo:log.motivo,kind};
 }
 
 export function buildMedicationDoseHistoryMonth({
@@ -172,7 +165,7 @@ export function buildMedicationDoseHistoryMonth({
   const logsByDate = new Map<string, DoseLog[]>();
 
   for (const log of logs) {
-    if (!log.data || log.medicamento_id !== medication.id) continue;
+    if (!log.data || log.medicamento_id !== medication.id || log.user_id!==medication.user_id || log.person_id!==medication.person_id) continue;
     const current = logsByDate.get(log.data) || [];
     current.push(log);
     logsByDate.set(log.data, current);
@@ -198,15 +191,10 @@ export function buildMedicationDoseHistoryMonth({
     const dayLogs = (logsByDate.get(date) || []).sort((a, b) =>
       String(a.horario || "00:00").localeCompare(String(b.horario || "00:00"))
     );
-    const events = dayLogs.map((log) => eventFromLog(log, schedules));
-    const resolvedSlots = new Set(
-      dayLogs
-        .filter((log) =>
-          schedules.includes(log.horario) &&
-          Boolean(log.tomado_em || log.ignorado_em)
-        )
-        .map((log) => log.horario)
-    );
+    const routineCounts=new Map<string,number>();
+    for(const log of dayLogs)if(log.dose_kind==='scheduled'||log.dose_kind==='planned')routineCounts.set(log.horario,(routineCounts.get(log.horario)??0)+1);
+    const events=dayLogs.map(log=>eventFromLog(log,(log.dose_kind==='scheduled'||log.dose_kind==='planned')&&(routineCounts.get(log.horario)??0)>1));
+    const resolvedSlots=new Set(events.filter(event=>event.kind==='scheduled_taken'||event.kind==='scheduled_ignored').map(event=>event.horario));
     const expectedSlots = canExpect ? schedules : [];
 
     days.push({
@@ -231,7 +219,7 @@ export function buildMedicationDoseHistoryMonth({
   const monthDays = days.filter((day) => day.inMonth);
   const monthEvents = monthDays.flatMap((day) => day.events);
   const takenEvents = monthEvents.filter((event) =>
-    event.kind === "scheduled_taken" || event.kind === "avulsa"
+    event.kind!=="conflict"&&Boolean(event.tomadoEm)&&!event.ignoradoEm
   );
   const expected = monthDays.reduce((total, day) => total + day.expectedSlots.length, 0);
   const taken = monthDays.reduce((total, day) => total + day.takenScheduled, 0);
@@ -244,6 +232,7 @@ export function buildMedicationDoseHistoryMonth({
       typeof value === "number" && Number.isFinite(value) && value > 0
     );
 
+  const quantitySummary=summarizeHistoricalQuantities(takenEvents);
   return {
     monthKey,
     monthLabel: new Intl.DateTimeFormat("pt-BR", {
@@ -257,7 +246,8 @@ export function buildMedicationDoseHistoryMonth({
       ignored,
       unconfirmed,
       avulsas,
-      knownQuantity: quantities.reduce((total, value) => total + value, 0),
+      knownQuantity: quantitySummary.comparable?.quantity??0,
+      quantityGroups:quantitySummary.groups,logsWithoutComparableQuantity:quantitySummary.unknown,
       logsWithoutQuantity: takenEvents.length - quantities.length,
       recordCoveragePercent: expected > 0
         ? Math.min(100, Math.round(((taken + ignored) / expected) * 100))

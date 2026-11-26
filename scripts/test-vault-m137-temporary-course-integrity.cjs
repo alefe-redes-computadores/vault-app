@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 "use strict";
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript');
 const read=f=>fs.readFileSync(f,'utf8'); let checks=0;
 const ok=(v,label)=>{assert.ok(v,'M137: '+label);console.log(`✓ M137 ${++checks}: ${label}`)};
 function load(path,imports={}){
  const src=read(path);
  const js=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- const module={exports:{}};new Function('module','exports','require',js)(module,module.exports,ref=>{if(ref in imports)return imports[ref];throw Error(`unresolved ${ref}`)});return module.exports;
+ const module={exports:{}};new Function('module','exports','require',js)(module,module.exports,ref=>{if(ref in imports)return imports[ref];if(ref==='@/lib/dose-premium/historical-unit')return loadMacro02Pure(ref);throw Error(`unresolved ${ref}`)});return module.exports;
 }
 const course=load('lib/health-supply/temporary-course.ts');
 const authority=load('lib/dose-plan-authority.ts',{'@/lib/health-supply/temporary-course':course});
@@ -39,7 +40,14 @@ ok(legacyV323.includes("repo.includes('settledBySlot')") && repository.includes(
   'V323: slots resolvidos e escopo pessoa/usuário preservados sem reintroduzir filtro futuro');
 
 ok(repository.includes('Já existe um registro neste horário')&&repository.includes('Revise'),'conflito de horário não reclassifica SOS/tomadas reais');
-ok(repository.includes('existing?.motivo?.startsWith(TEMPORARY_COURSE_PREFIX)'),'tomada confirmada preserva vínculo do curso no DoseLog');
+// The canonical writer now preserves the planned origin and its existing course note.
+const writer=loadMacro02Pure('@/lib/dose-premium/writer-contract');
+const courseIdentity={id:'course-slot',user_id:'usuario',person_id:'pessoa',medicamento_id:'cerumin',data:'2026-11-12',horario:'08:00'};
+const planned={...courseIdentity,dose_kind:'planned',motivo:reason,quantidade:5};
+const stockContext={user_id:'usuario',person_id:'pessoa',medicationId:'cerumin',unit:null,basis:'',balance:null};
+const confirmed=writer.prepareClinicalWrite({identity:courseIdentity,expected:planned,status:'taken',actualAt:'2026-11-12T11:00:00Z',asOf:'2026-11-12T12:00:00Z',quantity:5,unit:loadMacro02Pure('@/lib/dose-premium/historical-unit').declareDoseUnit('drop','declared'),adjustStock:false,origin:'planned'},planned,stockContext).next;
+ok(confirmed.id===planned.id&&confirmed.dose_kind==='planned'&&confirmed.motivo===reason&&authority.isTemporaryCoursePlannedDose(confirmed)&&confirmed.tomado_em&&!confirmed.ignorado_em,'tomada confirmada preserva vínculo do curso no DoseLog');
+ok(confirmed.quantidade===5&&confirmed.unidade_dose==='drop'&&confirmed.estoque_movimento.state==='not_applied','curso confirmado conserva quantidade, unidade e ausência de débito comprovado');
 ok(repository.includes('if (row.motivo !== reason || row.quantidade !== targetQuantity)')&&repository.includes('await db.doseLogs.add(log);'),'repetir mesmo plano preserva identidade dos agendamentos');
 ok(today.includes('scheduleOrigin?: DosePlanOrigin')&&today.includes('isAvulsa: false')&&today.includes('isAvulsa: true'),'Hoje distingue curso de avulsa');
 // R3: regressão real dos carregadores estritos M19/M23/V94.
@@ -47,14 +55,14 @@ ok(today.includes('scheduleOrigin?: DosePlanOrigin')&&today.includes('isAvulsa: 
 const timelineJS=ts.transpileModule(today,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const runtimeImports=[...timelineJS.matchAll(/require\(["']([^"']+)["']\)/g)].map(row=>row[1]);
 const historicalImports=new Set([
-  '@/lib/dose-slot-authority', '@/lib/today/acquisition-date-index',
+  '@/lib/dose-premium/historical-unit', '@/lib/dose-slot-authority', '@/lib/today/acquisition-date-index',
   '@/lib/health-utils', '@/lib/health-intelligence/clinical-stock', '@/lib/health-insights',
 ]);
 ok(runtimeImports.every(id=>historicalImports.has(id)) &&
   !runtimeImports.includes('@/lib/dose-plan-authority'),
   `projetor continua compatível com os loaders fechados M19/M23/V94 (${runtimeImports.join(', ')})`);
 const projected=load('lib/today/build-timeline-items.ts',{
-  '@/lib/dose-slot-authority':{buildDoseSlotIndex:()=>new Map(),resolveDoseSlot:()=>({state:'absent'})},
+  '@/lib/dose-slot-authority':loadMacro02Pure('@/lib/dose-slot-authority'),
   '@/lib/today/acquisition-date-index':{earliestAcquisitionByMedication:()=>new Map()},
   '@/lib/health-utils':{getDaysUntil:()=>null},
   '@/lib/health-intelligence/clinical-stock':{getClinicalStockSnapshot:()=>({registeredQuantity:25,info:{quantidadeRestante:25}})},
@@ -113,7 +121,7 @@ ok(draft.maySuggestQuickDoseQuantitySTB(opened,'p','m')&&!draft.maySuggestQuickD
   'sugestão automática e edição manual permanecem distintas');
 
 ok(today.includes('tomada: Boolean(log.tomado_em), ignorada: Boolean(log.ignorado_em)'),'Hoje lê explicitamente tomada e ignorada');
-ok(quick.includes('isTemporaryCoursePlannedDose(existingScheduledLog)'),'QuickDose reconhece slot do período');
+ok(quick.includes('resolveDoseSlot(buildDoseSlotIndex(doseLogs,{userId:user?.id,personId:activePersonId??undefined})')&&quick.includes('existingSlot.records.length===1?existingSlot.records[0]:undefined')&&quick.includes("log.dose_kind==='planned'"),'QuickDose reconhece slot do período');
 ok(quick.includes('contextualDoseQuantity(medicamento, slot) ?? 0'),'QuickDose não presume dose de 1 gota');
 ok(quick.includes('selectedMed.tipo_uso === "temporario" && doseMode === "ad-hoc"'),'fora do período exige confirmação explícita');
 ok(quick.includes('selecionada')||quick.includes('Horários do período'),'horários programados possuem seletor');

@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 import { db } from "@/lib/db";
 import {mergeTreatmentRemoteR03,refreshTreatmentVisualProjectionR03} from "@/lib/sync/treatment-visual-transport-r03";
+import {readMacro02DoseReceipts} from "@/lib/sync/macro02-dose-receipts";
+import { checkDoseIngress, canAcceptDoseDelete, verifyRemoteDoseReceipt } from "@/lib/dose-premium/ingress-guard";
+import { recordPullTable } from "@/lib/sync/diagnostics";
 import { supabase } from "@/lib/supabase/client";
 import {vitalTable} from '@/lib/vital/cloud-transport';
 import {mergeCanonicalVitalRealtime} from '@/lib/vital-runtime/canonical';
@@ -99,6 +102,10 @@ export function useSupabaseRealtime(userId?: string) {
           const localTable = (db as unknown as Record<string, LocalTable>)[config.local];
           if (!localTable) return;
 
+          const observed=payload.table==="dose_logs"?await localTable.get(id):undefined;
+          const needsProof=payload.table==="dose_logs"&&!!observed&&observed.user_id===userId&&(payload.eventType==="DELETE"?!canAcceptDoseDelete(userId,observed):checkDoseIngress(userId,observed,incoming)==="review");
+          const proof=needsProof?(await readMacro02DoseReceipts(userId,[id])).get(id):undefined;
+          const merge = async () => {
           const local = await localTable.get(id);
           if (disposed) return;
 
@@ -108,14 +115,19 @@ export function useSupabaseRealtime(userId?: string) {
           const pending = await db.syncQueue
             .filter(
               (item) =>
-                item.table === config.queue &&
-                (item.payload as { id?: unknown })?.id === id
+                (item.table === config.queue && (item.payload as { id?: unknown })?.id === id)||
+                (payload.table==='medicamentos'&&item.payload.macro02_atomic!==undefined&&item.payload.medicamento_id===id&&item.payload.user_id===userId)||
+                (payload.table==='retiradas'&&item.payload.user_id===userId&&(item.payload.macro02_atomic as {withdrawalId?:string}|undefined)?.withdrawalId===id)
             )
             .first();
 
           if (disposed || pending || local?.synced === false) return;
 
           if (payload.eventType === "DELETE") {
+            if (payload.table === "dose_logs" && !canAcceptDoseDelete(userId, local) && !verifyRemoteDoseReceipt(userId,local,null,proof)) {
+              if (local) recordPullTable("dose_logs", 0, false);
+              return;
+            }
             await localTable.delete(id);
             return;
           }
@@ -128,7 +140,16 @@ export function useSupabaseRealtime(userId?: string) {
             return;
           }
 
-          await localTable.put(normalize(payload.table,incoming));
+          if (payload.table === "dose_logs" && checkDoseIngress(userId, local, incoming) === "review" && !verifyRemoteDoseReceipt(userId,local,incoming,proof)) {
+            recordPullTable("dose_logs", 0, false);
+            return;
+          }
+          if (!disposed) await localTable.put(normalize(payload.table, incoming));
+          };
+          if (payload.table === "dose_logs") {
+            try { await db.transaction("rw", [db.doseLogs, db.syncQueue], merge); }
+            catch { recordPullTable("dose_logs", 0, false); }
+          } else if(payload.table==='medicamentos'||payload.table==='retiradas'){try{await db.transaction('rw',[payload.table==='medicamentos'?db.medicamentos:db.retiradas,db.syncQueue],merge);}catch{recordPullTable('medicamentos',0,false);}}else await merge();
         }
       )
       .subscribe();

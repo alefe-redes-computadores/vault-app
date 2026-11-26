@@ -5,6 +5,7 @@ ok(s.includes("bulkResolutionOpen"), "estado bulk ausente");
 ok(s.includes("Confirmar horários programados"), "scheduled coletivo ausente");
 ok(s.includes("Confirmar como tomadas agora"), "now coletivo ausente");
 ok(s.includes("Revisar individualmente"), "fallback individual ausente");
-ok(s.includes("await onResolveDose(dose, {...resolution, requireRegisteredStock:true})"), "processamento serial perdido");
+ok(s.includes("await onResolveDose(dose, {...resolution, confirmation,confirmedAt,requireRegisteredStock:true})"), "processamento serial perdido");
+ok(s.includes("for (const {dose,confirmation} of reviewed)")&&s.includes("const confirmedAt=new Date().toISOString()")&&s.includes("reviewed=bulkTargets.map"),"lote serial com horário único e snapshot revisado");
 ok(!/handleResolveAll\s*\(\s*\)/.test(s), "execução coletiva ainda presume horário");
 console.log("V33.2 CONTRACT: OK");

@@ -35,11 +35,9 @@ new Function("exports","require",ts.transpileModule(
   {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}
 ).outputText)(acquisitionSandbox.exports,id=>{throw new Error("V94 unexpected acquisition helper dependency: "+id)});
 const deps={
+  "@/lib/dose-premium/historical-unit":require("./vault-macro02-test-pure-loader.cjs").loadMacro02Pure("@/lib/dose-premium/historical-unit"),
   "@/lib/today/acquisition-date-index":acquisitionSandbox.exports,
-  "@/lib/dose-slot-authority":{
-    buildDoseSlotIndex:()=>new Map(),
-    resolveDoseSlot:()=>({state:"absent"}),
-  },
+  "@/lib/dose-slot-authority":require("./vault-macro02-test-pure-loader.cjs").loadMacro02Pure("@/lib/dose-slot-authority"),
   "@/lib/health-utils":{
     computeEstoqueInfo:()=>({quantidadeRestante:10}),
     getDaysUntil:()=>null,
@@ -65,7 +63,7 @@ new Function("exports","require",compiled.outputText)(sandbox.exports,id=>{
   return deps[id];
 });
 const active=(id,tipo_uso,status="ativo")=>({
-  id,nome:id,dosagem:"1 un",status,tipo_uso,
+  id,user_id:"u",person_id:"p",nome:id,dosagem:"1 un",status,tipo_uso,
   estoque_horarios:["08:00"],created_at:"2026-01-01",
   data_receita:"2026-01-01",proxima_renovacao:"2026-12-31",estoque_quantidade:10,
 });
@@ -77,9 +75,9 @@ const medicationRows=[
   active("esporadico","esporadico"),
 ];
 const doseLogs=[
-  {id:"log-sos-ativo",medicamento_id:"sos-ativo",horario:"14:00",dose_kind:"sos",tomado_em:"2026-10-31T14:00:00"},
-  {id:"log-sos-encerrado",medicamento_id:"sos-encerrado",horario:"15:00",dose_kind:"sos",tomado_em:"2026-10-31T15:00:00"},
-  {id:"log-sos-pendente",medicamento_id:"sos-ativo",horario:"16:00",dose_kind:"sos"},
+  {user_id:"u",person_id:"p",data:"2026-10-31",id:"log-sos-ativo",medicamento_id:"sos-ativo",horario:"14:00",dose_kind:"sos",tomado_em:"2026-10-31T14:00:00"},
+  {user_id:"u",person_id:"p",data:"2026-10-31",id:"log-sos-encerrado",medicamento_id:"sos-encerrado",horario:"15:00",dose_kind:"sos",tomado_em:"2026-10-31T15:00:00"},
+  {user_id:"u",person_id:"p",data:"2026-10-31",id:"log-sos-pendente",medicamento_id:"sos-ativo",horario:"16:00",dose_kind:"sos"},
 ];
 const items=sandbox.exports.buildTodayTimelineItems({
   medicamentos:medicationRows,doseLogs,medicos:[],tratamentos:[],farmacias:[],

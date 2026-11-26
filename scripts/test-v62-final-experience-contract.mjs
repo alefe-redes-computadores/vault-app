@@ -12,9 +12,9 @@ const reminders = read("app/saude/lembretes/page.tsx");
 const reconciler = read("components/InsightNotificationReconciler.tsx");
 
 ok(today.includes("batchOperationLock.current"), "lote possui mutex síncrono");
-ok(today.includes("snapshotLote"), "lote opera sobre fotografia estável");
-ok(today.includes("marcarComoTomadaEm"), "lote preserva horário real");
-ok(today.includes("handleDesfazerLote"), "lote continua reversível");
+ok(today.includes("const entries=[...frozenEntries]")&&today.includes("setBatchFrozen({context:doseIdentityContext,entries})"), "lote opera sobre fotografia estável");
+ok(today.includes("civilDoseInstant(dataSelecionada,hour,startedAt)")&&today.includes("tomadoEm:takenAt"), "lote preserva horário real");
+ok(today.includes("confirmDoseCorrection")&&today.includes("id:expected.id,expected,adjustStock:target.action"), "correção individual exige ID, snapshot e recibo");
 
 ok(hydration.includes("operationLock.current"), "hidratação bloqueia toque duplicado");
 ok(hydration.includes("Desfazer último registro"), "hidratação oferece desfazer imediato");

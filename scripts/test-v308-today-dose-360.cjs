@@ -18,7 +18,7 @@ const modal=fs.readFileSync(path.join(root,'components/PendingDosesModal.tsx'),'
 assert(modal.includes('resolvedKeysRef')&&modal.includes('doses.filter'),'reactive session does not cycle back to a resolved snapshot');
 assert(modal.includes('motivo:\n                        "nao_realizada"'),'not performed is explicit, not inferred from absence');
 const today=fs.readFileSync(path.join(root,'app/hoje/page.tsx'),'utf8');
-assert(today.includes('finally {\n      // Nenhuma exceção inesperada pode deixar a tela travada'),'batch lock has an unconditional release');
+assert(/finally\s*\{\s*batchOperationLock\.current=false;setProcessandoTodos\(false\);\}/.test(today),'batch lock has an unconditional release');
 const repository=fs.readFileSync(path.join(root,'lib/repositories/doseLogs.ts'),'utf8');
 assert(repository.includes('requestedReason === existingReason'),'same ignored outcome is idempotent');
 assert(repository.includes('"nao_realizada"'),'ignored status carries an explicit default reason');

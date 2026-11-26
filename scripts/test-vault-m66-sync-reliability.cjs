@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 const fs=require('node:fs'), path=require('node:path'), Module=require('node:module'),assert=require('node:assert/strict'),ts=require('typescript');
 const source=p=>fs.readFileSync(p,'utf8');let count=0;
 const check=(yes,label)=>{assert.ok(yes,'M66: '+label);count++;};
@@ -7,7 +8,7 @@ function load(p,imports={}){
  const s=source(p),ast=ts.createSourceFile(p,s,ts.ScriptTarget.Latest,true,p.endsWith('tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.equal(ast.parseDiagnostics.length,0,'TS parsing '+p);
  const js=ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- const mod=new Module(path.resolve(p),module);mod.require=id=>Object.hasOwn(imports,id)?imports[id]:require(id);mod._compile(js,path.resolve(p));return mod.exports;
+ const mod=new Module(path.resolve(p),module);mod.require=id=>Object.hasOwn(imports,id)?imports[id]:id.startsWith('@/lib/dose-premium/')?loadMacro02Pure(id):require(id);mod._compile(js,path.resolve(p));return mod.exports;
 }
 const files=['lib/sync/recent-dose-refresh.ts','lib/sync/recent-dose-merge.ts','lib/sync/recent-dose-status.ts','lib/dose-notification-pipeline.ts','components/DoseNotificationReconciler.tsx','components/SyncDoseRefreshSummary.tsx','app/diagnostico/page.tsx','app/recuperacao/page.tsx'];
 for(const p of files){const ast=ts.createSourceFile(p,source(p),ts.ScriptTarget.Latest,true,p.endsWith('tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);check(ast.parseDiagnostics.length===0,'parsing '+p);}
@@ -32,7 +33,9 @@ status.noteRecentDoseRefreshError('u2');check(status.useRecentDoseRefreshStatus(
  let bulkWrites=0,dbCalls=0,queryMode='ok';
  const db={doseLogs:{bulkGet:async ids=>ids.map(id=>local.get(id)),bulkPut:async rows=>{bulkWrites++;rows.forEach(row=>local.set(row.id,row));}},syncQueue:{filter:()=>({toArray:async()=>queue})},transaction:async(_mode,_dose,_queue,fn)=>fn()};
  const request={select(){return this},eq(){return this},gte(){return this},order(){return this},range(){dbCalls++;return Promise.resolve(queryMode==='null'?{data:null,error:null}:queryMode==='failure'?{data:null,error:{message:'timeout'}}:{data:cloud,error:null});}};
- const refresh=load('lib/sync/recent-dose-refresh.ts',{'@/lib/db':{db},'@/lib/supabase/client':{supabase:{from:()=>request}},'@/lib/sync/recent-dose-merge':merge,'@/lib/sync/recent-dose-status':status});
+ let receiptCalls=0;const receiptClient={rpc:async(name,args)=>{assert.equal(name,'vault_macro02_read_dose_receipts');assert(Array.isArray(args.p_ids));receiptCalls++;return {data:[],error:null};}};
+ const readReceipts=load('lib/sync/macro02-dose-receipts.ts',{'@/lib/supabase/client':{supabase:receiptClient}});
+ const refresh=load('lib/sync/recent-dose-refresh.ts',{'@/lib/db':{db},'@/lib/supabase/client':{supabase:{from:()=>request}},'@/lib/sync/macro02-dose-receipts':readReceipts,'@/lib/sync/recent-dose-merge':merge,'@/lib/sync/recent-dose-status':status});
  check(await refresh.refreshRecentCloudDoses('u')===1,'apenas nova dose remota atualiza banco');
  check(bulkWrites===1&&local.get('unsent').quantidade===8&&local.get('newer').quantidade===9,'fila e copia local recente preservadas');
  check(status.useRecentDoseRefreshStatus().protectedLocal===3&&status.useRecentDoseRefreshStatus().unchanged===1,'classificacao preservada e idempotencia corretas');
@@ -41,6 +44,9 @@ status.noteRecentDoseRefreshError('u2');check(status.useRecentDoseRefreshStatus(
  check(bulkWrites===1&&status.useRecentDoseRefreshStatus().phase==='error','pagina nula bloqueia falso sucesso sem gravacao');
  queryMode='failure';await assert.rejects(refresh.refreshRecentCloudDoses('u'),/timeout/);
  check(bulkWrites===1,'erro remoto impede gravacao local');
+ queryMode='ok';const protectedRow={...med('added'),synced:true,unidade_dose:'tablet',unidade_dose_rotulo:null,fonte_unidade:'declared'};local.set('added',protectedRow);
+ await assert.rejects(refresh.refreshRecentCloudDoses('u'),/Evidência de dose divergente/);
+ check(receiptCalls===1&&bulkWrites===1&&local.get('added')===protectedRow,'sem recibo remoto, unidade protegida não é apagada');
  const {createDoseNotificationPipeline}=load('lib/dose-notification-pipeline.ts');
  let release;const hold=new Promise(r=>release=r),events=[];
  const pipeline=createDoseNotificationPipeline(async()=>{events.push('scheduled');await hold;},async()=>{events.push('overdue')});

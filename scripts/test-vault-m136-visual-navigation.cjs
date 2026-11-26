@@ -21,7 +21,7 @@ ok(med.includes('railSize="label"')&&med.includes('[writing-mode:vertical-rl]')&
 ok(med.includes('compactTight={compactCards}')&&med.includes('min-h-11')&&med.includes('<MedicationOperationalStrip'), 'cards dinâmicos mantêm ações e estados');
 ok(med.includes('isTemporary')&&med.includes('isSOS')&&med.includes('stockUnknown'), 'estados de uso e estoque permanecem diferentes');
 ok(hist.includes('Resumo do mês selecionado')&&hist.includes('Mês selecionado')&&hist.includes('monthLabel'), 'histórico mensal explicitado');
-ok(hist.includes('Eventos e unidades do dia selecionado')&&hist.includes('dailyTakenEvents')&&hist.includes('knownDailyQuantity'), 'quantidade do dia só soma tomadas efetivas');
+ok(hist.includes('Eventos e unidades do dia selecionado')&&hist.includes('dailyTakenEvents')&&hist.includes('dailyQuantitySummary')&&hist.includes('summarizeHistoricalQuantities(dailyTakenEvents)')&&hist.includes('!event.ignoradoEm')&&hist.includes('dailyQuantitySummary.groups')&&hist.includes('dailyQuantitySummary.unknown'), 'quantidade do dia só agrega tomadas efetivas na mesma unidade e explicita desconhecidas');
 ok(hist.includes('monthlyDaysWithRecords')&&hist.includes('monthlyDaysUnconfirmed'), 'mês separa cobertura e falta de confirmação');
 ok(hist.includes('kind !== "planned"')&&hist.includes('Registro ausente não comprova dose não tomada'), 'doses planejadas não são apresentadas como consumidas');
 ok(hist.includes('Revisar')&&hist.includes('retro=1'), 'revisão retroativa canônica preservada');

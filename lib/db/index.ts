@@ -1,4 +1,6 @@
+import { cycleAfterOrdinaryUpdate, cycleAfterConfirmedCount, assertCountSnapshot, type StockCountSnapshot } from "@/lib/dose-premium/stock-cycle";
 import type { ConnectConnection, ConnectImport } from "@/lib/health-connect/types";
+import { resolveWritableSlot } from "@/lib/dose-premium/slot-write-guard";
 import type {HealthProfile,HealthDevice} from "@/lib/health-profile/types";
 import type {SupplyProcess,SupplyCycle,SupplyItem,SupplyDocumentLink} from "@/lib/health-supply/types";
 import type { A1TreatmentPhase, A1PrescriptionLink, A1SupplyLocation } from "@/lib/clinical-a1/types";
@@ -1880,7 +1882,8 @@ export async function safeAddMedicamento(
 
 export async function safeUpdateMedicamento(
   id: string,
-  changes: UpdateMedicamentoInput
+  changes: UpdateMedicamentoInput,
+  confirmedCount?: {expected:StockCountSnapshot;userId:string;personId:string}
 ): Promise<void> {
   const existing =
     await db.medicamentos.get(
@@ -1908,8 +1911,16 @@ export async function safeUpdateMedicamento(
    * por isso, não conhece os nulls aceitos especificamente pelo
    * contrato de atualização.
    */
+  let cycle=cycleAfterOrdinaryUpdate(existing,changes);
+  if(confirmedCount){
+    if(existing.user_id!==confirmedCount.userId||existing.person_id!==confirmedCount.personId)throw Error('Escopo do estoque inválido.');
+    assertCountSnapshot(existing,confirmedCount.expected);
+    if(typeof changes.estoque_quantidade!=='number'||Object.keys(changes).some(k=>!['estoque_quantidade','estoque_data_referencia','updated_at','synced'].includes(k)))throw Error('Contagem deve alterar exclusivamente o saldo registrado.');
+    cycle=cycleAfterConfirmedCount(existing,changes.estoque_quantidade,()=>crypto.randomUUID());
+  }
   const updateSpec = {
     ...changes,
+    estoque_ciclo_id: cycle,
 
     synced:
       false,
@@ -2052,100 +2063,87 @@ export async function safeSetDoseLog(
     data.data ||
     getLocalTodayISO();
 
-  const medicamento =
-    await db.medicamentos.get(
-      medicamentoId
-    );
-
-  if (
-    !medicamento ||
-    medicamento.person_id !==
-      personId
-  ) {
-    throw new Error(
-      'Medicamento não encontrado para a pessoa informada.'
-    );
+  if (data.unidade_dose != null || data.unidade_dose_rotulo != null || data.fonte_unidade != null || data.estoque_movimento != null || data.farmaco_snapshot != null) {
+    throw new Error('Evidência histórica exige o escritor transacional compatível.');
+  }
+  if (data.tomado_em != null || data.ignorado_em != null) throw new Error('Fatos de dose exigem o escritor transacional compatível.');
+  if (data.dose_kind === 'sos' || data.dose_kind === 'extra') {
+    throw new Error('Use o fluxo canônico de tomada avulsa.');
   }
 
-  const existing =
-    await db.doseLogs
-      .where(
-        'medicamento_id'
-      )
-      .equals(
-        medicamentoId
-      )
-      .filter(
-        (log) =>
-          log.person_id ===
-            personId &&
-          log.data ===
-            targetDate &&
-          log.horario ===
-            horario
-      )
-      .first();
+  return db.transaction('rw', [db.medicamentos, db.doseLogs], async () => {
+    const medicamento = await db.medicamentos.get(medicamentoId);
+    if (!medicamento || medicamento.person_id !== personId || medicamento.user_id !== data.user_id) {
+      throw new Error('Medicamento não pertence à conta e pessoa informadas.');
+    }
+    const rows = await db.doseLogs.where('medicamento_id').equals(medicamentoId)
+      .filter(log => log.person_id === personId && log.data === targetDate).toArray();
+    const existing = resolveWritableSlot(rows, {user_id:data.user_id,person_id:personId,medicamento_id:medicamentoId,data:targetDate,horario});
 
-  if (existing) {
-    await db.doseLogs.update(
-      existing.id!,
-      {
-        quantidade:
-          data.quantidade,
-
-        tomado_em:
-          data.tomado_em,
-
-        ignorado_em:
-          data.ignorado_em,
-        motivo:
-          data.motivo,
-
-        updated_at:
-          timestamp,
-
-        synced:
-          false,
+    if (existing) {
+      if (existing.tomado_em != null || existing.ignorado_em != null || existing.unidade_dose != null || existing.unidade_dose_rotulo != null || existing.fonte_unidade != null || existing.estoque_movimento != null || existing.farmaco_snapshot != null) {
+        throw new Error('Dose com evidência histórica protegida; use o escritor compatível.');
       }
+      await db.doseLogs.update(
+        existing.id!,
+        {
+          quantidade:
+            data.quantidade,
+
+          tomado_em:
+            data.tomado_em,
+
+          ignorado_em:
+            data.ignorado_em,
+          motivo:
+            data.motivo,
+
+          updated_at:
+            timestamp,
+
+          synced:
+            false,
+        }
+      );
+
+      return existing.id!;
+    }
+
+    const id =
+      generateId();
+
+    const full: DoseLog = {
+      ...data,
+
+      id,
+
+      person_id:
+        personId,
+
+      medicamento_id:
+        medicamentoId,
+
+      data:
+        targetDate,
+
+      horario,
+
+      created_at:
+        timestamp,
+
+      updated_at:
+        timestamp,
+
+      synced:
+        false,
+    };
+
+    await db.doseLogs.add(
+      full
     );
 
-    return existing.id!;
-  }
-
-  const id =
-    generateId();
-
-  const full: DoseLog = {
-    ...data,
-
-    id,
-
-    person_id:
-      personId,
-
-    medicamento_id:
-      medicamentoId,
-
-    data:
-      targetDate,
-
-    horario,
-
-    created_at:
-      timestamp,
-
-    updated_at:
-      timestamp,
-
-    synced:
-      false,
-  };
-
-  await db.doseLogs.add(
-    full
-  );
-
-  return id;
+    return id;
+  });
 }
 
 // ============================================================

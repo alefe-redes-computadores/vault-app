@@ -54,12 +54,15 @@ function compileMock(file,imports){
 const domain=compileMock('lib/health-intelligence/visual-studio-v8.ts',{'./brain-v7-universal':{validBrainDayV7:()=>true,shiftBrainDayV7:()=>''}});
 const jsx=(type,props)=>({type,props:props||{}});
 let uniq=0;
-const m148AdditionalSprayIcon=()=>null;
+const mockIcons=Object.fromEntries(['Activity','Droplet','Eraser','Package','StickyNote','Syringe'].map(name=>[name,()=>null]));
+const catalog=compileMock('lib/medications/form-presentation.tsx',{'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},'lucide-react':mockIcons});
+const m148AdditionalSprayIcon=catalog.MEDICATION_ADDITIONAL_FORMATS.find(item=>item.id==='spray').icon;
 const ui=compileMock('components/saude/MedicationFormatIcon.tsx',{
   react:{useId:()=>`:icon-${++uniq}:`},
   'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},
   '@/lib/health-intelligence/visual-studio-v8':{normalizedPillV8:domain.normalizedPillV8},
-  '@/lib/medications/form-presentation':{MEDICATION_ADDITIONAL_FORMATS:[{id:'spray',icon:m148AdditionalSprayIcon}]},
+  '@/lib/medications/form-presentation':catalog,
+  'lucide-react':mockIcons,
 });
 const all=(node)=>node&&typeof node==='object'?[node,...(Array.isArray(node.props?.children)?node.props.children:[node.props?.children]).flatMap(all)]:[];
 const formats=['capsula','comprimido','partido','oblongo','oblongo_sulcado','gota','adesivo','injecao'];
@@ -76,6 +79,10 @@ const sprayNode=ui.MedicationFormatIcon({formato:'spray',cores:['#ab12ef','#45bc
 ok(sprayNode.type===m148AdditionalSprayIcon,'M4 P2: spray usa o ícone próprio do catálogo');
 ok(sprayNode.props.size===23&&sprayNode.props.stroke==='#ab12ef',
   'M4 P2: tamanho e cor declarada preservados no ícone especial');
+for(const formato of [undefined,null,'','desconhecido']){
+  const fallback=ui.MedicationFormatIcon({formato,cores:['#ab12ef'],size:23});
+  ok(fallback.type===mockIcons.Package && fallback.props.size===23,'identidade ausente não vira comprimido');
+}
 const shade=all(ui.MedicationFormatIcon({formato:'capsula',cores:['url(javascript:evil)'],size:18}));
 ok(shade.every(item=>item.props?.stopColor!=='url(javascript:evil)'),'cores fora de HEX bloqueadas pelo normalizador V8');
 const cap1=ui.MedicationFormatIcon({formato:'capsula',cores:['#000000','#ffffff']});

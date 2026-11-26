@@ -141,6 +141,11 @@ export function useMedicamentos() {
   // UPDATE
   // ==========================================================
 
+  const confirmStockCount=useCallback(async(id:string,count:number,expected:import("@/lib/dose-premium/stock-cycle").StockCountSnapshot)=>{
+    if(!activePersonId)throw Error('Pessoa ativa não identificada.');
+    return medicamentosRepository.confirmStockCount(id,activePersonId,count,expected);
+  },[activePersonId]);
+
   const updateMedicamento =
     useCallback(
       async (
@@ -203,6 +208,7 @@ export function useMedicamentos() {
     getMedicamento,
     addMedicamento,
     updateMedicamento,
+    confirmStockCount,
     deleteMedicamento,
   };
 }

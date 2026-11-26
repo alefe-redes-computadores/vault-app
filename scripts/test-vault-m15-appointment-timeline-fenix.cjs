@@ -17,7 +17,7 @@ ok(today.includes('setMostrarConcluidas')&&today.includes('<TodayFilterPanel')&&
    /visibleTimelineItems\(dosesFiltradas,\s*\{\s*isToday:\s*isHoje,\s*status:\s*filtroStatus,\s*showResolved:\s*mostrarConcluidas,?\s*\}\)/.test(today)&&
    today.includes('const hasFiltrosAtivos ='),'historical toggle and filters retained');
 ok(today.includes('emptyTimelineCopy.title')&&today.includes('emptyTimelineCopy.description')&&empty.includes('Nenhum slot para revisar neste dia'),'empty UI never erases scheduled slots');
-ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('buildTodayTimelineItems(')&&today.includes('setIsBatchTimeModalOpen'),'canonical dose batch/stock/actions untouched');
+ok(today.includes('await doseLogsRepository.setStatus(')&&today.includes('expected:review.expected')&&today.includes('openIndividualReview(item)')&&today.includes('observedStockContext(med,')&&today.includes('requireRegisteredStock:true')&&today.includes('requireKnownEmptyStock:true')&&today.includes('buildTodayTimelineItems(')&&today.includes('setIsBatchTimeModalOpen'),'canonical dose batch/stock/actions untouched');
 ok(doseCard.includes('describeTodayDoseStatus({')&&doseCard.includes('isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao)'),'V242 and M14 historical-not-confirmed typings conserved');
 ok(home.includes('getAlertBadgeLabel(')&&home.includes('router.push(')&&home.includes('trigger("vibrate")')&&home.includes('focus-visible:outline')&&home.includes('aria-label='),'Home alert remains reachable and accessible');
 const v196=read('scripts/test-v196-progressive-shell-avatar.cjs');

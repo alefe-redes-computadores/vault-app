@@ -1,5 +1,7 @@
 // app/saude/medicamentos/historico/page.tsx
 "use client";
+import { validDay } from "@/lib/dose-premium/center-view";
+import { describeHistoricalDose, summarizeHistoricalQuantities } from "@/lib/dose-premium/historical-unit";
 import {safeClinicalReturnM150} from "@/lib/navigation/clinical-return-m150";
 
 import {
@@ -145,30 +147,34 @@ function HistoryContent() {
   const medicationId = searchParams.get("id") || "";
   const review28 = searchParams.get("review") === "28";
   const today = getLocalTodayISO();
-  const [monthKey, setMonthKey] = useState(() => currentMonthKey());
-  const [selectedDate, setSelectedDate] = useState(today);
+  const requestedDay=searchParams.get('day');
+  const requestedMonth=searchParams.get('month');
+  const initialDay=requestedDay&&validDay(requestedDay)&&requestedDay<=today?requestedDay:today;
+  const initialMonth=requestedMonth&&/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)&&requestedMonth<=currentMonthKey()?requestedMonth:initialDay.slice(0,7);
+  const [monthKey, setMonthKey] = useState(initialMonth);
+  const [selectedDate, setSelectedDate] = useState(initialDay);
   const { user } = useAuth();
   const { records: brainEpisodes } = useBrainV5Pulse();
 
   const medication = useLiveQuery(
     async () => {
-      if (!medicationId || !activePersonId) return null;
+      if (!medicationId || !activePersonId || !user?.id) return null;
       const row = await db.medicamentos.get(medicationId);
-      return row?.person_id === activePersonId ? row : null;
+      return row?.person_id === activePersonId && row.user_id===user.id ? row : null;
     },
-    [medicationId, activePersonId]
+    [medicationId, activePersonId,user?.id]
   );
 
   const logs = useLiveQuery(
     async () => {
-      if (!medicationId || !activePersonId) return [];
+      if (!medicationId || !activePersonId || !user?.id) return [];
       const rows = await db.doseLogs
         .where("medicamento_id")
         .equals(medicationId)
         .toArray();
-      return rows.filter((row) => row.person_id === activePersonId);
+      return rows.filter((row) => row.person_id === activePersonId&&row.user_id===user.id&&row.medicamento_id===medicationId);
     },
-    [medicationId, activePersonId]
+    [medicationId, activePersonId,user?.id]
   );
 
   // M118: review only recorded administrations for this person's medication, no inference from missing slots.
@@ -195,7 +201,7 @@ function HistoryContent() {
   const safetyDates = useMemo(() => new Set([...doseSafety.values()].map(item => item.date)), [doseSafety]);
 
   const model = useMemo(
-    () => medication
+    () => medication&&medication.id===medicationId&&medication.person_id===activePersonId&&medication.user_id===user?.id
       ? buildMedicationDoseHistoryMonth({
           medication,
           logs: logs || [],
@@ -203,7 +209,7 @@ function HistoryContent() {
           today,
         })
       : null,
-    [medication, logs, monthKey, today]
+    [medication, logs, monthKey, today,medicationId,activePersonId,user?.id]
   );
 
   useEffect(() => {
@@ -247,19 +253,14 @@ function HistoryContent() {
   const daySafety = [...doseSafety.values()].filter(item => item.date === selectedDay.date);
   // M136: consumption is a confirmed event, never inferred from an empty slot.
   const recordedDailyEvents = selectedDay.events.filter(event => event.kind !== "planned");
-  const dailyTakenEvents = recordedDailyEvents.filter(event => event.kind === "scheduled_taken" || (event.kind === "avulsa" && Boolean(event.tomadoEm)));
-  const knownDailyQuantity = dailyTakenEvents.reduce((total, event) =>
-    total + (typeof event.quantidade === "number" && Number.isFinite(event.quantidade) && event.quantidade > 0 ? event.quantidade : 0), 0);
-  const dailyUnknownQuantity = dailyTakenEvents.filter(event => !(typeof event.quantidade === "number" && Number.isFinite(event.quantidade) && event.quantidade > 0)).length;
+  const dailyTakenEvents = recordedDailyEvents.filter(event => event.kind!=="conflict"&&Boolean(event.tomadoEm)&&!event.ignoradoEm);
+  const dailyQuantitySummary=summarizeHistoricalQuantities(dailyTakenEvents);
   const monthlyDays = model.days.filter(day => day.inMonth);
   const monthlyEvents = monthlyDays.flatMap(day => day.events).filter(event => event.kind !== "planned");
   const monthlyDaysWithRecords = monthlyDays.filter(day => day.events.some(event => event.kind !== "planned")).length;
   const monthlyDaysUnconfirmed = monthlyDays.filter(day => day.unconfirmed > 0).length;
   const canGoNext = monthKey < currentMonthKey();
-  const unit = medication.forma_farmaceutica === "gota" ||
-    String(medication.formato || "").toLocaleLowerCase("pt-BR").includes("gota")
-      ? "gotas"
-      : medication.estoque_unidade_medida || "unidades";
+
 
   const navigateMonth = (delta: number) => {
     trigger("vibrate");
@@ -372,7 +373,7 @@ function HistoryContent() {
             </div>
             <div className="grid grid-cols-2 gap-2" aria-label="Eventos e unidades do mês">
               <div className="rounded-xl border border-surface-border/55 bg-surface p-3"><strong className="block text-lg font-mono text-ink-primary">{monthlyEvents.length}</strong><span className="text-[10px] text-ink-muted">eventos registrados no mês</span></div>
-              <div className="rounded-xl border border-surface-border/55 bg-surface p-3"><strong className="block text-lg font-mono text-ink-primary">{formatQuantity(model.summary.knownQuantity)}</strong><span className="block text-[10px] text-ink-muted">{unit} com quantidade no mês</span>{model.summary.logsWithoutQuantity > 0 && <span className="block text-[10px] text-amber-300">{model.summary.logsWithoutQuantity} evento(s) sem quantidade · soma parcial</span>}</div>
+              <div className="rounded-xl border border-surface-border/55 bg-surface p-3"><span className="block text-[10px] text-ink-muted">Quantidades por unidade no mês</span>{model.summary.quantityGroups.length?model.summary.quantityGroups.map(group=><strong key={group.key} className="block break-words text-base text-ink-primary">{group.label}</strong>):<strong className="block text-sm text-ink-primary">Não informadas</strong>}{model.summary.logsWithoutComparableQuantity>0&&<span className="block text-[10px] text-amber-300">{model.summary.logsWithoutComparableQuantity} evento(s) sem unidade ou quantidade comparável</span>}</div>
             </div>
           </section>
           <section className="grid grid-cols-2 gap-2" aria-label="Situação dos horários do mês">
@@ -441,14 +442,14 @@ function HistoryContent() {
 
             <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Eventos e unidades do dia selecionado">
               <div className="rounded-xl border border-ice/20 bg-ice/[.035] p-3"><strong className="block text-base font-mono text-ink-primary">{recordedDailyEvents.length}</strong><span className="text-[10px] text-ink-muted">eventos registrados neste dia</span></div>
-              <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.035] p-3"><strong className="block text-base font-mono text-ink-primary">{formatQuantity(knownDailyQuantity)}</strong><span className="block text-[10px] text-ink-muted">{unit} com quantidade neste dia</span>{dailyUnknownQuantity > 0 && <span className="block text-[10px] text-amber-300">{dailyUnknownQuantity} evento(s) sem quantidade · soma parcial</span>}</div>
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.035] p-3"><span className="block text-[10px] text-ink-muted">Quantidades por unidade no dia</span>{dailyQuantitySummary.groups.length?dailyQuantitySummary.groups.map(group=><strong key={group.key} className="block break-words text-sm text-ink-primary">{group.label}</strong>):<strong className="block text-sm text-ink-primary">Não informadas</strong>}{dailyQuantitySummary.unknown>0&&<span className="block text-[10px] text-amber-300">{dailyQuantitySummary.unknown} evento(s) sem unidade ou quantidade comparável</span>}</div>
             </div>
             <p className="mt-2 text-[10px] leading-snug text-ink-muted">{selectedDay.takenScheduled} tomada(s) da rotina · {selectedDay.ignoredScheduled} ignorada(s) · {selectedDay.avulsas} SOS/avulsa(s) · {selectedDay.unconfirmed} horário(s) sem confirmação. Registro ausente não comprova dose não tomada.</p>
 
             <div className="mt-4 space-y-2">
               {selectedDay.expectedSlots.map((slot) => {
                 const event = selectedDay.events.find((item) =>
-                  item.horario === slot && item.kind !== "avulsa"
+                  item.horario === slot && (item.kind === "scheduled_taken" || item.kind === "scheduled_ignored" || item.kind === "planned")
                 );
                 const takenTime = actualTime(event?.tomadoEm);
                 return (
@@ -473,10 +474,11 @@ function HistoryContent() {
                             ? "Marcada como ignorada"
                             : "Sem registro"}
                       </p>
+                      {event?.pharmaceuticalSnapshot && <p className="mt-1 break-words text-[11px] text-ink-muted">{event.pharmaceuticalSnapshot.nome} · {event.pharmaceuticalSnapshot.dosagem || 'Concentração não informada'} · Cadastro no registro</p>}
                     </div>
                     {event?.quantidade !== undefined && (
                       <span className="text-[11px] font-semibold text-ink-muted">
-                        {formatQuantity(event.quantidade)} {unit}
+                        {describeHistoricalDose(event)}
                       </span>
                     )}
                   </div>
@@ -485,7 +487,7 @@ function HistoryContent() {
 
               {selectedDay.events
                 .filter((event) =>
-                  event.kind === "avulsa" ||
+                  event.kind === "avulsa" || event.kind === "unknown_origin" || event.kind === "conflict" ||
                   !selectedDay.expectedSlots.includes(event.horario)
                 )
                 .map((event, index) => (
@@ -500,12 +502,13 @@ function HistoryContent() {
                           ? event.origin === "extra"
                             ? "Dose extra registrada"
                             : "Dose SOS / avulsa registrada"
-                          : "Registro real fora da rotina reconstruída"}
+                          : event.kind==='unknown_origin' ? (event.tomadoEm ? 'Tomada registrada · origem não informada' : event.ignoradoEm ? 'Não tomada registrada · origem não informada' : 'Registro com origem não informada') : event.kind==='conflict' ? 'Registros conflitantes · revisão necessária' : event.kind==='planned' ? 'Planejada, sem confirmação' : 'Registro fora da rotina atual' }
                       </p>
+                      {event.pharmaceuticalSnapshot && <p className="mt-1 break-words text-[11px] text-ink-muted">{event.pharmaceuticalSnapshot.nome} · {event.pharmaceuticalSnapshot.dosagem || 'Concentração não informada'} · Cadastro no registro</p>}
                     </div>
                     {event.quantidade !== undefined && (
                       <span className="text-[11px] font-semibold text-violet-300">
-                        {formatQuantity(event.quantidade)} {unit}
+                        {describeHistoricalDose(event)}
                       </span>
                     )}
                   </div>

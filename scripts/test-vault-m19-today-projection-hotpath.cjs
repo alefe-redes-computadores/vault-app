@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript'),Module=require('node:module');
 const read=p=>fs.readFileSync(p,'utf8');let checks=0;
 const ok=(condition,label)=>{assert.ok(condition,'M19 '+label);checks++;console.log('M19 ✓ '+label)};
@@ -11,7 +12,7 @@ ok(buildSource.includes('const existingLogIds = new Set(list.map(item => item.lo
 ok(buildSource.includes('const unidadeDose = doseUnit(med);')&&buildSource.includes('const diasRestantes = getDaysUntil(med.proxima_renovacao);'),'derivações por medicamento não repetidas por horário');
 ok(groupSource.includes('for(const {item} of group.entries)')&&groupSource.includes('pending.push(item)')&&groupSource.includes('unavailable++'),'agrupamento de horários em passagem única');
 ok(gate.includes('scripts/test-vault-m19-today-projection-hotpath.cjs')&&gate.includes('scripts/test-vault-m18-today-hotpath.cjs')&&gate.includes('scripts/test-vault-m17-today-dose-performance.cjs'),'gate inclui M17, M18 e M19');
-function load(p,imports={}){const code=ts.transpileModule(read(p),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;const mod=new Module(p,module);mod.require=id=>{if(Object.prototype.hasOwnProperty.call(imports,id))return imports[id];throw Error('M19 unexpected import '+id)};mod._compile(code,p);return mod.exports;}
+function load(p,imports={}){const code=ts.transpileModule(read(p),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;const mod=new Module(p,module);mod.require=id=>{if(Object.prototype.hasOwnProperty.call(imports,id))return imports[id];if(id==='@/lib/dose-premium/historical-unit')return loadMacro02Pure(id);throw Error('M19 unexpected import '+id)};mod._compile(code,p);return mod.exports;}
 const grouping=load('lib/dose-schedule-groups.ts');
 const oldGroup=items=>{const groups=new Map();items.forEach((item,index)=>{const key=item.medicamentoId&&!item.isAvulsa&&!item.isSintoma&&item.doseKind!=='planned'?`time:${item.horario}`:`single:${index}`;let group=groups.get(key);if(!group){group={key,entries:[]};groups.set(key,group);}group.entries.push({item,index});});return [...groups.values()].map(group=>{const slots=group.entries.map(entry=>entry.item),pending=slots.filter(x=>!x.tomada&&!x.ignorada);return {...group,slots,pending,resolved:slots.length-pending.length,unavailable:pending.filter(x=>typeof x.estoqueRestante==='number'&&x.estoqueRestante<=0).length};});};
 const slots=[
@@ -48,21 +49,21 @@ const clinicalStock=load('lib/health-intelligence/clinical-stock.ts',{
 });
 const builder=load('lib/today/build-timeline-items.ts',{
   '@/lib/today/acquisition-date-index':acquisitionModule,
-  '@/lib/dose-slot-authority':{buildDoseSlotIndex:()=>new Map(),resolveDoseSlot:()=>({state:'absent'})},
+  '@/lib/dose-slot-authority':loadMacro02Pure('@/lib/dose-slot-authority'),
   '@/lib/health-utils':{computeEstoqueInfo:()=>{counters.stock++;return {quantidadeRestante:6}},getDaysUntil:()=>{counters.days++;return 5}},
   '@/lib/health-intelligence/clinical-stock':clinicalStock,
   '@/lib/health-insights':{analisarComportamentoUso:()=>{counters.behavior++;return null},isReceitaAtualVencida:()=>false,sugerirRenovacao:()=>({deveRenovar:false,mensagem:'',urgencia:'nenhuma'})},
 }).buildTodayTimelineItems;
 function input(medications,logs){return {medicamentos:medications,doseLogs:logs,medicos:[],tratamentos:[],farmacias:[],hospitais:[],historicoDoses:[],registros:[],renovacoes:[],dataSelecionada:'2026-11-02',isHoje:true,userId:'u1',personId:'p1'};}
-const med={id:'m1',nome:'Teste',tipo_uso:'continuo',status:'ativo',estoque_horarios:['08:00','20:00'],created_at:'2026-10-01',estoque_quantidade:6,estoque_unidade_por_dose:1,estoque_unidade_medida:'comprimidos'};
-const log=(id,kind,time,taken=true)=>({id,medicamento_id:'m1',horario:time,dose_kind:kind,tomado_em:taken?'2026-11-02T12:00:00Z':null,data:'2026-11-02',quantidade:1});
+const med={user_id:'u1',person_id:'p1',id:'m1',nome:'Teste',tipo_uso:'continuo',status:'ativo',estoque_horarios:['08:00','20:00'],created_at:'2026-10-01',estoque_quantidade:6,estoque_unidade_por_dose:1,estoque_unidade_medida:'comprimidos'};
+const log=(id,kind,time,taken=true)=>({id,user_id:'u1',person_id:'p1',medicamento_id:'m1',horario:time,dose_kind:kind,tomado_em:taken?'2026-11-02T12:00:00Z':null,data:'2026-11-02',quantidade:1});
 const data=[log('a','sos','12:00'),log('a','sos','12:00'),log('b','extra','13:00'),log('c','planned','16:00',false),log(undefined,'sos','17:00'),log('d','scheduled','08:00')];
 let rows=builder(input([med],data));
 ok(rows.length===5&&rows.filter(x=>x.isAvulsa).length===3,'duas doses programadas + SOS + extra + planejada, sem ID duplicado ou legado incompleto');
 ok(rows.filter(x=>x.isAvulsa).map(x=>x.logId).join(',')==='a,b,c','primeira ocorrência de log duplicado prevalece e SOS sem ID mantém semântica antiga');
 ok(rows.find(x=>x.logId==='c')?.doseKind==='planned'&&rows.find(x=>x.logId==='c')?.tomada===false,'agendada continua não tomada, sem baixa fictícia');
 ok(counters.days===1&&counters.stock===1&&counters.behavior===1,'cálculos clínicos por medicamento apenas uma vez para dois horários');
-ok(rows.filter(x=>!x.isAvulsa).every(x=>x.diasRestantes===5&&x.unidadeDose==='comprimidos'),'todos os slots preservam metadados por medicamento');
+ok(rows.filter(x=>!x.isAvulsa).every(x=>x.diasRestantes===5&&(x.tomada?x.unidadeDose==='· unidade não informada':x.unidadeDose==='comprimidos')),'slots pendentes preservam metadados e fatos antigos não herdam unidade atual');
 // Legacy behavior when no scheduled row exists: first record without ID was previously accepted,
 // the second was suppressed by list.some(logId===undefined). That remains exact.
 const sosMed={...med,tipo_uso:'sos'};

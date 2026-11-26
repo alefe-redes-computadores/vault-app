@@ -3,6 +3,10 @@
 "use client";
 
 import {syncTreatmentVisualIntentR03,finalizeTreatmentVisualIntentR03,TreatmentVisualConflictR03} from "@/lib/sync/treatment-visual-transport-r03";
+import { isMacro02Atomic, pendingAtomicPredecessor, sendMacro02Atomic, finalizeMacro02Atomic } from "@/lib/sync/macro02-atomic";
+import { intentFromQueue, type AtomicAck } from "@/lib/dose-premium/atomic-envelope";
+import { DOSE_PREMIUM_SELECT, dosePremiumWireFields, assertDosePremiumAck } from "@/lib/dose-premium/wire-fields";
+
 import { resolveConsultaSyncPayloadP0 } from "@/lib/sync/consulta-payload-authority";
 import {
   useCallback,
@@ -1870,6 +1874,7 @@ export function useSyncQueue() {
           const currentMedication = med.id
             ? await db.medicamentos.get(med.id)
             : undefined;
+          if((await db.syncQueue.toArray()).some(q=>isMacro02Atomic(q)&&intentFromQueue(q)?.stockBefore.medicationId===med.id&&q.payload.user_id===med.user_id&&q.payload.person_id===personId))throw new SyncDependencyDeferredError('Macro02: saldo acoplado a dose pendente; preserve a fila até confirmação integral.');
 
           if (
             currentMedication &&
@@ -2135,6 +2140,7 @@ export function useSyncQueue() {
                     med.historico_dosagens ||
                     [],
                   contexto_clinico_m1: med.contexto_clinico_m1 ?? null,
+                  ...(med.catalog_snapshot !== undefined ? {catalog_snapshot:med.catalog_snapshot} : {}),
 
                   cid_ids:
                     med.cid_ids ||
@@ -2177,87 +2183,8 @@ export function useSyncQueue() {
         }
 
         case "delete": {
-          const id =
-            requirePayloadId(
-              item
-            );
-
-          const {
-            error:
-              tratamentosError,
-          } =
-            await client
-              .from(
-                "medicamento_tratamentos"
-              )
-              .delete()
-              .eq(
-                "medicamento_id",
-                id
-              );
-
-          if (
-            tratamentosError
-          ) {
-            throw new Error(
-              `medicamento_tratamentos delete error: ${tratamentosError.message}`
-            );
-          }
-
-          /*
-           * Renovações são histórico clínico/financeiro.
-           *
-           * Elas permanecem no Supabase mesmo quando o cadastro
-           * atual do medicamento é removido. O medicamento_id
-           * histórico pode continuar apontando para o UUID antigo;
-           * medicamento_nome e medicamento_dosagem preservam a
-           * identidade exibível da aquisição.
-           */
-
-          const {
-            error:
-              doseLogsError,
-          } =
-            await client
-              .from(
-                "dose_logs"
-              )
-              .delete()
-              .eq(
-                "medicamento_id",
-                id
-              );
-
-          if (
-            doseLogsError
-          ) {
-            throw new Error(
-              `Dose_logs cascade delete error: ${doseLogsError.message}`
-            );
-          }
-
-          const {
-            error,
-          } =
-            await client
-              .from(
-                "medicamentos"
-              )
-              .delete()
-              .eq(
-                "id",
-                id
-              );
-
-          if (
-            error
-          ) {
-            throw new Error(
-              `Medicamentos delete error: ${error.message}`
-            );
-          }
-
-          break;
+          // Preserve legacy physical deletion intents for explicit reconciliation.
+          throw new Error("Macro02: exclusão física legada de medicamento retida; revise pela descontinuação segura sem apagar histórico.");
         }
 
         default:
@@ -2266,11 +2193,8 @@ export function useSyncQueue() {
           );
       }
 
-      if (
-        item.operation !==
-          "delete" &&
-        med.id
-      ) {
+      // Only add/update can reach this point: delete and default throw above.
+      if (med.id) {
         await syncMedicamentoTratamentos(
           med.id,
           med.tratamento_ids ||
@@ -3474,6 +3398,7 @@ export function useSyncQueue() {
   const syncRetirada=async(item:SyncQueueItem)=>{
     const client=requireSupabase();
     const r=item.payload as unknown as Retirada;
+    if(item.operation!=="delete"&&(await db.syncQueue.filter(q=>q.table==="renovacoes"&&q.payload.macro02_atomic!==undefined&&q.payload.user_id===r.user_id&&q.payload.person_id===r.person_id&&(q.payload.id===r.renovacao_origem_id||q.payload.id===r.renovacao_realizada_id)).first()))throw new SyncDependencyDeferredError("Retirada aguardando confirmação da aquisição acoplada.");
 
     switch(item.operation){
       case "add":
@@ -3565,6 +3490,7 @@ export function useSyncQueue() {
 
       const log =
         item.payload as unknown as DoseLog;
+      if(isMacro02Atomic(item)){const {data,error}=await client.auth.getUser();if(error||!data.user)throw Error('Macro02: sessão não confirmada.');return sendMacro02Atomic(item,data.user.id);}
 
       switch (
         item.operation
@@ -3617,6 +3543,8 @@ export function useSyncQueue() {
             );
           }
 
+          const expected = { ...log, id: log.id, user_id: userId, person_id: personId, tomado_em:log.tomado_em||null, ignorado_em:log.ignorado_em||null, motivo:log.motivo||null };
+          const wire = dosePremiumWireFields(expected);
           const {
             data:
               confirmedRows,
@@ -3668,6 +3596,8 @@ export function useSyncQueue() {
                     log.motivo ||
                     null,
 
+                  ...wire,
+
                   created_at:
                     log.created_at,
 
@@ -3679,9 +3609,7 @@ export function useSyncQueue() {
                     "id",
                 }
               )
-              .select(
-                "id"
-              );
+              .select(DOSE_PREMIUM_SELECT);
 
           if (
             error
@@ -3691,22 +3619,8 @@ export function useSyncQueue() {
             );
           }
 
-          if (
-            !confirmedRows ||
-            confirmedRows.length ===
-              0 ||
-            !confirmedRows.some(
-              (
-                row
-              ) =>
-                row.id ===
-                log.id
-            )
-          ) {
-            throw new Error(
-              `DoseLog ${log.id} não foi confirmado pelo Supabase após upsert.`
-            );
-          }
+          // Full clinical read-back; an ID alone must never clear the outbox.
+          assertDosePremiumAck(expected, confirmedRows);
 
           break;
         }
@@ -3716,6 +3630,8 @@ export function useSyncQueue() {
             requirePayloadId(
               item
             );
+          const personId = requirePersonId(log.person_id, "DoseLog", id);
+          const userId = requireUserId(log.user_id, "DoseLog", id);
 
           const {
             error,
@@ -3725,10 +3641,9 @@ export function useSyncQueue() {
                 "dose_logs"
               )
               .delete()
-              .eq(
-                "id",
-                id
-              );
+              .eq("id", id)
+              .eq("user_id", userId)
+              .eq("person_id", personId);
 
           if (
             error
@@ -5297,8 +5212,10 @@ export function useSyncQueue() {
   const finalizeQueueItem =
     async (
       item:
-        SyncQueueItem
+        SyncQueueItem,
+      atomicAck?:AtomicAck|void
     ): Promise<boolean> => {
+      if(isMacro02Atomic(item)){if(!atomicAck)throw Error('Confirmação acoplada ausente; preserve a fila.');return finalizeMacro02Atomic(item,atomicAck);}
       if(vitalTable(item.table))return finalizeCanonicalVital(item);
       if(item.table==="tratamento_visual_identity")return finalizeTreatmentVisualIntentR03(item);
       if (
@@ -5368,6 +5285,7 @@ export function useSyncQueue() {
       item:
         SyncQueueItem
     ) => {
+      if(isMacro02Atomic(item)&&item.table!=='doseLogs'){const client=requireSupabase();const {data,error}=await client.auth.getUser();if(error||!data.user)throw Error('Macro02: sessão não confirmada.');return sendMacro02Atomic(item,data.user.id);}
       if(vitalTable(item.table)){
         const client=requireSupabase();const {data,error}=await client.auth.getUser();
         if(error||!data.user)throw Error('Vital: autenticação obrigatória.');
@@ -5493,10 +5411,7 @@ export function useSyncQueue() {
           return;
 
         case "doseLogs":
-          await syncDoseLog(
-            item
-          );
-          return;
+          return syncDoseLog(item);
 
         case "anexos_clinicos":
           await syncAnexoClinico(
@@ -5859,12 +5774,12 @@ export function useSyncQueue() {
 
                   const aIndex =
                     priorityOrder.indexOf(
-                      a.table
+                      isMacro02Atomic(a)?"doseLogs":a.table
                     );
 
                   const bIndex =
                     priorityOrder.indexOf(
-                      b.table
+                      isMacro02Atomic(b)?"doseLogs":b.table
                     );
 
                   const dependencyOrder = (
@@ -5882,6 +5797,10 @@ export function useSyncQueue() {
                     )
                   );
 
+                  if(dependencyOrder===0&&isMacro02Atomic(a)&&isMacro02Atomic(b)){
+                    const aScope=String(a.table==='medicamentos'?a.payload.id:a.payload.medicamento_id),bScope=String(b.table==='medicamentos'?b.payload.id:b.payload.medicamento_id);
+                    return aScope.localeCompare(bScope)||Number((a.payload.macro02_atomic as {sequence:number}).sequence)-Number((b.payload.macro02_atomic as {sequence:number}).sequence);
+                  }
                   return aDelete ? -dependencyOrder : dependencyOrder;
                 }
               );
@@ -5961,12 +5880,11 @@ export function useSyncQueue() {
                     }
                   }
 
-                  const atomicFinalized=await syncItem(item);
-
-                  const finalized = atomicFinalized===true ||
-                    await finalizeQueueItem(
-                      item
-                    );
+                  if(isMacro02Atomic(item)&&await pendingAtomicPredecessor(item)){result.processed--;addLog('Operação aguardando intenção anterior do mesmo estoque.','info');continue;}
+                  // The visual CAS can finalize its own queue row. Clinical operations require their exact ACK.
+                  const sendResult=await syncItem(item);
+                  const atomicAck=typeof sendResult==='boolean'?undefined:sendResult;
+                  const finalized=(item.table==='tratamento_visual_identity'&&sendResult===true)||await finalizeQueueItem(item,atomicAck);
 
                   if (
                     finalized

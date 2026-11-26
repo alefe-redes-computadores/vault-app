@@ -30,7 +30,7 @@ async function med(mid:string,pid:string){
   return m;
 }
 
-export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medicamento){
+export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medicamento,options:{preserveAtomicMedication?:boolean}={}){
   if(!r.id||!r.person_id||!r.user_id)throw new Error("Renovação incompleta para retirada.");
 
   const ex=await db.retiradas
@@ -49,6 +49,7 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
     : "";
 
   const t=now();
+  if(options.preserveAtomicMedication && (m.data_retorno_sus||"")!==target)throw Error("Planejamento de retirada diverge da aquisição acoplada.");
 
   if(!target){
     if(ex?.id&&ex.status==="agendada"){
@@ -66,6 +67,7 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
       );
     }
 
+    if(options.preserveAtomicMedication)return;
     const mm={
       ...m,
       data_retorno_sus:undefined,
@@ -130,6 +132,7 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
     {dispatchSync:false}
   );
 
+  if(options.preserveAtomicMedication)return;
   const mm={
     ...m,
     data_retorno_sus:target,

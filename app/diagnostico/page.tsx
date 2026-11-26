@@ -310,6 +310,8 @@ export default function DiagnosticoPage() {
         if (!original.id || !validLocalDose(original, user.id)) continue;
         const current = await db.doseLogs.get(original.id);
         if (!current || !validLocalDose(current, user.id)) continue;
+        // Protected clinical facts can only be recovered by their original atomic intent/receipt.
+        if (current.tomado_em!=null || current.ignorado_em!=null || current.estoque_movimento!=null || current.unidade_dose!=null || current.fonte_unidade!=null || current.unidade_dose_rotulo!=null || current.farmaco_snapshot!=null) continue;
         const person = await db.persons.get(current.person_id!);
         const medication = await db.medicamentos.get(current.medicamento_id);
         if (
@@ -321,9 +323,17 @@ export default function DiagnosticoPage() {
         ) {
           continue;
         }
-        await db.doseLogs.update(current.id!, { synced: false });
-        await enfileirarOperacao("doseLogs", "add", { ...current, synced: false });
-        queued += 1;
+        const repaired = await db.transaction('rw',[db.doseLogs,db.syncQueue],async()=>{
+          const fresh=await db.doseLogs.get(current.id!);
+          if(!fresh||fresh.updated_at!==current.updated_at||fresh.user_id!==user.id||fresh.tomado_em!=null||fresh.ignorado_em!=null||fresh.farmaco_snapshot!=null)return false;
+          if((await db.syncQueue.toArray()).some(q=>q.table==='doseLogs'&&q.payload.id===fresh.id))return false;
+          await db.doseLogs.update(fresh.id!,{synced:false});
+          await enfileirarOperacao('doseLogs','add',{...fresh,synced:false},{dispatchSync:false});
+          const pending=await db.syncQueue.where('chave').equals(`doseLogs:${fresh.id}`).first();
+          if(!pending||pending.payload.user_id!==user.id||pending.payload.id!==fresh.id)throw Error('Reparo sem confirmação na fila local.');
+          return true;
+        });
+        if(repaired)queued += 1;
       }
       if (queued === 0) {
         showToast("Nenhuma dose válida foi liberada para reparo", "info");
@@ -332,7 +342,7 @@ export default function DiagnosticoPage() {
       const result = await processQueue();
       const nextReport = await runDoseAudit();
       await runCheck();
-      const repaired = queued - (nextReport?.localOnly.length ?? queued);
+      const repaired = Math.max(0,queued - (nextReport?.localOnly.length ?? queued));
       showToast(
         result.remaining === 0
           ? `${repaired} dose(s) histórica(s) recuperada(s)`

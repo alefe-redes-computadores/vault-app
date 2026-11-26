@@ -41,9 +41,9 @@ for(const t of ['handleCancelPlannedDose(item)','handleIgnorar(','handleToggle('
  'router.push(','trigger("vibrate")'])ok(card.includes(t),'delegated visual action '+t);
 ok(!card.includes('setMedicamentoSelecionado(') && !card.includes('setModalAberto('),
    'obsolete modal does not return in clinical dose card');
-for(const t of ['await marcarDose(','partitionDoseBatchByStock(', 'buildTodayTimelineItems(',
+for(const t of ['await doseLogsRepository.setStatus(','requireRegisteredStock:true','requireKnownEmptyStock:true','expected:review.expected','openIndividualReview(item)', 'buildTodayTimelineItems(',
  'const metricItems = useMemo(', 'const dosesElegiveisLote = useMemo(',
- 'handleDesfazerLote','useDoseLogs(','handleToggle = async','handleIgnorar = async'])ok(today.includes(t),'canonical operation remains in parent '+t);
+ 'confirmDoseCorrection','useDoseLogs(','handleToggle = async','handleIgnorar=async'])ok(today.includes(t),'canonical operation remains in parent '+t);
 ok(!/(\bdb\.|\bsupabase\b|fetch\(|localStorage|indexedDB|safeAdd|safeUpdate|\.insert\(|\.update\(|\buseLiveQuery\b)/.test(card),
  'new card never reads or writes database');
 ok(!card.includes('useDoseLogs(')&&!card.includes('useMedicationRegulatoryProfiles('),'card does not duplicate hooks or clinical queries');
@@ -63,7 +63,7 @@ ok(p15.includes('const doseCard=read("components/hoje/TodayDoseTimelineCard.tsx"
   &&p15.includes('doseCard.includes(\'diasEstilo.bg\')'),
  'P15 R1 checks the actual consumer of urgency formatting and its visual tone');
 ok(v165.includes('assert.match(card, /doseKind === "planned"/)')&&v165.includes('assert.match(today, /<TodayDoseTimelineCard/)')&&v165.includes('assert.doesNotMatch(health'), 'V165 follows scheduled action into actual card without dropping treatment safeguards');
-ok(v167.includes('assert.match(card, /Cancelar agendamento/)')&&v167.includes('assert.match(card, /handleCancelPlannedDose')&&v167.includes('assert.match(today, /await removerDosePorId'), 'V167 checks real cancel button and append-only stock-safe authority');
+ok(v167.includes('assert.match(card, /Cancelar agendamento/)')&&v167.includes('assert.match(card, /handleCancelPlannedDose')&&v167.includes('assert.match(today, /await doseLogsRepository'), 'V167 checks real cancel button and append-only stock-safe authority');
 ok(v98.includes('card.includes(\'item.doseKind === "planned" ? "Agendada" : "SOS / Avulsa"\')')&&v98.includes('today.includes(\'<TodayDoseTimelineCard'), 'V98 still distinguishes scheduled from SOS and extra');
 ok(v60.includes('doseCard.includes("regulatorySurface.rail")')
  &&v60.includes('doseCard.includes("borderLeft: `4px solid ${regulatorySurface.rail}`")')

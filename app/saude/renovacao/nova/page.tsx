@@ -1,5 +1,6 @@
 // app/saude/renovacao/nova/page.tsx
 "use client";
+import {captureStockCount,type StockCountSnapshot} from "@/lib/dose-premium/stock-cycle";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
@@ -718,6 +719,7 @@ function NovaRenovacaoContent() {
   const [saldoAnteriorTexto, setSaldoAnteriorTexto] = useState("");
   const [retroStockMode, setRetroStockMode] = useState<"add" | "counted">("add");
   const [currentCountText, setCurrentCountText] = useState("");
+  const cycleCountRef=useRef<{id:string;mode:"current"|"initial";snapshot:StockCountSnapshot}|null>(null);
 
   const [
     lote,
@@ -1608,9 +1610,10 @@ function NovaRenovacaoContent() {
                 retiradaId: selectedWithdrawalId || undefined,
                 ...(useCurrentCount
                   ? { countedCurrentStock: Number(currentCountText.trim().replace(",", ".")),
-                      expectedCurrentStock: stockSnapshot?.registeredQuantity ?? null }
+                      expectedCurrentStock: stockSnapshot?.registeredQuantity ?? null,
+                      expectedStockCycleSnapshot: cycleCountRef.current?.id===medicamentoId&&cycleCountRef.current.mode==="current"?cycleCountRef.current.snapshot:undefined }
                   : saldoAnteriorDesconhecido
-                    ? { initialStockQuantity: Number(saldoAnteriorTexto.trim().replace(",", ".")) }
+                    ? { initialStockQuantity: Number(saldoAnteriorTexto.trim().replace(",", ".")), expectedStockCycleSnapshot:cycleCountRef.current?.id===medicamentoId&&cycleCountRef.current.mode==="initial"?cycleCountRef.current.snapshot:undefined }
                     : {}),
               }
             );
@@ -2069,13 +2072,13 @@ function NovaRenovacaoContent() {
               <label className="flex items-start gap-2 rounded-xl border border-surface-border p-3 text-xs text-ink-primary"><input type="radio" name="m62-retro-stock-mode" checked={!useCurrentCount} onChange={() => setRetroStockMode("add")} className="mt-0.5 size-4 accent-cyan-400"/><span><strong>Somar quantidade adquirida ao saldo já registrado.</strong><span className="mt-1 block text-ink-muted">Use apenas se essas unidades ainda não foram incorporadas ao saldo atual. A revisão posterior pode descontar tomadas selecionadas.</span></span></label>
               <label className="flex items-start gap-2 rounded-xl border border-surface-border p-3 text-xs text-ink-primary"><input type="radio" name="m62-retro-stock-mode" checked={useCurrentCount} onChange={() => setRetroStockMode("counted")} className="mt-0.5 size-4 accent-cyan-400"/><span><strong>Informar a quantidade que tenho agora.</strong><span className="mt-1 block text-ink-muted">O Vault registra a compra/retirada passada, mas não soma novamente as unidades; usa a sua contagem atual.</span></span></label>
             </div>
-            {useCurrentCount && <label className="mt-3 block text-xs font-semibold text-ink-primary">Saldo realmente contado agora *<input type="number" min="0" step="any" inputMode="decimal" value={currentCountText} onChange={e => setCurrentCountText(e.target.value)} placeholder="Ex.: 18" aria-invalid={Boolean(errors.currentCount)} className="mt-2 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary"/>{errors.currentCount && <span role="alert" className="mt-1 block text-xs text-coral">{errors.currentCount}</span>}</label>}
+            {useCurrentCount && <label className="mt-3 block text-xs font-semibold text-ink-primary">Saldo realmente contado agora *<input type="number" min="0" step="any" inputMode="decimal" value={currentCountText} onChange={e => {if(selectedMedicamento?.id&&(cycleCountRef.current?.id!==selectedMedicamento.id||cycleCountRef.current.mode!=="current"||!currentCountText.trim()))cycleCountRef.current={id:selectedMedicamento.id,mode:"current",snapshot:captureStockCount(selectedMedicamento)};setCurrentCountText(e.target.value);}} placeholder="Ex.: 18" aria-invalid={Boolean(errors.currentCount)} className="mt-2 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary"/>{errors.currentCount && <span role="alert" className="mt-1 block text-xs text-coral">{errors.currentCount}</span>}</label>}
           </section>}
           {saldoAnteriorDesconhecido && !useCurrentCount && (
             <section className="rounded-[22px] border border-amber-400/30 bg-amber-400/[0.055] p-4">
               <label htmlFor="m42-saldo-anterior" className="text-sm font-semibold text-ink-primary">Saldo antes deste recebimento *</label>
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">O Vault ainda não conhece o estoque deste medicamento. Informe quantas unidades já havia antes desta compra/retirada. Se não havia nenhuma, digite 0. A quantidade adquirida será somada somente depois da confirmação.</p>
-              <input id="m42-saldo-anterior" type="number" min="0" step="any" inputMode="decimal" value={saldoAnteriorTexto} onChange={event=>setSaldoAnteriorTexto(event.target.value)} placeholder="Ex.: 0" aria-invalid={Boolean(errors.saldoAnterior)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-ink-primary focus:border-amber-400/60"/>
+              <input id="m42-saldo-anterior" type="number" min="0" step="any" inputMode="decimal" value={saldoAnteriorTexto} onChange={event=>{if(selectedMedicamento?.id&&(cycleCountRef.current?.id!==selectedMedicamento.id||cycleCountRef.current.mode!=="initial"||!saldoAnteriorTexto.trim()))cycleCountRef.current={id:selectedMedicamento.id,mode:"initial",snapshot:captureStockCount(selectedMedicamento)};setSaldoAnteriorTexto(event.target.value);}} placeholder="Ex.: 0" aria-invalid={Boolean(errors.saldoAnterior)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-ink-primary focus:border-amber-400/60"/>
               {errors.saldoAnterior && <p role="alert" className="mt-1 text-xs text-coral">{errors.saldoAnterior}</p>}
             </section>
           )}

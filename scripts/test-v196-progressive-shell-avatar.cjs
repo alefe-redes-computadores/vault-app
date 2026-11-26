@@ -51,7 +51,7 @@ assert(avatar.includes("[.128,.057,.14]"));
 assert(!avatar.includes("requestAnimationFrame(animate)"));
 
 // Critical medication semantics remain under their repository-owned paths.
-assert(today.includes("await marcarDose("));
+assert(today.includes('await doseLogsRepository.setStatus(')&&today.includes('expected:review.expected')&&today.includes('openIndividualReview(item)'));
 assert(today.includes("hasKnownEmptyMedicationStock"));
 
 console.log("VAULT V196 — PROGRESSIVE SHELL + AVATAR CONTRACT OK");

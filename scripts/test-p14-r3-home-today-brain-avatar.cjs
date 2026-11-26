@@ -28,7 +28,7 @@ for (const field of ['pending={totalPendentes}','unconfirmed={totalEsperadasSemC
 check(pulse.includes('Previsão e registro não são a mesma autoridade clínica')&&pulse.includes('!isFuturo && recorded > 0')&&pulse.includes('Math.min(100, percentage)'),'projeções não viram adesão registrada');
 check(today.includes('Escolher data da linha do tempo')&&today.includes('navegarData(')&&today.includes('voltarParaHoje'),'navegação temporal e histórico mantidos');
 check(/<TodayFilterPanel\s+status=\{filtroStatus\}/.test(today)&&read('components/hoje/TodayFilterPanel.tsx').includes('aria-pressed={active}')&&today.includes('DoseScheduleGroups'),'filtros e agrupamento de doses preservados');
-check(today.includes('dosesElegiveisLote')&&today.includes('dosesComEstoqueNoLote')&&today.includes('retroReviewMode'),'lote e revisão retroativa continuam');
+check(today.includes('dosesElegiveisLote')&&today.includes('batchReadyEntries')&&today.includes('requireRegisteredStock:true')&&today.includes('retroReviewMode'),'lote e revisão retroativa continuam');
 check(today.includes('id="hoje-mes"')&&today.includes('id="hoje-diario"'),'mes e diario preservados sem perda de ancora');
 check(today.lastIndexOf('<DoseScheduleGroups')<today.indexOf('id="hoje-mes"')&&today.indexOf('id="hoje-mes"')<today.indexOf('Versículo do dia'),'mês abaixo da lista de doses');
 check(today.lastIndexOf('<DoseScheduleGroups')<today.indexOf('id="hoje-diario"')&&today.indexOf('id="hoje-diario"')<today.indexOf('Versículo do dia'),'diário abaixo da lista de doses');

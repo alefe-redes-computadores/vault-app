@@ -4,7 +4,8 @@
 "use client";
 
 import { useId } from "react";
-import { MEDICATION_ADDITIONAL_FORMATS } from "@/lib/medications/form-presentation";
+import { Package } from "lucide-react";
+import { MEDICATION_ADDITIONAL_FORMATS, MEDICATION_FORMATS } from "@/lib/medications/form-presentation";
 import { normalizedPillV8 } from "@/lib/health-intelligence/visual-studio-v8";
 
 interface MedicationFormatIconProps {
@@ -20,10 +21,10 @@ export function MedicationFormatIcon({
   size = 20,
   className,
 }: MedicationFormatIconProps) {
-  const raw = String(formato || "").trim().toLowerCase();
-  const canonFormat = raw === "cápsula" ? "capsula" :
+  const raw = String(formato || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const canonFormat = raw === "capsula" ? "capsula" :
     raw === "gotas" ? "gota" :
-    raw === "injeção" ? "injecao" :
+    raw === "injecao" ? "injecao" :
     raw === "inteiro" ? "comprimido" : raw;
   const p = normalizedPillV8({ formato: canonFormat, cores: cores || undefined });
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -33,6 +34,8 @@ export function MedicationFormatIcon({
   const shadow = `vault-m148-shadow-${id}`;
   const two = p.twoColors;
   const normalizedFormat = p.kind;
+  // Missing or unrecognized identity must not silently become a tablet.
+  if(!MEDICATION_FORMATS.some(option=>option.id===canonFormat)) return <Package size={size} className={className || "text-ink-muted"} aria-hidden="true"/>;
   const elongated = normalizedFormat === "capsula" || normalizedFormat === "oblongo" || normalizedFormat === "oblongo_sulcado";
   const scored = normalizedFormat === "partido" || normalizedFormat === "oblongo_sulcado";
   // Não mostrar um comprimido para suspensão, creme, spray ou outros formatos reais.

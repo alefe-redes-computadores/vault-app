@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 /** P5 P2 — read-only behavioral fixtures; never touches user, database or network. */
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -44,6 +45,7 @@ const risk=load(safety,id=>{
  if(id.includes('dose-quantity-safety'))return {assessDoseQuantitySafety:()=>({level:'normal'})};
  if(id.includes('medication-longitudinal-risk'))return {buildMedicationLongitudinalRiskInsights:()=>[]};
  if(id.includes('brain-v52-context'))return {buildBrainV52ContextInsights:()=>[]};
+ if(id==='../dose-premium/historical-unit')return loadMacro02Pure(id);
  throw Error('Import inesperado em safety: '+id);
 }).buildMedicationSafetyInsights;
 const insights=(medicamentos,doseLogs)=>risk({userId:'u',personId:'p',hoje:'2026-11-14',medicamentos,doseLogs,tratamentos:[],renovacoes:[],registrosSaude:[]});
@@ -122,7 +124,8 @@ ok('A01: comando legítimo de documentos pessoais permanece intocado',()=>{
  assert.equal(resolve(d,personalAttachment,null),personalAttachment);
 });
 const build=load(timeline,id=>{
- if(id==='@/lib/dose-slot-authority')return {buildDoseSlotIndex:()=>new Map(),resolveDoseSlot:()=>({state:'absent'})};
+ if(id==='@/lib/dose-premium/historical-unit')return loadMacro02Pure(id);
+ if(id==='@/lib/dose-slot-authority')return loadMacro02Pure('@/lib/dose-slot-authority');
  if(id==='@/lib/today/acquisition-date-index')return {earliestAcquisitionByMedication:()=>new Map()};
  if(id==='@/lib/health-utils')return {getDaysUntil:()=>null};
  if(id==='@/lib/health-intelligence/clinical-stock')return {getClinicalStockSnapshot:()=>({info:{quantidadeRestante:null},registeredQuantity:null})};
@@ -154,12 +157,14 @@ ok('A32: modal mantém todos os hooks antes do retorno por isOpen',()=>{
   assert(prefix.includes(hook));assert(!after.includes(hook),'hook após retorno condicional: '+hook);
  }
  assert(s.includes('const resolutionLock = useRef(false)'));
- assert(s.includes('await onResolveDose(dose, {kind:"ignored", motivo:"sem_estoque"})'));
+ assert(s.includes('await onResolveDose(dose, {kind:"ignored", motivo:"sem_estoque",requireKnownEmptyStock:true})'));
+ const home=read('app/page.tsx'),writer=read('lib/repositories/doseLogs.ts');
+ assert(home.includes('requireKnownEmptyStock:resolution.requireKnownEmptyStock')&&writer.includes('if(requireKnownEmptyStock)')&&writer.includes('saldo mudou'),'revalidação de falta de estoque no escritor');
 });
 ok('A01/A32: fluxo de receitas/doses original continua em Hoje',()=>{
  const today=read('app/hoje/page.tsx');
  assert(today.includes('router.push(evento.actionHref)'));
- assert(today.includes('await marcarComoIgnorada')||today.includes('marcarComoIgnorada('));
+ assert(today.includes('doseLogsRepository.setStatus({')&&today.includes("await writeHistorical(\"ignored\""));
  assert(read('app/page.tsx').includes('<PendingDosesModal'));
  assert(read('lib/health-intelligence/prescription-planning.ts').includes('/saude/renovacao/nova-receita'));
 });

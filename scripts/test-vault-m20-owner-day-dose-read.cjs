@@ -11,7 +11,7 @@ ok(repo.includes('where("[user_id+person_id]").equals([ownerUserId, safePersonId
 ok(repo.includes('ownerUserId !== undefined && !ownerUserId.trim()')&&repo.includes('ownerUserId === undefined && safeDate'),'no unscoped read during explicit owner wait');
 ok(hook.includes('doseLogsLive.personId === activePersonId')&&hook.includes('doseLogsLive.date === targetDate')&&hook.includes('doseLogsLive.ownerId === ownerUserId'),'async snapshot identity guarded on all three dimensions');
 ok(today.includes('user?.id ?? null')&&today.includes('} = useDoseLogs('),'Hoje opts in to fail-closed account scope');
-ok(today.includes('useTodayOwnerData({')&&today.includes('historicoDosesCompleto')&&today.includes('partitionDoseBatchByStock('),'historical evidence, stock and owner context preserved');
+ok(today.includes('useTodayOwnerData({')&&today.includes('historicoDosesCompleto')&&today.includes('observedStockContext(med,')&&today.includes('requireRegisteredStock:true')&&today.includes('assertHomeReviewScope(review,premiumScope'),'historical evidence, stock and owner context preserved');
 ok(gate.includes('scripts/test-vault-m20-owner-day-dose-read.cjs')&&gate.includes('scripts/test-vault-m19-today-projection-hotpath.cjs'),'new contract registered without dropping M19');
 // Execute real repository getAll with an indexed fake Dexie collection, not a copy.
 const mockRows=[

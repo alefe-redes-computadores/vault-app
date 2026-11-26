@@ -2,10 +2,11 @@
  * Não escreve estado clínico, não infere dose tomada, resultado, diagnóstico ou estoque.
  * Apenas relações por IDs existentes e escopo proprietário+pessoa COMPROVADO.
  */
+import {historicalPharmaceuticalIdentity} from '@/lib/dose-premium/pharmaceutical-snapshot';
 import { buildClinicalReport360, validClinicalDay, type Report360Section } from '@/lib/clinical-report-360';
 import {vitalFacts,type VitalEvidence} from '@/lib/vital/facts';
 import type { HealthInsightContext } from '@/lib/health-insights';
-import {formatDoseQuantityB,metricKindB,formatSleepDurationB,originLabelB} from '@/lib/clinical-front-b-pure';
+import {metricKindB,formatSleepDurationB,originLabelB} from '@/lib/clinical-front-b-pure';
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { BrainV5Alert } from '@/lib/health-intelligence/brain-v5';
 import type { A4ClinicalFact } from '@/lib/treatment-a4/clinical-bridge';
@@ -194,21 +195,22 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
     }
     const dose=row.source==='dose_log'?doseMap.get(row.sourceId):undefined;
     const reading=row.category==='measurements'?owned(context.registrosSaude).find(r=>r.id===row.sourceId):undefined;
-    if(dose){const m=medMap.get(dose.medicamento_id);if(m)relations.push(`Medicamento: ${safe(m.nome,100)}`);}
+    const pharma=dose?historicalPharmaceuticalIdentity(dose):null;
+    if(dose){const m=medMap.get(dose.medicamento_id);if(pharma)relations.push(`Medicamento (cadastro no registro): ${safe(pharma.nome,100)}`);else if(m)relations.push(`Medicamento (cadastro atual): ${safe(m.nome,100)}`);}
     if(c){for(const id of c.medicamento_ids??[]){const m=medMap.get(id);if(m)relations.push(`Medicamento vinculado: ${safe(m.nome,100)}`);}
       for(const id of c.tratamento_ids??[]){const t=treatMap.get(id);if(t)relations.push(`Tratamento vinculado: ${safe(t.nome,100)}`);}
     }
     const medForDose=dose?medMap.get(dose.medicamento_id):undefined;
-    const doseTitle=medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · Cadastro atual: '+safe(medForDose.dosagem,45):''}`:row.title;
+    const doseTitle=pharma?`${safe(pharma.nome,100)}${pharma.dosagem?' · Cadastro no registro: '+safe(pharma.dosagem,45):''}`:medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · Cadastro atual: '+safe(medForDose.dosagem,45):''}`:row.title;
     const medForRow=row.category==='medications'?medMap.get(row.sourceId):medForDose;
     const measurementB=reading?metricKindB(reading.tipo):null;
     const preciseSleep=reading&&measurementB==='sono'&&typeof reading.duracao_minutos==='number'?formatSleepDurationB(reading.duracao_minutos):null;
-    // DoseLog C31 has no historical unit. Only rewrite the canonical taken-quantity field, never the motive.
-    const factualDetailB=row.source==='dose_log'?row.detail.replace(/^(Tomada confirmada · Tipo: [^·]+ · Quantidade: )([0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?)(\s*)(?=·|$)/i,(_full,prefix,quantity,space)=>`${prefix}${formatDoseQuantityB(Number(quantity)).replace(/^Quantidade registrada: /,'')}${space}`):row.detail;
+    // Report360 already projects the original historical unit; preserve its factual wording.
+    const factualDetailB=row.detail;
     const safeDetailB=preciseSleep?`${factualDetailB} · Duração: ${preciseSleep} · ${originLabelB(reading?.source)}`:factualDetailB;
     add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:safeDetailB,source:row.source,
       sourceId:row.sourceId,registeredAt:null,provenance:row.category==='brain'?'motor':row.category==='symptoms'||row.category==='consultations'?'declarado':'registrado',relations,
-       visualB:medForRow?{kind:'medication',formato:medForRow.formato||medForRow.forma_farmaceutica,cores:medForRow.cores?.length?medForRow.cores:medForRow.cor_principal?[medForRow.cor_principal,medForRow.cor_secundaria||medForRow.cor_principal]:[],name:medForRow.nome}:reading?{kind:'measurement',metric:measurementB||undefined}:undefined,
+       visualB:pharma?{kind:'medication',formato:pharma.formato||pharma.forma_farmaceutica||undefined,cores:pharma.cores,name:pharma.nome}:medForRow?{kind:'medication',formato:medForRow.formato||medForRow.forma_farmaceutica,cores:medForRow.cores?.length?medForRow.cores:medForRow.cor_principal?[medForRow.cor_principal,medForRow.cor_secundaria||medForRow.cor_principal]:[],name:medForRow.nome}:reading?{kind:'measurement',metric:measurementB||undefined}:undefined,
       href:dose?.id?`/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(dose.id)}`:
        reading?.id?`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(reading.id)}`:
        row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:

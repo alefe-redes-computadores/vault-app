@@ -14,7 +14,7 @@ ok(now>=0&&now<late&&late<next&&next<extra&&extra<done&&done<ignored,"ordem oper
 ok(timeline.includes('if (item.tomada) { add("concluidas", item)')&&timeline.includes('if (item.ignorada) { add("ignoradas", item)'),"ignoradas devem ficar separadas das tomadas");
 ok(h.includes("mostrarConcluidas"),"concluídos deixaram de ser recolhíveis");
 ok(h.includes("dosesElegiveisLote"),"Tomar todas perdido");
-ok(h.includes("handleDesfazerLote"),"desfazer lote perdido");
+ok(h.includes("confirmDoseCorrection")&&h.includes("id:expected.id,expected,adjustStock:target.action"),"correção por ID e revisão de estoque indisponível");
 ok(h.includes("QuickDoseModal"),"dose extra/SOS perdida");
 ok(h.includes("Compromissos do Dia"),"compromissos perdidos");
 console.log("V49 TODAY V3 CONTRACT: OK");

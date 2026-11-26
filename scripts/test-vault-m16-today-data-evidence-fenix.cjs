@@ -12,7 +12,7 @@ ok(today.includes('buildTodayRetroReviewSummary({')&&today.includes('<TodayRetro
 ok(projection.includes('Ausência de confirmação')&&panel.includes('Ausência de confirmação não comprova tomada nem esquecimento'),'Brain evidence never infers adherence');
 ok(panel.includes('summary.confidence === "limited"')&&panel.includes('Nada é confirmado automaticamente'),'evidence limit and non-mutation boundary are visible');
 ok(avatar.includes("matchMedia('(prefers-reduced-motion: reduce)')")&&avatar.includes('O modo reduzido mantém a prévia em ilustração')&&policy.includes('!input.reducedMotion'),'Fenix compact WebGL respects reduced-motion and battery context');
-ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('setIsBatchTimeModalOpen'),'dose and stock authority remain on canonical handlers');
+ok(today.includes('await doseLogsRepository.setStatus(')&&today.includes('expected:review.expected')&&today.includes('openIndividualReview(item)')&&today.includes('observedStockContext(med,')&&today.includes('requireRegisteredStock:true')&&today.includes('requireKnownEmptyStock:true')&&today.includes('setIsBatchTimeModalOpen'),'dose and stock authority remain on canonical handlers');
 ok(projection.includes('const logsBySlot = new Set<string>();') &&
    projection.includes('logsBySlot.add('),
    'in-memory evidence index is an explicit Set, not a database write');

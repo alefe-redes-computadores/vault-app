@@ -12,6 +12,9 @@ ok(e.includes("LocalNotifications.checkPermissions()")&&!e.includes("requestPerm
 ok((e.includes('type:"dose_overdue"')||e.includes('type:"dose_overdue_group"'))&&e.includes("getOverdueDoseNotificationId")&&e.includes("desired.has(n.id)"),"dedup individual ou agrupado");
 ok(c.includes("db.doseLogs")&&c.includes("db.medicamentos"),"reconciliador");
 ok(a.includes('extra.type !== "dose_overdue"'),"ações overdue");
-ok((a.match(/cancelOverdueDoseNotification\(\{/g)||[]).length>=2,"cancelamento TOMEI/IGNORAR");
+const took=a.slice(a.indexOf('if(event.actionId==="TOMEI"){'),a.indexOf('// Ignorar is an explicit'));
+ok(took.includes('stageNativeDoseReview(')&&took.includes('router.push(href)')&&!took.includes('setStatus(')&&!took.includes('cancelOverdueDoseNotification('),"TOMEI abre revisão, não cancela nem grava antes da confirmação");
+ok(a.indexOf('await doseLogsRepository.setStatus({personId')<a.indexOf('await cancelOverdueDoseNotification({personId')&&a.includes('expected:review.expected'),"IGNORAR cancela após escrita escopada");
+ok(e.includes('doseSlotIsResolved(resolveDoseSlot(')&&e.includes('await cancelIds(existing.filter(n=>!desired.has(n.id))'),"reconciliador remove alertas de fatos efetivamente resolvidos");
 ok(p.includes("<DoseNotificationReconciler />")&&p.includes("notificationReconcilersReady"),"mount V91");
 console.log("V43 OVERDUE DOSE NOTIFICATIONS CONTRACT: OK");

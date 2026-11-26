@@ -73,18 +73,18 @@ for(const [path,text] of [['app/hoje/page.tsx',today],['components/saude/DoseSch
  const ast=ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true,path.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.equal(ast.parseDiagnostics.length,0,`${path}: TS syntax errors`);
 }
-assert.match(today,/const handleRevisarHorario = \(items: DoseItemExt\[\]\) =>/);
+assert.match(today,/const handleRevisarHorario\s*=\s*\(items:DoseItemExt\[\]\)\s*=>openBatchReview\(items\)/);
 assert.match(today,/onTakeGroup=\{isHoje \? handleRevisarHorario : undefined\}/);
-assert.match(today,/setBatchTargetKeys\(keys\)/);
-assert.match(today,/batchOwnerRef\.current !== ownerAtStart/);
-assert.match(today,/interrompidoPorTrocaDePessoa/);
-assert.match(today,/batchOwnerRef\.current === ownerAtStart \? confirmadas : \[\]/);
-assert.match(today,/dosesComEstoqueNoLote\.length\s*===\s*0/);
+assert.match(today,/setBatchFrozen\(\{context:doseIdentityContext,entries\}\)/);
+assert.match(today,/batchOwnerRef\.current!==ownerAtStart\|\|committedTimeline\.current\?\.scopeKey!==contextAtStart/);
+assert.match(today,/report\('excluded','Contexto alterado durante o lote\.'\)/);
+assert.match(today,/if\(batchOwnerRef\.current!==ownerAtStart\|\|committedTimeline\.current\?\.scopeKey!==contextAtStart\)\{setIsBatchTimeModalOpen\(false\);return;\}/);
+assert.match(today,/batchReadyEntries\.length>0&&batchReadyEntries\.every/);
 // V223 R2: the group card passes deduplicated dose ITEMS; the Hoje handler
 // converts those items into distinct KEYS before opening the temporal review.
 assert.match(grouped,/eligibleGroupDoseItems\(pending\)/, 'The grouped card must filter scheduled pending slots');
 assert.match(grouped,/onTakeGroup\(actionable\)/, 'The grouped card must submit filtered items, not unresolved entries');
-assert.match(today,/eligibleGroupDoseKeys\(items\)/, 'The Hoje handler converts eligible items into unique medication/time keys');
+assert.match(today,/const key=JSON\.stringify\(\[item\.medicamentoId,dataSelecionada,item\.horario\]\);if\(seen\.has\(key\)\)return \[\];seen\.add\(key\)/, 'The Hoje handler converts eligible items into unique medication/time keys');
 assert.match(longitudinal,/compareRecordedDoseWindows/);
 assert.match(longitudinal,/Ausência de registro não comprova uma dose esquecida/);
 assert.match(scene,/V223: sinais circulares discretos no painel Brain/);

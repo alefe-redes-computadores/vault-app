@@ -38,6 +38,7 @@ const fakeClinical={
   if(sections.includes('consultations'))for(const x of context.consultas.filter(x=>x.user_id===ownerId&&x.person_id===personId))rows.push({category:'consultations',date:x.data,time:null,title:'Consulta '+x.especialidade,detail:x.motivo||'',source:'consultation',sourceId:x.id});
   if(sections.includes('symptoms'))for(const x of context.registrosSaude.filter(x=>x.categoria==='sintoma'&&x.user_id===ownerId&&x.person_id===personId))rows.push({category:'symptoms',date:x.data,time:x.horario,title:x.nome,detail:`${x.intensidade}/10 · ${x.observacoes}`,source:'user_reported',sourceId:x.id});
   if(sections.includes('medications'))for(const x of context.medicamentos.filter(x=>x.user_id===ownerId&&x.person_id===personId))rows.push({category:'medications',date:'2026-11-18',time:null,title:x.nome,detail:'Cadastro atual',source:'medication_current_snapshot',sourceId:x.id});
+  if(sections.includes('doses'))for(const x of context.doseLogs.filter(x=>x.user_id===ownerId&&x.person_id===personId))rows.push({category:'doses',date:x.data,time:x.horario,title:'Dose registrada',detail:'Quantidade histórica',source:'dose_log',sourceId:x.id});
   return {rows,limitations:['Faltas não significam ausência clínica.']};
  }
 };
@@ -51,9 +52,10 @@ function loadVitalPure(path,allowed={}){
 }
 const vitalValidation=loadVitalPure('lib/vital/validation.ts');
 const vitalFacts=loadVitalPure('lib/vital/facts.ts',{'./validation':vitalValidation});
+const pharmaModel=require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure('@/lib/dose-premium/pharmaceutical-snapshot');
 vm.runInNewContext(compiled.outputText,{
  exports:m.exports,module:m,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,
- require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;if(id==='@/lib/clinical-front-b-pure')return pureB.exports;if(id==='@/lib/vital/facts')return vitalFacts;throw Error('Dependência não permitida '+id);}
+ require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;if(id==='@/lib/clinical-front-b-pure')return pureB.exports;if(id==='@/lib/vital/facts')return vitalFacts;if(id==='@/lib/dose-premium/pharmaceutical-snapshot')return pharmaModel;throw Error('Dependência não permitida '+id);}
 },{filename:p,timeout:10000});
 const {buildMedicalDossierP3}=m.exports;
 const owner={user_id:'u',person_id:'p'},foreign={user_id:'outro',person_id:'p'};
@@ -98,6 +100,15 @@ assert.ok(a9Report.rows.some(x=>x.sourceId==='a9-factual'&&x.title.includes('Rea
 assert.ok(a9Report.rows.some(x=>x.sourceId==='a9-reaction'&&x.detail.includes('não determina causalidade')));
 assert.ok(!a9Report.rows.some(x=>x.title.includes('PROIBIDO')),'A9 não vaza outra conta');
 
+// Real dossier projection must resolve by scoped ID and prefer recorded identity over current cadastro.
+const oldIdentity={...owner,medicamento_id:'m'};
+const historical=pharmaModel.capturePharmaceuticalSnapshot({...owner,id:'m',nome:'Cadastro histórico',dosagem:'5 mg',formato:'gota',cores:['azul']},oldIdentity,'2026-11-18T11:00:00Z');
+const clinicalRows=[{...oldIdentity,id:'d-history',data:'2026-11-18',horario:'10:00',tomado_em:'2026-11-18T10:00:00Z',farmaco_snapshot:historical},{...oldIdentity,id:'d-legacy',data:'2026-11-18',horario:'11:00',tomado_em:'2026-11-18T11:00:00Z'},{...oldIdentity,id:'d-foreign-snapshot',data:'2026-11-18',horario:'12:00',tomado_em:'2026-11-18T12:00:00Z',farmaco_snapshot:{...historical,person_id:'p-other',nome:'PROIBIDO SNAPSHOT'}},{...foreign,medicamento_id:'m',id:'d-foreign',data:'2026-11-18',horario:'13:00',tomado_em:'2026-11-18T13:00:00Z'}];
+const withHistory=buildMedicalDossierP3({...options,context:{...ctx,medicamentos:[{...ctx.medicamentos[0],nome:'Cadastro atualizado',dosagem:'10 mg',formato:'comprimido',cores:['verde']},ctx.medicamentos[1]],doseLogs:clinicalRows},sections:['doses']});
+const historicalRow=withHistory.rows.find(x=>x.sourceId==='d-history'),legacyRow=withHistory.rows.find(x=>x.sourceId==='d-legacy'),invalidRow=withHistory.rows.find(x=>x.sourceId==='d-foreign-snapshot');
+assert.ok(historicalRow?.title.includes('Cadastro histórico')&&historicalRow.visualB.formato==='gota'&&historicalRow.visualB.cores[0]==='azul');
+assert.ok(legacyRow?.title.includes('Cadastro atual: 10 mg')&&legacyRow.visualB.formato==='comprimido'&&legacyRow.visualB.cores[0]==='verde');
+assert.ok(invalidRow?.title.includes('Cadastro atualizado')&&!JSON.stringify(withHistory).includes('PROIBIDO SNAPSHOT')&&!withHistory.rows.some(x=>x.sourceId==='d-foreign'));
 const all=buildMedicalDossierP3(options);
 const symptom=all.rows.find(x=>x.sourceId==='s');
 assert.ok(symptom,'sintoma original preservado');

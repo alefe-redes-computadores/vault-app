@@ -2,6 +2,9 @@
 "use client";
 import { nextPendingDose, pendingDoseCustomTime, pendingDoseKey } from "@/lib/pending-dose-review";
 import { summarizePendingTimeGroups } from "@/lib/health-intelligence/pending-dose-brief";
+import { DoseHistoricalUnitField } from "@/components/hoje/DoseHistoricalUnitField";
+import { historicalDoseUnitLabel, readDoseUnit } from "@/lib/dose-premium/historical-unit";
+import { homeReviewKey, initialHomeDoseDraft, prepareHomeDoseConfirmation, type HomeDoseDraft, type HomeDoseReview, type HomeDoseConfirmation } from "@/lib/dose-premium/home-review";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 
 import {
@@ -34,6 +37,7 @@ import {
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
 export type PendingDose = {
+  review:HomeDoseReview;
   stockUnavailable?: boolean;
   medicamentoId: string;
 
@@ -59,7 +63,7 @@ export type PendingDose = {
     | "Anterior";
 };
 
-export type PendingDoseResolution = { requireRegisteredStock?: boolean } & (
+export type PendingDoseResolution = { requireRegisteredStock?: boolean; requireKnownEmptyStock?:boolean; confirmation?:HomeDoseConfirmation; confirmedAt?:string } & (
   | {
       kind:
         "scheduled";
@@ -149,6 +153,19 @@ export function PendingDosesModal({
     useHapticFeedback();
 
   const [selectedDose, setSelectedDose] = useState<PendingDose | null>(null);
+  const [reviewDrafts,setReviewDrafts]=useState<Record<string,HomeDoseDraft>>({});
+  const draftFor=(dose:PendingDose)=>reviewDrafts[homeReviewKey(dose.review)]??initialHomeDoseDraft(dose.review);
+  const patchDraft=(dose:PendingDose,patch:Partial<HomeDoseDraft>)=>setReviewDrafts(prev=>{const key=homeReviewKey(dose.review);return {...prev,[key]:{...(prev[key]??initialHomeDoseDraft(dose.review)),...patch}};});
+  const reviewFields=(dose:PendingDose,bulk=false)=>{
+    const draft=draftFor(dose),known=readDoseUnit(dose.review.expected??{});
+    if(dose.review.blocked)return <p role="alert" className="rounded-xl border border-coral/30 p-3 text-xs text-coral">{dose.review.blocked}</p>;
+    return <div className="min-w-0 space-y-3 rounded-2xl border border-surface-border bg-void/25 p-3">
+      <label className="block space-y-1 text-sm font-medium text-ink-primary">Quantidade realmente administrada<input inputMode="decimal" type="text" value={draft.quantity} onChange={e=>patchDraft(dose,{quantity:e.target.value})} disabled={existeProcessamento} className="block min-h-11 w-full rounded-xl border border-surface-border bg-surface px-3 text-base text-ink-primary" /></label>
+      {dose.review.suggestedQuantity!==null&&<div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-ink-muted">Planejada: {dose.review.suggestedQuantity.toLocaleString('pt-BR')} · confira a tomada real.</p><button type="button" disabled={existeProcessamento} onClick={()=>patchDraft(dose,{quantity:String(dose.review.suggestedQuantity)})} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs font-semibold text-ice">Usar quantidade planejada</button></div>}
+      {known.state==='known'?<p className="text-xs text-emerald-300">Unidade do registro: {historicalDoseUnitLabel({...known.fields,quantidade:Number(draft.quantity.replace(',','.'))})}</p>:<DoseHistoricalUnitField value={{code:draft.code,customLabel:draft.customLabel}} onChange={v=>patchDraft(dose,{...v,unitReviewed:true})} disabled={existeProcessamento}/>}
+      {dose.diaLabel==='Anterior'?<p className="text-xs text-ink-muted">Revisão histórica sem alterar o saldo atual.</p>:!bulk&&<label className="flex min-h-11 items-center gap-2 text-xs text-ink-muted"><input type="checkbox" checked={draft.noStock} onChange={e=>patchDraft(dose,{noStock:e.target.checked})} disabled={existeProcessamento}/> Registrar somente no histórico, sem alterar estoque</label>}
+    </div>;
+  };
 
   const [
     customTakenAt,
@@ -168,6 +185,7 @@ export function PendingDosesModal({
 
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [bulkResolutionOpen, setBulkResolutionOpen] = useState(false);
+  const [bulkTargets,setBulkTargets]=useState<PendingDose[]>([]);
   const [resolvedInSession, setResolvedInSession] = useState(0);
 
   const existeProcessamento =
@@ -196,6 +214,8 @@ export function PendingDosesModal({
   // Evidência de horários compartilhados, independente de estoque/ação em lote.
   const sameTimeGroups = useMemo(() => summarizePendingTimeGroups(doses).filter(group => group.medications > 1), [doses]);
   const [stockConfirmationOpen, setStockConfirmationOpen] = useState(false);
+  const [stockTargets,setStockTargets]=useState<PendingDose[]>([]);
+  const [stockSelected,setStockSelected]=useState<string[]>([]);
   const resolutionLock = useRef(false);
   const resolvedKeysRef = useRef(new Set<string>());
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -212,10 +232,13 @@ export function PendingDosesModal({
       }
 
       setStockConfirmationOpen(false);
+      setStockTargets([]);setStockSelected([]);
       setBulkResolutionOpen(false);
+      setBulkTargets([]);
       setBatchError("");
       setSelectedDose(null);
       setResolvedInSession(0);
+      setReviewDrafts({});
       resolvedKeysRef.current.clear();
 
       setCustomTakenAt(
@@ -318,18 +341,25 @@ export function PendingDosesModal({
   }, [selectedDose,isOpen]);
 
   const handleStockBatch = async () => {
-    if (existeProcessamento || resolutionLock.current) return;
+    if (existeProcessamento || resolutionLock.current || !stockSelected.length) return;
+    const targets=stockTargets.filter(dose=>stockSelected.includes(homeReviewKey(dose.review)));
+    if(!targets.length)return;
     resolutionLock.current = true;
     setIsProcessingAll(true); setBatchError("");
+    const successful=new Set<string>(),failures:string[]=[];
     try {
-      for (const dose of unavailableDoses) {
-        await onResolveDose(dose, {kind:"ignored", motivo:"sem_estoque"});
-        resolvedKeysRef.current.add(pendingDoseKey(dose));
-        setResolvedInSession(value => value + 1);
+      for (const dose of targets) {
+        try {
+          await onResolveDose(dose, {kind:"ignored", motivo:"sem_estoque",requireKnownEmptyStock:true});
+          resolvedKeysRef.current.add(pendingDoseKey(dose));
+          successful.add(homeReviewKey(dose.review));
+          setResolvedInSession(value => value + 1);
+        } catch(error){failures.push(`${dose.nome} · ${dose.horario}: ${error instanceof Error?error.message:"Registro não concluído."}`);}
       }
-      setStockConfirmationOpen(false);
-    } catch (error) {
-      setBatchError(error instanceof Error ? error.message : "Não foi possível salvar o motivo. Revise as pendências restantes.");
+      setStockTargets(rows=>rows.filter(row=>!successful.has(homeReviewKey(row.review))));
+      setStockSelected(keys=>keys.filter(key=>!successful.has(key)));
+      if(failures.length)setBatchError(`${successful.size} de ${targets.length} registros locais. ${failures.join(" | ")}`);
+      else setStockConfirmationOpen(false);
     } finally { resolutionLock.current = false; setIsProcessingAll(false); }
   };
 
@@ -391,7 +421,11 @@ export function PendingDosesModal({
       { kind: "scheduled" | "now" }
     >
   ) => {
-    if (existeProcessamento || resolutionLock.current || !availableDoses.length) return;
+    if (existeProcessamento || resolutionLock.current || !bulkTargets.length) return;
+    // Validate all drafts before the first mutation. A changed live snapshot has no matching draft.
+    let reviewed: {dose:PendingDose;confirmation:HomeDoseConfirmation}[];
+    try {reviewed=bulkTargets.map(dose=>({dose,confirmation:prepareHomeDoseConfirmation(dose.review,draftFor(dose),dose.diaLabel==='Anterior',true)}));}
+    catch(e){setBatchError(e instanceof Error?e.message:'Confira todas as doses.');return;}
     resolutionLock.current = true;
     setBatchError("");
 
@@ -399,16 +433,20 @@ export function PendingDosesModal({
     setIsProcessingAll(true);
 
     let successCount = 0;
+    const confirmedAt=new Date().toISOString();
+    const successful=new Set<string>();
+    const failures:string[]=[];
 
     try {
-      for (const dose of availableDoses) {
+      for (const {dose,confirmation} of reviewed) {
         try {
-          await onResolveDose(dose, {...resolution, requireRegisteredStock:true});
+          await onResolveDose(dose, {...resolution, confirmation,confirmedAt,requireRegisteredStock:true});
           resolvedKeysRef.current.add(pendingDoseKey(dose));
           successCount += 1;
+          successful.add(homeReviewKey(dose.review));
           setResolvedInSession(value => value + 1);
         } catch (error) {
-          setBatchError(error instanceof Error ? error.message : "Uma dose não pôde ser registrada. Revise as pendências.");
+          failures.push(`${dose.nome} · ${dose.horario}: ${error instanceof Error?error.message:"Registro não concluído."}`);
         }
       }
     } finally {
@@ -416,7 +454,9 @@ export function PendingDosesModal({
       setIsProcessingAll(false);
     }
 
-    if (successCount === availableDoses.length) {
+    setBulkTargets(targets=>targets.filter(dose=>!successful.has(homeReviewKey(dose.review))));
+    if(failures.length)setBatchError(`${successCount} de ${reviewed.length} doses registradas. ${failures.join(" | ")}`);
+    if (successCount === reviewed.length) {
       setSelectedDose(null);
       setCustomTimeOpen(false);
       setBulkResolutionOpen(false);
@@ -472,7 +512,7 @@ export function PendingDosesModal({
       setBatchError("");
       resolutionLock.current = true;
       const resolvedDose = selectedDose;
-      try { await onResolveDose(resolvedDose, resolution); }
+      try { await onResolveDose(resolvedDose, resolution.kind==='ignored'?resolution:{...resolution,confirmation:prepareHomeDoseConfirmation(resolvedDose.review,draftFor(resolvedDose),resolvedDose.diaLabel==='Anterior',false)}); }
       catch(e) { setBatchError(e instanceof Error ? e.message : "Não foi possível salvar esta dose."); return; }
       finally { resolutionLock.current = false; }
 
@@ -676,9 +716,10 @@ export function PendingDosesModal({
               </p>
             </div>
 
+            {reviewFields(selectedDose)}
             {selectedDose.stockUnavailable && <div className="flex items-start gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[.055] p-3"><PackageX size={18} className="mt-0.5 shrink-0 text-amber-300"/><div className="min-w-0"><p className="text-xs font-semibold text-amber-100">Estoque cadastrado zerado</p><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Escolha “faltou medicamento” se você não tomou. Se tomou, registre normalmente e depois confira o estoque.</p><a className="mt-1.5 inline-flex min-h-9 items-center py-2 text-xs font-semibold text-sky-300" href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(selectedDose.medicamentoId)}`}>Conferir estoque e aquisições <ChevronRight size={13}/></a></div></div>}
             <div className="space-y-3">
-              {selectedDose.stockUnavailable && <button type="button" disabled={existeProcessamento} onClick={()=>void handleResolve({kind:"ignored",motivo:"sem_estoque"})} className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-left disabled:opacity-50"><PackageX size={19} className="shrink-0 text-amber-300"/><span><span className="block text-sm font-semibold">Não tomei: medicamento em falta</span><span className="mt-0.5 block text-[10px] text-ink-muted">Registra o motivo sem alterar o estoque.</span></span></button>}
+              {selectedDose.stockUnavailable && <button type="button" disabled={existeProcessamento} onClick={()=>void handleResolve({kind:"ignored",motivo:"sem_estoque",requireKnownEmptyStock:true})} className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-left disabled:opacity-50"><PackageX size={19} className="shrink-0 text-amber-300"/><span><span className="block text-sm font-semibold">Não tomei: medicamento em falta</span><span className="mt-0.5 block text-[10px] text-ink-muted">Registra o motivo sem alterar o estoque.</span></span></button>}
               <button
                 type="button"
                 disabled={
@@ -996,8 +1037,8 @@ export function PendingDosesModal({
             </div>
 
             {unavailableDoses.length > 0 && <div className="rounded-xl border border-amber-400/20 bg-amber-400/[.04] px-3 py-2.5">
-              <div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-xs font-semibold text-amber-100"><PackageX size={15}/>{unavailableDoses.length} {unavailableDoses.length===1?"dose com estoque zerado":"doses com estoque zerado"}</div><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Ficam fora do registro em lote.</p></div>{!stockConfirmationOpen&&<button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(true)} className="min-h-10 shrink-0 rounded-xl border border-amber-400/20 px-3 text-[10px] font-semibold text-amber-200">Resolver faltas</button>}</div>
-              {stockConfirmationOpen && <div className="mt-2 border-t border-amber-400/15 pt-2.5"><p className="text-xs leading-relaxed">Confirmar que você não tomou {unavailableDoses.length===1?"esta dose":"essas doses"} porque o medicamento faltou?</p><div className="mt-2 flex gap-2"><button type="button" disabled={existeProcessamento} onClick={()=>void handleStockBatch()} className="min-h-10 flex-1 rounded-xl bg-amber-200 px-3 text-xs font-bold text-void disabled:opacity-50">{isProcessingAll ? "Salvando…" : "Confirmar falta"}</button><button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(false)} className="min-h-10 rounded-xl border border-surface-border px-3 text-xs">Cancelar</button></div></div>}
+              <div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-xs font-semibold text-amber-100"><PackageX size={15}/>{unavailableDoses.length} {unavailableDoses.length===1?"dose com estoque zerado":"doses com estoque zerado"}</div><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Ficam fora do registro em lote.</p></div>{!stockConfirmationOpen&&<button type="button" disabled={existeProcessamento} onClick={()=>{setStockTargets(unavailableDoses.filter(dose=>!resolvedKeysRef.current.has(pendingDoseKey(dose))));setStockSelected([]);setStockConfirmationOpen(true);}} className="min-h-10 shrink-0 rounded-xl border border-amber-400/20 px-3 text-[10px] font-semibold text-amber-200">Resolver faltas</button>}</div>
+              {stockConfirmationOpen && <div className="mt-2 border-t border-amber-400/15 pt-2.5"><p className="text-xs leading-relaxed">Saldo zerado não comprova que você deixou de tomar. Selecione somente as doses que de fato não tomou por falta de medicamento.</p><div className="mt-2 space-y-1">{stockTargets.map(dose=>{const key=homeReviewKey(dose.review);return <label key={key} className="flex min-h-11 items-center gap-3 rounded-xl border border-surface-border p-2 text-xs"><input type="checkbox" className="h-5 w-5 accent-amber-300" disabled={existeProcessamento} checked={stockSelected.includes(key)} onChange={event=>setStockSelected(keys=>event.target.checked?[...keys,key]:keys.filter(k=>k!==key))}/><span>{dose.nome} · {dose.diaLabel} · {dose.horario}</span></label>;})}</div><div className="mt-2 flex gap-2"><button type="button" disabled={existeProcessamento||!stockSelected.length} onClick={()=>void handleStockBatch()} className="min-h-10 flex-1 rounded-xl bg-amber-200 px-3 text-xs font-bold text-void disabled:opacity-50">{isProcessingAll ? "Salvando…" : "Confirmar falta"}</button><button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(false)} className="min-h-10 rounded-xl border border-surface-border px-3 text-xs">Cancelar</button></div></div>}
             </div>}
             {availableDoses.length > 0 && doses.length > 1 && (
               <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.055] p-3">
@@ -1011,6 +1052,7 @@ export function PendingDosesModal({
                   type="button"
                   onClick={() => {
                   trigger("vibrate");
+                  setBulkTargets(availableDoses.map(dose=>({...dose})));
                   setBulkResolutionOpen(true);
                 }}
                   disabled={existeProcessamento}
@@ -1020,7 +1062,7 @@ export function PendingDosesModal({
                   {isProcessingAll ? "Registrando com segurança..." : `Escolher horário das tomadas (${availableDoses.length})`}
                 </button>}
 
-            {bulkResolutionOpen && availableDoses.length > 0 && (
+            {bulkResolutionOpen && bulkTargets.length > 0 && (
               <div className="rounded-[22px] border border-ice/20 bg-ice/5 p-3.5">
                 <p className="text-sm font-semibold text-ink-primary">
                   Quando você tomou essas doses?
@@ -1030,6 +1072,7 @@ export function PendingDosesModal({
                 </p>
 
                 <div className="mt-3 space-y-2">
+                  {bulkTargets.map(dose=><div key={homeReviewKey(dose.review)} className="space-y-2"><p className="text-sm font-semibold text-ink-primary">{dose.nome} · {dose.data.split('-').reverse().join('/')} às {dose.horario}</p>{reviewFields(dose,true)}</div>)}
                   <button
                     type="button"
                     data-vault-dose-primary-action="scheduled"

@@ -68,6 +68,9 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
+import { civilDoseInstant } from "@/lib/dose-premium/review-intent";
+import { readDoseUnit } from "@/lib/dose-premium/historical-unit";
+import { captureHomeDoseReview, assertHomeReviewScope, indexHomeReviewRows, rowsForHomeReview } from "@/lib/dose-premium/home-review";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
@@ -153,73 +156,6 @@ function getCurrentTimeHHMM(): string {
   );
 }
 
-function buildLocalDateTimeIso(
-  date: string,
-  time: string
-): string {
-  const [
-    year,
-    month,
-    day,
-  ] =
-    date
-      .split("-")
-      .map(Number);
-
-  const [
-    hour,
-    minute,
-  ] =
-    time
-      .split(":")
-      .map(Number);
-
-  const parsed =
-    new Date(
-      year,
-      month - 1,
-      day,
-      hour,
-      minute,
-      0,
-      0
-    );
-
-  if (
-    Number.isNaN(
-      parsed.getTime()
-    )
-  ) {
-    throw new Error(
-      "Data ou horário inválido."
-    );
-  }
-
-  return parsed.toISOString();
-}
-
-function parseLocalDateTimeInput(
-  value: string
-): string {
-  const parsed =
-    new Date(
-      value
-    );
-
-  if (
-    Number.isNaN(
-      parsed.getTime()
-    )
-  ) {
-    throw new Error(
-      "Data ou horário da tomada inválido."
-    );
-  }
-
-  return parsed.toISOString();
-}
-
-
 
 function mapUrgenciaToAlertLevel(
   urgencia:
@@ -268,6 +204,9 @@ export default function HomePage() {
     activePersonId,
   } =
     useActivePersonId();
+
+  const homeDoseScopeRef=useRef({user_id:user?.id??"",person_id:activePersonId??""});
+  homeDoseScopeRef.current={user_id:user?.id??"",person_id:activePersonId??""};
 
   const healthIntelligence =
     useHealthIntelligence();
@@ -433,11 +372,6 @@ export default function HomePage() {
     doseLogs,
     isLoading: doseLogsHojeLoading,
 
-    marcarComoTomadaEm:
-      marcarDoseHojeEm,
-
-    marcarComoIgnorada:
-      ignorarDoseHoje,
   } =
     useDoseLogs(
       hoje,
@@ -449,11 +383,6 @@ export default function HomePage() {
       doseLogsOntem,
     isLoading: doseLogsOntemLoading,
 
-    marcarComoTomadaEm:
-      marcarDoseOntemEm,
-
-    marcarComoIgnorada:
-      ignorarDoseOntem,
   } =
     useDoseLogs(
       ontem,
@@ -627,7 +556,10 @@ export default function HomePage() {
   // ==========================================================
 
   const doseProjectionReady=!doseLogsHojeLoading&&!doseLogsOntemLoading&&plannedEarlier!==undefined&&reviewDoseLogs!==undefined;
-  const dosesPendentesAtrasadas = useMemo<PendingDose[]>(() => doseProjectionReady?buildHomePendingDoseProjection({
+  const dosesPendentesAtrasadas = useMemo<PendingDose[]>(() => {
+    if(!doseProjectionReady)return [];
+    const reviewIndex=indexHomeReviewRows([...(reviewDoseLogs??[]),...(plannedEarlier??[]),...doseLogsOntem,...doseLogs]);
+    return buildHomePendingDoseProjection({
     medications: medicamentosAtivos,
     reviewLogs: reviewDoseLogs??[],
     plannedEarlier: plannedEarlier??[],
@@ -638,7 +570,9 @@ export default function HomePage() {
     today: hoje,
     yesterday: ontem,
     currentTime: horaAtual,
-  }):[], [
+  }).map(dose=>{const scope={user_id:user?.id??"",person_id:activePersonId??"",medicamento_id:dose.medicamentoId,data:dose.data,horario:dose.horario};return {...dose,review:captureHomeDoseReview(scope,rowsForHomeReview(reviewIndex,scope),medicamentosById.get(dose.medicamentoId)?.estoque_unidade_por_dose)};});
+  }, [
+    medicamentosById,
     doseProjectionReady,
     medicamentosAtivos,
     reviewDoseLogs,
@@ -1096,7 +1030,7 @@ export default function HomePage() {
         );
 
       if (doseResolutionLockRef.current) {
-        return;
+        throw Error("Outra revisão de dose está em andamento.");
       }
 
       doseResolutionLockRef.current = true;
@@ -1105,73 +1039,22 @@ export default function HomePage() {
       );
 
       try {
-        const isToday =
-          dose.data ===
-          hoje;
-
-        const isYesterday = dose.data === ontem;
-        const marcarEm = isToday ? marcarDoseHojeEm : isYesterday ? marcarDoseOntemEm :
-          (medicamentoId: string, horario: string, tomadoEm: string, quantidade?: number, requireRegisteredStock = false) => {
-            if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
-            return doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId,
-              data: dose.data, horario, status: "taken", tomadoEm, quantidade, requireRegisteredStock,
-              onlyIfPending: true, adjustStock: false });
-          };
-        const ignorar = isToday ? ignorarDoseHoje : isYesterday ? ignorarDoseOntem :
-          (medicamentoId: string, horario: string, quantidade?: number, motivo?: string, _semEstoque?: boolean) => {
-            if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
-            return doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId,
-              data: dose.data, horario, status: "ignored", quantidade, motivo,
-              onlyIfPending: true, adjustStock: false });
-          };
-
-        switch (
-          resolution.kind
-        ) {
-          case "scheduled": {
-            await marcarEm(
-              dose.medicamentoId,
-              dose.horario,
-              buildLocalDateTimeIso(
-                dose.data,
-                dose.horario
-              ), undefined, resolution.requireRegisteredStock
-            );
-
-            break;
-          }
-
-          case "now": {
-            await marcarEm(
-              dose.medicamentoId,
-              dose.horario,
-              new Date()
-                .toISOString(), undefined, resolution.requireRegisteredStock
-            );
-
-            break;
-          }
-
-          case "custom": {
-            await marcarEm(
-              dose.medicamentoId,
-              dose.horario,
-              parseLocalDateTimeInput(
-                resolution.takenAtLocal
-              ), undefined, resolution.requireRegisteredStock
-            );
-
-            break;
-          }
-
-          case "ignored": {
-            await ignorar(
-              dose.medicamentoId,
-              dose.horario, undefined, resolution.motivo, true
-            );
-
-            break;
-          }
+        // Review carries the snapshot and owner from the actual displayed pending item.
+        // Read the live scope before every batch item; a profile change cannot redirect a write.
+        const scope=homeDoseScopeRef.current;
+        assertHomeReviewScope(dose.review,scope,dose);
+        if(resolution.kind==='ignored'){
+          const id=await doseLogsRepository.setStatus({personId:scope.person_id,medicamentoId:dose.medicamentoId,data:dose.data,horario:dose.horario,status:'ignored',motivo:resolution.motivo,expected:dose.review.expected,onlyIfPending:true,requireKnownEmptyStock:resolution.requireKnownEmptyStock,adjustStock:false});
+          const saved=await doseLogsRepository.getById(id,scope.person_id);
+          if(!saved||saved.id!==id||saved.user_id!==scope.user_id||saved.person_id!==scope.person_id||saved.medicamento_id!==dose.medicamentoId||saved.data!==dose.data||saved.horario.slice(0,5)!==dose.horario||!saved.ignorado_em||saved.tomado_em||saved.motivo!==(resolution.motivo?.trim()||'nao_realizada'))throw Error('Registro local requer conferência antes de nova tentativa.');
+        }else{
+          if(!resolution.confirmation)throw Error('Confira a quantidade e a unidade antes de registrar.');
+          const asOf=new Date().toISOString();
+          const actualAt=resolution.kind==='scheduled'?civilDoseInstant(dose.data,dose.horario,asOf):resolution.kind==='now'?(resolution.confirmedAt??asOf):civilDoseInstant(resolution.takenAtLocal.slice(0,10),resolution.takenAtLocal.slice(11),asOf);
+          const id=await doseLogsRepository.setStatus({personId:scope.person_id,medicamentoId:dose.medicamentoId,data:dose.data,horario:dose.horario,status:'taken',tomadoEm:actualAt,quantidade:resolution.confirmation.quantity,unit:resolution.confirmation.unit,expected:dose.review.expected,onlyIfPending:true,adjustStock:resolution.confirmation.adjustStock,requireRegisteredStock:resolution.requireRegisteredStock});
+          const saved=await doseLogsRepository.getById(id,scope.person_id);
+          const actualUnit=readDoseUnit(saved??{}),expectedUnit=readDoseUnit(resolution.confirmation.unit);
+          if(!saved||saved.id!==id||saved.user_id!==scope.user_id||saved.person_id!==scope.person_id||saved.medicamento_id!==dose.medicamentoId||saved.data!==dose.data||saved.horario.slice(0,5)!==dose.horario||saved.ignorado_em||Date.parse(saved.tomado_em??'')!==Date.parse(actualAt)||saved.quantidade!==resolution.confirmation.quantity||actualUnit.state!==expectedUnit.state||JSON.stringify(actualUnit.fields)!==JSON.stringify(expectedUnit.fields))throw Error("Registro local requer conferência antes de nova tentativa.");
         }
 
         trigger(
@@ -2374,6 +2257,7 @@ export default function HomePage() {
         ===================================================== */}
 
         <PendingDosesModal
+          key={JSON.stringify([user?.id,activePersonId])}
           isOpen={
             modalPendenciasAberto
           }

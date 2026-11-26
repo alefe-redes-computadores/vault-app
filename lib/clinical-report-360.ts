@@ -1,3 +1,5 @@
+import {historicalPharmaceuticalIdentity} from '@/lib/dose-premium/pharmaceutical-snapshot';
+import { describeHistoricalDose } from "@/lib/dose-premium/historical-unit";
 /** M98: local, deterministic and person-scoped clinical export. Never infers dose intake. */
 import type { HealthInsightContext } from "@/lib/health-insights";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
@@ -71,6 +73,7 @@ export function buildClinicalReport360(input: Report360Input): Report360 {
   const within = (date: string) => validClinicalDay(date) && date >= start && date <= end;
   const owned = <T extends {user_id?:string;person_id?:string}>(value: T) => value.user_id === ownerId && value.person_id === personId;
   const rows: Report360Row[] = [];
+  const doseSummary={confirmed:0,explicitlyIgnored:0,sos:0,extra:0};
   const meds = new Map(context.medicamentos.filter(m => owned(m) && m.id).map(m => [m.id!, m] as const));
   if (includes("medications")) {
     for (const med of meds.values()) {
@@ -81,8 +84,12 @@ export function buildClinicalReport360(input: Report360Input): Report360 {
     for (const dose of context.doseLogs) {
       if (!owned(dose) || !within(dose.data) || (!dose.tomado_em && !dose.ignorado_em)) continue;
       const recorded = Boolean(dose.tomado_em);
-      const kind = dose.dose_kind || "scheduled";
-      rows.push(row("doses", dose.data, clock(dose.horario), meds.get(dose.medicamento_id)?.nome || "Medicamento sem cadastro acessível", `${recorded ? "Tomada confirmada" : "Ignorada explicitamente"} · Tipo: ${kind} · Quantidade: ${recorded && typeof dose.quantidade === "number" && Number.isFinite(dose.quantidade) && dose.quantidade > 0 ? dose.quantidade : "não informada"} · Horário do evento: ${isoTime(recorded ? dose.tomado_em : dose.ignorado_em) || "não registrado"}${dose.motivo ? ` · Motivo informado: ${clean(dose.motivo)}` : ""}`, "dose_log", dose.id || `${dose.medicamento_id}:${dose.data}:${dose.horario}`));
+      const kind = dose.dose_kind || "origem não informada";
+      const conflict=Boolean(dose.tomado_em&&dose.ignorado_em);
+      if(!conflict&&recorded){doseSummary.confirmed++;if(dose.dose_kind==='sos')doseSummary.sos++;if(dose.dose_kind==='extra')doseSummary.extra++;}
+      else if(!conflict)doseSummary.explicitlyIgnored++;
+      const pharma=historicalPharmaceuticalIdentity(dose), identityLabel=pharma?`Cadastro no registro: ${pharma.dosagem||'concentração não informada'} · `:'Identidade do cadastro atual (snapshot histórico ausente) · ';
+      rows.push(row("doses", dose.data, clock(dose.horario), pharma?.nome || meds.get(dose.medicamento_id)?.nome || "Medicamento sem cadastro acessível", `${conflict?"Registro contraditório · revisão necessária":recorded ? "Tomada confirmada" : "Ignorada explicitamente"} · ${identityLabel}Tipo: ${kind} · Quantidade: ${conflict?"não confirmada":recorded ? describeHistoricalDose(dose).replace(/^Quantidade registrada: /,'') : "não administrada"} · Horário do evento: ${isoTime(recorded ? dose.tomado_em : dose.ignorado_em) || "não registrado"}${dose.motivo ? ` · Motivo informado: ${clean(dose.motivo)}` : ""}`, "dose_log", dose.id || `${dose.medicamento_id}:${dose.data}:${dose.horario}`));
     }
   }
   for (const entry of context.registrosSaude) {
@@ -120,12 +127,8 @@ export function buildClinicalReport360(input: Report360Input): Report360 {
     }
   }
   rows.sort((a,b)=>b.date.localeCompare(a.date) || (b.time||"").localeCompare(a.time||"") || a.category.localeCompare(b.category) || a.sourceId.localeCompare(b.sourceId));
-  const doseRows = rows.filter(r=>r.category==="doses");
   const summary = {
-    confirmed: doseRows.filter(r=>r.detail.startsWith("Tomada confirmada")).length,
-    explicitlyIgnored: doseRows.filter(r=>r.detail.startsWith("Ignorada explicitamente")).length,
-    sos: doseRows.filter(r=>r.detail.startsWith("Tomada confirmada") && r.detail.includes("Tipo: sos ")).length,
-    extra: doseRows.filter(r=>r.detail.startsWith("Tomada confirmada") && r.detail.includes("Tipo: extra ")).length,
+    ...doseSummary,
     healthRecords: rows.filter(r=>r.category==="symptoms"||r.category==="measurements").length,
     brainSnapshots: rows.filter(r=>r.category==="brain").length,
     daysWithRecords: new Set(rows.filter(r=>r.category!=="medications").map(r=>r.date)).size,

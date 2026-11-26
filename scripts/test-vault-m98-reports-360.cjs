@@ -1,4 +1,5 @@
 "use strict";
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 /** M98 hermetic: no Dexie, network, emails, PDFs written or native filesystem used in tests. */
 const assert=require("node:assert/strict"),fs=require("node:fs"),ts=require("typescript");
 let count=0;
@@ -12,6 +13,7 @@ function transpile(path){
 function load(path,deps={}){
  const m={exports:{}};new Function("module","exports","require",transpile(path))(m,m.exports,key=>{
   if(Object.prototype.hasOwnProperty.call(deps,key))return deps[key];
+  if(['@/lib/dose-premium/historical-unit','@/lib/dose-premium/pharmaceutical-snapshot'].includes(key))return loadMacro02Pure(key);
   throw new Error(`Importação inesperada ${key}`);
  });return m.exports;
 }

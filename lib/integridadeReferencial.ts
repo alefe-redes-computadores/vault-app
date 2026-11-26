@@ -319,11 +319,10 @@ export async function validarIntegridadeReferencial(): Promise<void> {
   // ---------------------- DOSE LOGS ----------------------
   const doseLogs = await db.doseLogs.toArray();
   for (const log of doseLogs) {
-    let changed = false;
 
     if (log.person_id && !personIds.has(log.person_id)) {
-      log.person_id = undefined;
-      changed = true;
+      console.warn('[IntegridadeReferencial] Dose preservada com pessoa ausente:', log.id);
+      continue;
     }
     if (!medicamentoIds.has(log.medicamento_id)) {
       // Dose é prontuário: uma referência ausente deve ser
@@ -335,10 +334,6 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       continue;
     }
 
-    if (changed) {
-      await db.doseLogs.put(log);
-      await enfileirarOperacao('doseLogs', 'update', log);
-    }
   }
 
   console.log('[Integridade] Verificação concluída.');

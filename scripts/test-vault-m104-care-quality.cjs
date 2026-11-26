@@ -1,3 +1,4 @@
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
@@ -9,6 +10,7 @@ new Function('module','exports','require',output)(moduleObject,moduleObject.expo
   if(id.includes('medication-longitudinal-risk')) return {buildMedicationLongitudinalRiskInsights:()=>[]};
   // M112: this M104 harness tests quantity handling; V5.2 has an independent behavior suite.
   if(id.includes('brain-v52-context')) return {buildBrainV52ContextInsights:()=>[]};
+  if(id==='../dose-premium/historical-unit')return loadMacro02Pure(id);
   throw new Error('Import inesperado: '+id);
 });
 const {buildMedicationSafetyInsights}=moduleObject.exports;
@@ -17,7 +19,9 @@ const mk=(i,quantidade)=>({id:'d'+i,person_id:'p',medicamento_id:'m',data:'2026-
 function insight(logs){return buildMedicationSafetyInsights({hoje:'2026-11-09',personId:'p',medicamentos:[med],doseLogs:logs,tratamentos:[],renovacoes:[],registrosSaude:[]}).find(x=>x.id==='seguranca-uso-extra-m');}
 const unknown=insight([mk(0,2),mk(1,undefined),mk(2,2),mk(3,2)]);
 assert(unknown);assert.match(unknown.mensagem,/quantidade total não informada/);assert(!unknown.evidencias.some(s=>s.includes('7 comprimidos')));
-const known=insight([mk(0,2),mk(1,2),mk(2,2),mk(3,2)]);
+const declared={unidade_dose:'tablet',fonte_unidade:'declared',unidade_dose_rotulo:null};
+const known=insight([mk(0,2),mk(1,2),mk(2,2),mk(3,2)].map(x=>({...x,...declared})));
+const legacy=insight([mk(0,2),mk(1,2),mk(2,2),mk(3,2)]);assert(legacy);assert.match(legacy.mensagem,/quantidade total não informada/);
 assert(known);assert.match(known.mensagem,/8 comprimidos/);
 const none=insight([mk(0,undefined),mk(1,undefined),mk(2,undefined),mk(3,undefined)]);
 assert(none);assert.match(none.mensagem,/quantidade total não informada/);

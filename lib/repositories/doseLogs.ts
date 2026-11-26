@@ -1,15 +1,21 @@
+import {capturePharmaceuticalSnapshot} from '@/lib/dose-premium/pharmaceutical-snapshot';
+import { atomicQueueKey, nextAtomicPosition, parseAtomicIntent, type AtomicIntent } from "@/lib/dose-premium/atomic-envelope";
+import { prepareClinicalWrite, confirmObservedWrite, type ClinicalWriteRequest } from "@/lib/dose-premium/writer-contract";
+import { observedStockContext, observedStockConversion } from "@/lib/dose-premium/stock-context";
+import { readDoseUnit, type DoseUnitFields } from "@/lib/dose-premium/historical-unit";
+import { verifyDoseSnapshotAck, type DoseSnapshot } from "@/lib/dose-premium/compatibility";
+import { resolveWritableSlot } from "@/lib/dose-premium/slot-write-guard";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/doseLogs.ts
 
 import {
   db,
-  safeSetDoseLog,
-  safeUpdateMedicamento,
 } from "@/lib/db";
 
 import {
   enfileirarOperacao,
+  solicitarProcessamentoSync,
 } from "@/lib/sync/enfileirarOperacao";
 
 import {
@@ -36,7 +42,10 @@ type DoseStatus =
   | "clear";
 
 interface SetDoseStatusInput {
+  unit?: DoseUnitFields;
+  expected?: DoseSnapshot | null;
   requireRegisteredStock?: boolean;
+  requireKnownEmptyStock?: boolean;
   onlyIfPending?: boolean;
   personId: string;
 
@@ -82,6 +91,9 @@ interface SetDoseStatusInput {
 }
 
 interface RegistrarTomadaAvulsaInput {
+  unit?: DoseUnitFields;
+  tomadoEm?: string;
+  adjustStock?: boolean;
   personId: string;
 
   medicamentoId: string;
@@ -107,6 +119,8 @@ interface AgendarDoseAvulsaInput {
 }
 
 interface RemoveDoseLogByIdInput {
+  adjustStock?: boolean;
+  expected?: DoseSnapshot;
   personId: string;
 
   id: string;
@@ -414,139 +428,6 @@ function resolveDoseQuantity(
 }
 
 // ============================================================
-// GOTAS / UNIDADE DE ESTOQUE
-// ============================================================
-
-function isDropMedication(
-  medicamento: Medicamento
-): boolean {
-  const forma =
-    String(
-      medicamento.forma_farmaceutica ||
-        ""
-    )
-      .trim()
-      .toLowerCase();
-
-  const formato =
-    String(
-      medicamento.formato ||
-        ""
-    )
-      .trim()
-      .toLowerCase();
-
-  return (
-    forma.includes(
-      "gota"
-    ) ||
-    formato.includes(
-      "gota"
-    )
-  );
-}
-
-/**
- * Converte a quantidade da dose para a unidade utilizada pelo estoque.
- *
- * Retorna null quando não há dados suficientes para uma conversão
- * confiável.
- */
-function quantityInStockUnit(
-  medicamento: Medicamento,
-  doseQuantity:
-    | number
-    | undefined
-): number | null {
-  if (
-    doseQuantity ===
-    undefined
-  ) {
-    return null;
-  }
-
-  if (
-    !Number.isFinite(
-      doseQuantity
-    ) ||
-    doseQuantity <= 0
-  ) {
-    return null;
-  }
-
-  const unidade =
-    String(
-      medicamento.estoque_unidade_medida ||
-        ""
-    )
-      .trim()
-      .toLowerCase();
-
-  if (
-    !isDropMedication(
-      medicamento
-    )
-  ) {
-    return doseQuantity;
-  }
-
-  // ==========================================================
-  // ESTOQUE EM GOTAS
-  // ==========================================================
-
-  if (
-    unidade.includes(
-      "gota"
-    )
-  ) {
-    return doseQuantity;
-  }
-
-  // ==========================================================
-  // GOTAS → ML
-  // ==========================================================
-
-  if (
-    unidade.includes(
-      "ml"
-    )
-  ) {
-    const gotasPorMl =
-      medicamento.estoque_gotas_por_ml;
-
-    if (
-      typeof gotasPorMl !==
-        "number" ||
-      !Number.isFinite(
-        gotasPorMl
-      ) ||
-      gotasPorMl <= 0
-    ) {
-      return null;
-    }
-
-    return (
-      doseQuantity /
-      gotasPorMl
-    );
-  }
-
-  // ==========================================================
-  // GOTAS → FRASCO
-  // ==========================================================
-
-  if (
-    unidade.includes(
-      "frasco"
-    )
-  ) {
-    return null;
-  }
-
-  return null;
-}
-
-// ============================================================
 // AUTH
 // ============================================================
 
@@ -622,127 +503,73 @@ async function getDoseLogForSlot(
   medicamentoId: string,
   personId: string,
   data: string,
-  horario: string
+  horario: string,
+  userId: string
 ): Promise<DoseLog | undefined> {
-  return db.doseLogs
-    .where(
-      "medicamento_id"
-    )
-    .equals(
-      medicamentoId
-    )
-    .filter(
-      (log) =>
-        log.person_id ===
-          personId &&
-        log.data ===
-          data &&
-        log.horario ===
-          horario
-    )
-    .first();
+  const rows = await db.doseLogs.where("medicamento_id").equals(medicamentoId)
+    .filter(log => log.person_id === personId && log.data === data).toArray();
+  return resolveWritableSlot<DoseLog>(rows, {user_id:userId,person_id:personId,medicamento_id:medicamentoId,data,horario});
 }
 
-// ============================================================
-// ESTOQUE
-// ============================================================
-
-async function applyStockDelta(
-  medicamentoId: string,
-  stockDelta:
-    | number
-    | null,
-  timestamp: string
-): Promise<void> {
-  /**
-   * null significa:
-   *
-   * "não há informação suficiente para calcular a movimentação".
-   *
-   * O DoseLog continua válido e nenhum valor é inventado.
-   */
-  if (
-    stockDelta === null ||
-    stockDelta === 0
-  ) {
-    return;
+/** Existing repository transaction owns dose, inventory and queue. The candidate remains
+ * merge-locked until the server can consume the coupled envelope atomically. */
+function premiumSnapshot(row:DoseLog|undefined):DoseSnapshot|null {
+  if(!row)return null;
+  if(!row.id||!row.person_id||!row.user_id)throw Error('Dose sem identidade histórica verificável.');
+  return {...row,id:row.id,person_id:row.person_id};
+}
+function hasPremiumEvidence(row:DoseLog|undefined):boolean {
+  return Boolean(row&&(row.unidade_dose!=null||row.unidade_dose_rotulo!=null||row.fonte_unidade!=null||row.estoque_movimento!=null||row.farmaco_snapshot!=null));
+}
+async function verifyPendingPremiumQueue(medicationId:string,scope:{user_id:string;person_id:string}){
+  const rows=await db.syncQueue.toArray();
+  if(rows.some(q=>q.payload.user_id===scope.user_id&&q.payload.person_id===scope.person_id&&(
+    q.table==='medicamentos'&&q.payload.id===medicationId&&q.payload.macro02_atomic===undefined ||
+    q.table==='doseLogs'&&q.payload.medicamento_id===medicationId&&q.payload.macro02_atomic===undefined
+  )))throw Error('Há uma alteração antiga de dose ou estoque aguardando sincronização. Preserve a fila antes de alterar novamente.');
+  return rows;
+}
+async function commitPremiumDose(request:Omit<ClinicalWriteRequest,'identity'|'expected'> & {identity:ClinicalWriteRequest['identity'];expected?:DoseSnapshot|null},existing:DoseLog|undefined,medication:Medicamento):Promise<string>{
+  const id=request.identity;
+  const previous=premiumSnapshot(existing);
+  const stock=observedStockContext(medication,{user_id:id.user_id,person_id:id.person_id,medicationId:id.medicamento_id});
+  const queuedBefore=await verifyPendingPremiumQueue(id.medicamento_id,id);
+  const position=nextAtomicPosition(queuedBefore,stock,medication.updated_at??null);
+  const pharmaceuticalSnapshot=request.status!=='clear'&&!previous?.tomado_em&&!previous?.ignorado_em?capturePharmaceuticalSnapshot(medication,id,request.asOf):null;
+  const prepared=prepareClinicalWrite({...request,pharmaceuticalSnapshot,expected:request.expected===undefined?previous:request.expected},previous,stock,observedStockConversion(medication,stock));
+  const timestamp=request.asOf;
+  let saved:DoseLog|undefined;
+  if(prepared.next){
+    const n=prepared.next;
+    const row:DoseLog={...existing,id:n.id,user_id:n.user_id,person_id:n.person_id,medicamento_id:n.medicamento_id,data:n.data,horario:n.horario,
+      quantidade:n.quantidade??undefined,tomado_em:n.tomado_em??undefined,ignorado_em:n.ignorado_em??undefined,dose_kind:n.dose_kind??undefined,motivo:n.motivo??undefined,
+      unidade_dose:n.unidade_dose,unidade_dose_rotulo:n.unidade_dose_rotulo,fonte_unidade:n.fonte_unidade,estoque_movimento:n.estoque_movimento,farmaco_snapshot:n.farmaco_snapshot,
+      created_at:existing?.created_at??timestamp,updated_at:timestamp,synced:false};
+    if(existing){await db.doseLogs.put(row);}else{await db.doseLogs.add(row);}
+    saved=await db.doseLogs.get(id.id);
+  }else{await db.doseLogs.delete(id.id);saved=await db.doseLogs.get(id.id);}
+  // This is the original dose repository's inventory operation. Do not call the
+  // generic cadastral stock writer, which correctly invalidates ordinary edits.
+  if(prepared.delta!==0){
+    if(prepared.stockAfter===null||!stock.basis)throw Error('Movimentação sem ciclo de estoque.');
+    await db.medicamentos.update(id.medicamento_id,{estoque_quantidade:prepared.stockAfter,estoque_data_referencia:getLocalTodayISO(),updated_at:timestamp,synced:false});
   }
-
-  if (
-    !Number.isFinite(
-      stockDelta
-    )
-  ) {
-    return;
-  }
-
-  const medicamentoAtual =
-    await db.medicamentos.get(
-      medicamentoId
-    );
-
-  if (
-    !medicamentoAtual
-  ) {
-    throw new Error(
-      "Medicamento não encontrado ao atualizar o estoque."
-    );
-  }
-
-  if (
-    typeof medicamentoAtual.estoque_quantidade !==
-      "number" ||
-    !Number.isFinite(
-      medicamentoAtual.estoque_quantidade
-    )
-  ) {
-    return;
-  }
-
-  /**
-   * NÃO usamos Math.max(0).
-   *
-   * O estoque permanece matematicamente reversível.
-   */
-  const novoEstoque =
-    medicamentoAtual.estoque_quantidade -
-    stockDelta;
-
-  await safeUpdateMedicamento(
-    medicamentoId,
-    {
-      estoque_quantidade:
-        novoEstoque,
-
-      estoque_data_referencia:
-        getLocalTodayISO(),
-
-      updated_at:
-        timestamp,
-
-      synced:
-        false,
-    }
-  );
-
-  const medicamentoAtualizado =
-    await db.medicamentos.get(
-      medicamentoId
-    );
-
-  if (
-    !medicamentoAtualizado
-  ) {
-    throw new Error(
-      "Não foi possível recuperar o medicamento após atualizar o estoque."
-    );
-  }
-
-  await enfileirarOperacao(
-    "medicamentos",
-    "update",
-    medicamentoAtualizado
-  );
+  const stockRow=await db.medicamentos.get(id.medicamento_id);
+  if(!stockRow)throw Error('Estoque não recuperado após a transação.');
+  const observed=observedStockContext(stockRow,{user_id:id.user_id,person_id:id.person_id,medicationId:id.medicamento_id});
+  confirmObservedWrite(prepared,{dose:premiumSnapshot(saved),stock:observed});
+  const after=premiumSnapshot(saved);
+  // One canonical queue envelope, no parallel stock push and no UI-produced receipt.
+  // Existing transport must refuse this until the atomic RPC/ACK contract is integrated.
+  const atomic:AtomicIntent=parseAtomicIntent({version:1,operationId:crypto.randomUUID(),previous,after,stockBefore:stock,stockAfter:observed,
+    stockRevisionBefore:medication.updated_at??null,stockRevisionAfter:stockRow.updated_at??null,stockReferenceAfter:stockRow.estoque_data_referencia??null,delta:prepared.delta,...position});
+  const payload={...(saved??id),macro02_atomic:atomic};
+  const operation='update'; // immutable intention, including a deletion; do not sort it as a legacy row DELETE
+  await enfileirarOperacao('doseLogs',operation,payload,{dispatchSync:false});
+  const queued=await db.syncQueue.where('chave').equals(atomicQueueKey(atomic)).first();
+  if(!queued||queued.table!=='doseLogs'||queued.operation!==operation||queued.payload.user_id!==id.user_id||queued.payload.person_id!==id.person_id||JSON.stringify(queued.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Fila não confirmou a intenção transacional; gravação cancelada.');
+  if(after&&!verifyDoseSnapshotAck(after,queued.payload as unknown as DoseSnapshot))throw Error('Fila diverge da dose persistida; gravação cancelada.');
+  return id.id;
 }
 
 // ============================================================
@@ -913,13 +740,14 @@ export const doseLogsRepository = {
       return undefined;
     }
 
+    const user=await requireAuthenticatedUser();
     const log =
       await db.doseLogs.get(
         normalizedId
       );
 
     if (
-      !log ||
+      !log || log.user_id!==user.id ||
       log.person_id !==
         safePersonId
     ) {
@@ -942,9 +770,11 @@ export const doseLogsRepository = {
     quantidade,
     tomadoEm,
     requireRegisteredStock = false,
+    requireKnownEmptyStock = false,
     onlyIfPending = false,
     adjustStock = true,
     motivo,
+    unit, expected,
   }: SetDoseStatusInput): Promise<string> {
     const safePersonId =
       requirePersonId(
@@ -977,7 +807,7 @@ export const doseLogsRepository = {
     const user =
       await requireAuthenticatedUser();
 
-    return db.transaction(
+    const result = await db.transaction(
       "rw",
       [
         db.doseLogs,
@@ -997,7 +827,8 @@ export const doseLogsRepository = {
             safeMedicamentoId,
             safePersonId,
             targetDate,
-            safeHorario
+            safeHorario,
+            user.id
           );
 
         if (
@@ -1021,280 +852,29 @@ export const doseLogsRepository = {
           throw new Error("Esta dose já foi revisada. Atualize as pendências antes de alterar o motivo.");
         }
 
-        // ====================================================
-        // CLEAR
-        // ====================================================
-
-        if (
-          status ===
-          "clear"
-        ) {
-          if (
-            !existing ||
-            !existing.id
-          ) {
-            throw new Error(
-              "Não existe registro de dose para desmarcar."
-            );
-          }
-
-          const timestamp =
-            new Date().toISOString();
-
-          const wasTaken =
-            Boolean(
-              existing.tomado_em
-            );
-
-          const oldQuantity =
-            getExistingDoseQuantity(
-              existing
-            );
-
-          const oldStockAmount =
-            wasTaken
-              ? quantityInStockUnit(
-                  medicamento,
-                  oldQuantity
-                )
-              : 0;
-
-          await db.doseLogs.delete(
-            existing.id
-          );
-
-          await enfileirarOperacao(
-            "doseLogs",
-            "delete",
-            {
-              id:
-                existing.id,
-
-              person_id:
-                safePersonId,
-
-              user_id:
-                user.id,
-            }
-          );
-
-          const stockDelta =
-            wasTaken
-              ? oldStockAmount ===
-                null
-                ? null
-                : -oldStockAmount
-              : 0;
-
-          /*
-           * Revisão histórica pode apagar/corrigir o DoseLog
-           * sem alterar um estoque atual que já incorporava
-           * aquele período.
-           */
-          if (
-            adjustStock
-          ) {
-            await applyStockDelta(
-              safeMedicamentoId,
-              stockDelta,
-              timestamp
-            );
-          }
-
-          return existing.id;
+        // A batch declaration of non-take due to empty stock is explicit and
+        // rechecked inside the same write transaction; unknown is not zero.
+        if(requireKnownEmptyStock){
+          if(status!=="ignored"||motivo!=="sem_estoque"||!onlyIfPending||expected===undefined)throw Error("Revisão de falta de estoque incompleta.");
+          const scheduled=Date.parse(`${targetDate}T${safeHorario.slice(0,5)}:00`);
+          if(!Number.isFinite(scheduled)||scheduled>Date.now())throw Error("A ocorrência ainda não venceu.");
+          if(!hasKnownEmptyMedicationStock(medicamento))throw Error("O saldo mudou ou não está comprovado. Revise individualmente.");
         }
 
-        // ====================================================
-        // TAKEN / IGNORED
-        // ====================================================
-
-        const doseQuantity =
-          resolveDoseQuantity(
-            medicamento,
-            quantidade,
-            existing
-          );
-
-        const wasTaken =
-          Boolean(
-            existing?.tomado_em
-          );
-
-        const willBeTaken =
-          status ===
-          "taken";
-
-        const oldDoseQuantity =
-          getExistingDoseQuantity(
-            existing
-          );
-
-        const oldStockAmount =
-          wasTaken
-            ? quantityInStockUnit(
-                medicamento,
-                oldDoseQuantity
-              )
-            : 0;
-
-        const newStockAmount =
-          willBeTaken
-            ? quantityInStockUnit(
-                medicamento,
-                doseQuantity
-              )
-            : 0;
-
-        let stockDelta:
-          | number
-          | null = 0;
-
-        if (
-          wasTaken &&
-          willBeTaken
-        ) {
-          if (
-            oldStockAmount ===
-              null ||
-            newStockAmount ===
-              null
-          ) {
-            stockDelta =
-              null;
-          } else {
-            stockDelta =
-              newStockAmount -
-              oldStockAmount;
-          }
-        } else if (
-          !wasTaken &&
-          willBeTaken
-        ) {
-          stockDelta =
-            newStockAmount;
-        } else if (
-          wasTaken &&
-          !willBeTaken
-        ) {
-          stockDelta =
-            oldStockAmount ===
-            null
-              ? null
-              : -oldStockAmount;
-        }
-
-        const registeredStock=medicamento.estoque_quantidade;
-        if(requireRegisteredStock && willBeTaken && !wasTaken && (hasKnownEmptyMedicationStock(medicamento) || (typeof registeredStock === "number" && Number.isFinite(registeredStock) && newStockAmount !== null && newStockAmount > registeredStock))) throw new Error("Estoque registrado insuficiente. Confira a dose individualmente e registre a aquisição se ela aconteceu.");
-
-        const timestamp =
-          new Date().toISOString();
-
-        const doseLogId =
-          await safeSetDoseLog({
-            user_id:
-              user.id,
-
-            person_id:
-              safePersonId,
-
-            medicamento_id:
-              safeMedicamentoId,
-
-            data:
-              targetDate,
-
-            horario:
-              safeHorario,
-
-            quantidade:
-              doseQuantity,
-
-            dose_kind:
-              existing?.dose_kind ||
-              "scheduled",
-
-            tomado_em:
-              status ===
-              "taken"
-                ? (
-                    safeTakenAt ??
-                    (
-                      wasTaken &&
-                      existing?.tomado_em
-                        ? existing.tomado_em
-                        : timestamp
-                    )
-                  )
-                : undefined,
-
-            motivo: status === "ignored"
-              ? (motivo?.trim() || existing?.motivo || "nao_realizada")
-              : existing?.dose_kind === "planned" && existing?.motivo?.startsWith(TEMPORARY_COURSE_PREFIX)
-                ? existing.motivo
-                : undefined,
-
-            ignorado_em:
-              status ===
-              "ignored"
-                ? (
-                    existing?.ignorado_em ||
-                    timestamp
-                  )
-                : undefined,
-          });
-
-        const doseLogAtualizado =
-          await db.doseLogs.get(
-            doseLogId
-          );
-
-        if (
-          !doseLogAtualizado
-        ) {
-          throw new Error(
-            "Não foi possível recuperar o registro de dose após a atualização."
-          );
-        }
-
-        if (
-          doseLogAtualizado.person_id !==
-            safePersonId
-        ) {
-          throw new Error(
-            "O registro de dose atualizado não pertence à pessoa ativa."
-          );
-        }
-
-        await enfileirarOperacao(
-          "doseLogs",
-          existing
-            ? "update"
-            : "add",
-          doseLogAtualizado
-        );
-
-        /*
-         * Registro histórico continua sendo um DoseLog real:
-         *
-         * - entra no histórico;
-         * - sincroniza;
-         * - pode participar das métricas;
-         *
-         * porém pode deliberadamente NÃO alterar o saldo atual.
-         */
-        if (
-          adjustStock
-        ) {
-          await applyStockDelta(
-            safeMedicamentoId,
-            stockDelta,
-            timestamp
-          );
-        }
-
-        return doseLogId;
+        // Clinical facts never use the legacy split stock writer. The old
+        // quantity configured in the prescription is a suggestion, not evidence.
+        if(status==='clear'&&!existing?.id)throw Error('Não existe registro de dose para desmarcar.');
+        if(status==='taken'&&!existing?.tomado_em&&adjustStock&&readDoseUnit(unit??{}).state!=='known'&&readDoseUnit(existing??{}).state!=='known')throw Error('Confira a unidade administrada no registro individual antes de movimentar o estoque.');
+        const timestamp=new Date().toISOString();
+        if(status==='taken'&&!existing?.tomado_em&&targetDate!==getLocalTodayISO()&&!safeTakenAt)throw Error('Informe o instante real da tomada histórica.');
+        const quantity=quantidade!==undefined?normalizePositiveQuantity(quantidade):existing?.tomado_em?getExistingDoseQuantity(existing):status==='taken'?null:existing?.quantidade??undefined;
+        return commitPremiumDose({identity:{id:existing?.id??crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:existing?.horario??safeHorario},
+          expected,status,actualAt:status==='taken'?(safeTakenAt??existing?.tomado_em??timestamp):undefined,
+          ignoredReason:motivo?.trim()||existing?.motivo||'nao_realizada',quantity,unit,asOf:timestamp,adjustStock,historicalReview:!adjustStock,requireRegisteredStock,origin:existing?.dose_kind??'scheduled'},existing,medicamento);
       }
     );
+    solicitarProcessamentoSync();
+    return result;
   },
 
   // ==========================================================
@@ -1318,7 +898,7 @@ export const doseLogsRepository = {
       const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
       if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso temporário para um tratamento de duração definida.");
       const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
-        .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id);
+        .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id && row.dose_kind !== "sos" && row.dose_kind !== "extra");
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
         !row.tomado_em && !row.ignorado_em);
       const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
@@ -1394,7 +974,8 @@ export const doseLogsRepository = {
         safeMedicamentoId,
         safePersonId,
         targetDate,
-        safeHorario
+        safeHorario,
+        user.id
       );
 
       if (existing) {
@@ -1440,7 +1021,7 @@ export const doseLogsRepository = {
     horario,
     quantidade,
     doseKind = "sos",
-    motivo,
+    motivo, unit, tomadoEm, adjustStock=true,
   }: RegistrarTomadaAvulsaInput): Promise<string> {
     const safePersonId =
       requirePersonId(
@@ -1465,7 +1046,7 @@ export const doseLogsRepository = {
     const user =
       await requireAuthenticatedUser();
 
-    return db.transaction(
+    const result = await db.transaction(
       "rw",
       [
         db.doseLogs,
@@ -1480,108 +1061,15 @@ export const doseLogsRepository = {
             user.id
           );
 
-        const doseQuantity =
-          resolveDoseQuantity(
-            medicamento,
-            quantidade
-          );
-
-        const stockAmount =
-          quantityInStockUnit(
-            medicamento,
-            doseQuantity
-          );
-
-        const timestamp =
-          new Date().toISOString();
-
-        const id =
-          crypto.randomUUID();
-
-        const fullLog: DoseLog = {
-          id,
-
-          user_id:
-            user.id,
-
-          person_id:
-            safePersonId,
-
-          medicamento_id:
-            safeMedicamentoId,
-
-          data:
-            targetDate,
-
-          horario:
-            safeHorario,
-
-          quantidade:
-            doseQuantity,
-
-          dose_kind:
-            doseKind,
-
-          motivo:
-            motivo?.trim() || undefined,
-
-          tomado_em:
-            timestamp,
-
-          ignorado_em:
-            undefined,
-
-          created_at:
-            timestamp,
-
-          updated_at:
-            timestamp,
-
-          synced:
-            false,
-        };
-
-        await db.doseLogs.add(
-          fullLog
-        );
-
-        const doseLogSalvo =
-          await db.doseLogs.get(
-            id
-          );
-
-        if (
-          !doseLogSalvo
-        ) {
-          throw new Error(
-            "Não foi possível recuperar a dose avulsa após o registro."
-          );
-        }
-
-        if (
-          doseLogSalvo.person_id !==
-            safePersonId
-        ) {
-          throw new Error(
-            "A dose avulsa registrada não pertence à pessoa ativa."
-          );
-        }
-
-        await enfileirarOperacao(
-          "doseLogs",
-          "add",
-          doseLogSalvo
-        );
-
-        await applyStockDelta(
-          safeMedicamentoId,
-          stockAmount,
-          timestamp
-        );
-
-        return id;
+        const doseQuantity=quantidade===undefined?undefined:normalizePositiveQuantity(quantidade);
+        if(adjustStock&&readDoseUnit(unit??{}).state!=='known')throw Error('Confira a unidade administrada antes de movimentar o estoque.');
+        const timestamp=new Date().toISOString();
+        if(targetDate!==getLocalTodayISO()&&!tomadoEm)throw Error('Informe o instante real da tomada avulsa histórica.');
+        return commitPremiumDose({identity:{id:crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:safeHorario},expected:null,status:'taken',actualAt:normalizeTakenAt(tomadoEm)??timestamp,quantity:doseQuantity,unit,note:motivo,asOf:timestamp,adjustStock,historicalReview:!adjustStock,origin:doseKind},undefined,medicamento);
       }
     );
+    solicitarProcessamentoSync();
+    return result;
   },
 
   // ==========================================================
@@ -1610,7 +1098,7 @@ export const doseLogsRepository = {
 
   async removeById({
     personId,
-    id,
+    id, adjustStock=true, expected,
   }: RemoveDoseLogByIdInput): Promise<string> {
     const safePersonId =
       requirePersonId(
@@ -1625,7 +1113,7 @@ export const doseLogsRepository = {
     const user =
       await requireAuthenticatedUser();
 
-    return db.transaction(
+    const result = await db.transaction(
       "rw",
       [
         db.doseLogs,
@@ -1670,72 +1158,16 @@ export const doseLogsRepository = {
             user.id
           );
 
-        const timestamp =
-          new Date().toISOString();
-
-        const wasTaken =
-          Boolean(
-            existing.tomado_em
-          );
-
-        const historicalQuantity =
-          getExistingDoseQuantity(
-            existing
-          );
-
-        /**
-         * Só restauramos estoque se:
-         *
-         * - o DoseLog representava uma tomada;
-         * - a quantidade histórica é conhecida;
-         * - a conversão para a unidade do estoque é confiável.
-         *
-         * Nunca reconstruímos o passado usando a configuração
-         * atual do medicamento.
-         */
-        const historicalStockAmount =
-          wasTaken
-            ? quantityInStockUnit(
-                medicamento,
-                historicalQuantity
-              )
-            : 0;
-
-        await db.doseLogs.delete(
-          safeId
-        );
-
-        await enfileirarOperacao(
-          "doseLogs",
-          "delete",
-          {
-            id:
-              safeId,
-
-            person_id:
-              safePersonId,
-
-            user_id:
-              user.id,
-          }
-        );
-
-        const stockDelta =
-          wasTaken
-            ? historicalStockAmount ===
-              null
-              ? null
-              : -historicalStockAmount
-            : 0;
-
-        await applyStockDelta(
-          safeMedicamentoId,
-          stockDelta,
-          timestamp
-        );
-
+        if(hasPremiumEvidence(existing)||Boolean(existing.tomado_em)||Boolean(existing.ignorado_em)||expected!==undefined){
+          return commitPremiumDose({identity:{id:safeId,user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:existing.data,horario:existing.horario},expected,status:'clear',asOf:new Date().toISOString(),adjustStock,historicalReview:!adjustStock,origin:existing.dose_kind},existing,medicamento);
+        }
+        // Unresolved planning record only: no factual dose or stock movement.
+        await db.doseLogs.delete(safeId);
+        await enfileirarOperacao('doseLogs','delete',{id:safeId,person_id:safePersonId,user_id:user.id});
         return safeId;
       }
     );
+    solicitarProcessamentoSync();
+    return result;
   },
 };

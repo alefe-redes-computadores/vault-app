@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const ts=require('typescript');
@@ -51,6 +52,7 @@ const compile=p=>ts.transpileModule(read(p),{compilerOptions:{module:ts.ModuleKi
 function load(p,imports={}){
  const m=new Module(p,module);m.require=id=>{
   if(Object.prototype.hasOwnProperty.call(imports,id))return imports[id];
+  if(['@/lib/dose-premium/historical-unit','@/lib/dose-premium/pharmaceutical-snapshot'].includes(id))return loadMacro02Pure(id);
   throw Error('M23 unexpected import '+id);
  };m._compile(compile(p),p);return m.exports;
 }

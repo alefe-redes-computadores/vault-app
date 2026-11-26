@@ -9,9 +9,10 @@ const card = read("components/hoje/TodayDoseTimelineCard.tsx");
 const avatar = read("components/saude/HealthAvatar3D.tsx");
 
 assert.match(today, /handleCancelPlannedDose/);
-assert.match(today, /await removerDosePorId\(item\.logId\)/);
-assert.match(today, /O estoque não será alterado/);
-assert.match(today, /Agendamento cancelado\. O estoque não foi alterado/);
+assert.match(today, /await doseLogsRepository\.removeById\(\{personId:expected\.person_id,id:expected\.id,expected,adjustStock:target\.action!=='cancel'\}\)/);
+assert.match(today, /Cancelar este agendamento sem alterar o estoque/);
+assert.match(today, /expected\.dose_kind!=='planned'\|\|expected\.tomado_em\|\|expected\.ignorado_em/);
+assert.match(today, /Correção registrada neste aparelho\. Aguardando sincronização\./);
 assert.match(today, /<TodayDoseTimelineCard/);
 assert.match(card, /item\.doseKind === "planned"/);
 assert.match(card, /Cancelar agendamento/);

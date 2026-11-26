@@ -26,7 +26,7 @@ check(today.includes('new Map<string, any>')&&today.includes('visibleTimelineIte
 for(const status of ['pendentes','tomados','ignorados'])check(/onStatus=\{\(value\)\s*=>\s*\{\s*trigger\("vibrate"\);\s*setFiltroStatus\(value\);/.test(today)&&read('components/hoje/TodayFilterPanel.tsx').includes(`{ value: "${status}"`),`status ${status} continua acessível`);
 check(/onPeriod=\{\(value\)\s*=>\s*\{\s*trigger\("vibrate"\);\s*setFiltroPeriodo\(value\);\s*\}\}/.test(today)&&read('components/hoje/TodayFilterPanel.tsx').includes('aria-pressed={active}'),'períodos preservam aria-pressed');
 check(/<TodayFilterPanel\s+status=\{filtroStatus\}/.test(today)&&read('components/hoje/TodayFilterPanel.tsx').includes('label: "Dia inteiro"'),'marcadores legados P14/P15 preservados');
-check(today.includes('DoseScheduleGroups')&&today.includes('QuickDoseModal')&&today.includes('await marcarDose('),'autoridade de doses não alterada');
+check(today.includes('DoseScheduleGroups')&&today.includes('QuickDoseModal')&&today.includes('await doseLogsRepository.setStatus(')&&today.includes('openIndividualReview(item)')&&today.includes('expected:review.expected'),'autoridade de doses não alterada');
 check(hero.includes('safeProgress')&&hero.includes('safeCompleted')&&hero.includes('scheduled > 0'),'Home evita taxa e numerador inválidos');
 check(hero.includes('Rotina programada')&&hero.includes('role="progressbar"')&&hero.includes('Sem horários'),'indicador e acessibilidade existentes preservados');
 check(portfolio.includes('listActiveCount !== portfolio.active')&&portfolio.includes('<MedicationScopeReconciliation'),'diferença Brain/lista explicável e visível');

@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, ClipboardList, Loader2, Package } from "lucide
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
-import { getLocalTodayISO } from "@/lib/health-utils";
+import { captureStockCount, type StockCountSnapshot } from "@/lib/dose-premium/stock-cycle";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -18,7 +18,7 @@ function Conteudo() {
   const fallback = `/saude/medicamentos/detalhes?id=${encodeURIComponent(id)}`;
   const rawReturn = params.get("return_to");
   const returnTo = rawReturn?.startsWith("/") && !rawReturn.startsWith("//") ? rawReturn : fallback;
-  const { medicamentos, updateMedicamento } = useMedicamentos();
+  const { medicamentos, confirmStockCount } = useMedicamentos();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const med = medicamentos?.find(item => item.id === id);
@@ -26,6 +26,7 @@ function Conteudo() {
   const [countText, setCountText] = useState("");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const expectedRef=useRef<{id:string;snapshot:StockCountSnapshot}|null>(null);
   const [error, setError] = useState("");
 
   async function confirm() {
@@ -41,17 +42,16 @@ function Conteudo() {
     setBusy(true);
     setError("");
     try {
-      await updateMedicamento(med.id, {
-        estoque_quantidade: count,
-        estoque_data_referencia: getLocalTodayISO(),
-      });
+      if(!expectedRef.current||expectedRef.current.id!==med.id)throw Error("Confira a contagem novamente.");
+      await confirmStockCount(med.id,count,expectedRef.current.snapshot);
       trigger("success");
       showToast("Saldo registrado", "success");
       router.replace(returnTo);
     } catch (cause) {
       console.error("[M42 StockCount]", cause);
       trigger("error");
-      setError("Não foi possível confirmar o saldo. Nada foi registrado.");
+      setError(cause instanceof Error?cause.message:"Não foi possível confirmar o saldo. Nada foi registrado.");
+      expectedRef.current=null;
       busyRef.current = false;
       setBusy(false);
     }
@@ -69,7 +69,7 @@ function Conteudo() {
       </div>
       <div className="rounded-[22px] border border-surface-border bg-surface p-4">
         <label htmlFor="m42-saldo" className="flex items-center gap-2 text-sm font-semibold"><ClipboardList size={17} className="text-ice"/> Quantidade disponível agora</label>
-        <input id="m42-saldo" type="number" inputMode="decimal" min="0" step="any" value={countText} onChange={event => { setCountText(event.target.value); setError(""); }} placeholder="Ex.: 30 (ou 0, se confirmado)" aria-invalid={Boolean(error)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-base outline-none focus:border-ice"/>
+        <input id="m42-saldo" type="number" inputMode="decimal" min="0" step="any" value={countText} onChange={event => { if(med?.id&&expectedRef.current?.id!==med.id)expectedRef.current={id:med.id,snapshot:captureStockCount(med)}; setCountText(event.target.value); setError(""); }} placeholder="Ex.: 30 (ou 0, se confirmado)" aria-invalid={Boolean(error)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-base outline-none focus:border-ice"/>
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">Registre a contagem que você verificou. Isso corrige apenas o saldo, não cria compra, retirada ou receita. Se comprou ou retirou unidades, utilize Repor estoque para registrar o evento real.</p>
         {error && <p role="alert" className="mt-2 text-xs text-coral">{error}</p>}
       </div>

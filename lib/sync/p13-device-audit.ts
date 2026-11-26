@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase/client";
 import type { DoseLog, SyncQueueItem } from "@/lib/types";
+import { DOSE_PREMIUM_SELECT } from "@/lib/dose-premium/wire-fields";
+import { verifyDoseSnapshotAck } from "@/lib/dose-premium/compatibility";
 
 export interface DeviceDoseAudit {
   checkedAt: string;
@@ -47,7 +49,7 @@ export function compareDeviceDoses(
     const cloud = remoteMap.get(id);
     if (queuedIds.has(id) || row.synced === false) { pendingLocal++; continue; }
     if (!cloud) { onlyLocal++; continue; }
-    if (signature(row) === signature(cloud)) same++;
+    if (verifyDoseSnapshotAck({ ...row, id: row.id!, person_id: personId }, { ...cloud, id: cloud.id!, person_id: personId })) same++;
     else divergent++;
   }
   for (const id of remoteMap.keys()) if (!localMap.has(id)) onlyCloud++;
@@ -86,7 +88,7 @@ export function downloadDeviceDoses(userId: string, personId: string): Promise<D
     for (let page = 0; page < MAX_PAGES; page++) {
       const offset = page * PAGE_SIZE;
       const response = await supabase.from("dose_logs")
-        .select("id,user_id,person_id,medicamento_id,data,horario,tomado_em,ignorado_em,quantidade,dose_kind,motivo,updated_at")
+        .select(DOSE_PREMIUM_SELECT)
         .eq("user_id", user).eq("person_id", person).gte("data", earliest)
         .order("id", { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1);

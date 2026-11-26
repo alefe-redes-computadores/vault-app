@@ -1,3 +1,4 @@
+import { historicalUnitKey,historicalDoseUnitLabel,summarizeHistoricalQuantities } from "../dose-premium/historical-unit";
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 import { assessDoseQuantitySafety } from "@/lib/health-intelligence/dose-quantity-safety";
 import { buildMedicationLongitudinalRiskInsights } from "@/lib/health-intelligence/medication-longitudinal-risk";
@@ -158,22 +159,9 @@ function buildUsePattern(context: HealthInsightContext, medication: Medication, 
   const last7d = recent(logs, now, 24 * 7);
   if (last7d.length < 4 && last24h.length < 2) return null;
   const shortest = shortestInterval(last7d);
-  const validQuantity = (dose: Dose): number | null =>
-    typeof dose.quantidade === "number" && Number.isFinite(dose.quantidade) && dose.quantidade > 0 ? dose.quantidade : null;
-  const knownTotal = (rows: Dose[]): number | null => {
-    const values = rows.map(validQuantity);
-    return values.some(value => value === null) ? null : values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-  };
-  const quantity7d = knownTotal(last7d);
-  const quantity24h = knownTotal(last24h);
-  const configuredQuantity = typeof medication.estoque_unidade_por_dose === "number" && Number.isFinite(medication.estoque_unidade_por_dose) && medication.estoque_unidade_por_dose > 0
-    ? medication.estoque_unidade_por_dose
-    : null;
-  const quantityConcentrated = quantity24h !== null && configuredQuantity !== null && quantity24h >= Math.max(6, configuredQuantity * 3);
-  const unit = medication.estoque_unidade_medida || "unidade(s)";
-  const quantity7dText = quantity7d === null ? "quantidade total não informada" : `${quantity7d} ${unit}`;
-  const quantity24hText = quantity24h === null ? "quantidade total não informada" : `${quantity24h} ${unit}`;
-  const severity = quantityConcentrated ? "importante" : severityForPattern(last7d.length, last24h.length, shortest);
+  const quantityText=(rows:Dose[])=>{const summary=summarizeHistoricalQuantities(rows);return summary.groups.length?summary.groups.map(group=>group.label).join('; ')+(summary.unknown?' · há registros sem unidade ou quantidade comparável':''):'quantidade total não informada';};
+  const quantity7dText=quantityText(last7d),quantity24hText=quantityText(last24h);
+  const severity=severityForPattern(last7d.length,last24h.length,shortest);
   const days = new Set(last7d.map((dose) => dose.data).filter(Boolean)).size;
 
   return {
@@ -267,13 +255,9 @@ function buildConfirmedQuantityInsight(context: HealthInsightContext, medication
   let strongest: { dose: Dose; level: "review" | "high"; ratio: number | null; baseline: number | null; unit: string } | null = null;
   for (const dose of recentLogs) {
     const index = logs.indexOf(dose);
-    const historical = logs.slice(0, index).map((item) => item.quantidade).filter((value): value is number => typeof value === "number" && value > 0);
-    const assessment = assessDoseQuantitySafety({
-      quantity: dose.quantidade!,
-      configuredQuantity: medication.estoque_unidade_por_dose,
-      historicalQuantities: medication.estoque_unidade_por_dose ? [] : historical,
-      unitLabel: medication.estoque_unidade_medida || "unidade(s)",
-    });
+    const unit=historicalUnitKey(dose);if(unit===null)continue;
+    const historical=logs.slice(0,index).filter(item=>historicalUnitKey(item)===unit).map(item=>item.quantidade).filter((value):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>0);
+    const assessment=assessDoseQuantitySafety({quantity:dose.quantidade!,configuredQuantity:undefined,historicalQuantities:historical,unitLabel:historicalDoseUnitLabel(dose)});
     if (assessment.level === "normal") continue;
     if (!strongest || assessment.level === "high" || (assessment.ratio || 0) > (strongest.ratio || 0)) {
       strongest = { dose, level: assessment.level, ratio: assessment.ratio, baseline: assessment.baseline, unit: assessment.unitLabel };

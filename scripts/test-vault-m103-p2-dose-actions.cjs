@@ -50,20 +50,34 @@ ok(predicate({...slot,data:local(hourAhead),horario:time(hourAhead)},now),'proxi
 const hourAheadFar=new Date(now.getTime()+11*60000);
 ok(!predicate({...slot,data:local(hourAheadFar),horario:time(hourAheadFar)},now),'nao antecipa acima de 10min');
 
-let handler=null,removeCount=0;
-const writes=[],cancelled=[],snoozes=[];const saved=new Set();
+// Execute the real pure contracts with a closed relative-module loader.
+const path=require('node:path');const pureCache=new Map();
+function pure(name){const file='lib/dose-premium/'+name+'.ts';if(pureCache.has(file))return pureCache.get(file);const src=read(file);const imports={};for(const m of src.matchAll(/from ['"](\.\/[a-z-]+)['"]/g))imports[m[1]]=pure(path.basename(m[1]));const out=load(file,imports);pureCache.set(file,out);return out;}
+const nativeReview=pure('native-review'),homeReview=pure('home-review');
+let handler=null,removeCount=0,active='p1',uid='u1';
+const writes=[],cancelled=[],snoozes=[],routes=[],toasts=[],saved=[];
 const notifications={addListener:async(type,fn)=>{assert.equal(type,'localNotificationActionPerformed');handler=fn;return {remove:async()=>{removeCount++}}}};
-const repository={setStatus:async input=>{
-  assert(input.onlyIfPending===true,'escrita Android exige slot ainda pendente');
-  const key=[input.personId,input.medicamentoId,input.data,input.horario].join('|');
-  if(saved.has(key))throw Error('slot ja resolvido');
-  saved.add(key);writes.push(input);
+const repository={getAll:async(person,day,owner)=>saved.filter(x=>x.person_id===person&&x.data===day&&x.user_id===owner),setStatus:async input=>{
+  assert(input.onlyIfPending===true,'escrita Android exige slot ainda pendente');assert.equal(input.expected,null);assert.equal(input.adjustStock,false);
+  saved.push({id:'saved-'+saved.length,user_id:uid,person_id:input.personId,medicamento_id:input.medicamentoId,data:input.data,horario:input.horario,dose_kind:'scheduled',ignorado_em:now.toISOString()});writes.push(input);
 }};
 const originalError=console.error;console.error=()=>{};
 const effects=[];
-const mockReact={useEffect:fn=>effects.push(fn)};
+const mockReact={useEffect:fn=>effects.push(fn),useRef:current=>({current})};
+const previous=new Date(now.getTime()-25*60000);
+// For deterministic test coverage, the notification may be from yesterday at midnight.
+// The explicit pending record provides historical scope for that case; absent old rows stay read-only.
+const med={id:'m1',user_id:'u1',person_id:'p1',tipo_uso:'continuo',estoque_horarios:[slot.horario,time(previous)]};
 const hook=load('hooks/useDoseNotificationActions.ts',{
  'react':mockReact,
+ 'next/navigation':{useRouter:()=>({push:href=>routes.push(href)})},
+ '@/hooks/useActivePersonId':{useActivePersonId:()=>({activePersonId:active,changePerson:async p=>{active=p}})},
+ '@/components/ToastProvider':{useToast:()=>({showToast:(...args)=>toasts.push(args)})},
+ '@/lib/db':{db:{persons:{get:async id=>id==='p1'?{id,user_id:'u1'}:null},medicamentos:{get:async id=>id==='m1'?med:null}}},
+ '@/lib/supabase/local-auth':{getLocalFirstAuthUser:async()=>({data:{user:{id:uid}},error:null})},
+ '@/lib/dose-premium/native-review':nativeReview,
+ '@/lib/dose-premium/home-review':homeReview,
+ '@/lib/notification-navigation':{runAfterVaultBiometricUnlock:fn=>fn()},
  '@capacitor/core':{Capacitor:{}},
  '@capacitor/local-notifications':{LocalNotifications:notifications},
  '@/lib/native-runtime':{isVaultNative:()=>true},
@@ -79,28 +93,31 @@ const cleanup=effects[0]();
 const extra={type:'dose_reminder',personId:'p1',medicamentoId:'m1',horario:slot.horario,data:slot.data};
 const trigger=async(actionId,changes={})=>{assert(handler);await handler({actionId,notification:{extra:{...extra,...changes}}})};
 (async()=>{
- await trigger('TOMEI',{data:undefined});
- ok(writes.length===0,'lembrete legado sem data nao escreve');
- await trigger('IGNORAR',{data:'2026-02-30'});
- ok(writes.length===0,'notificacao com data impossivel nao escreve');
- await trigger('TOMEI',{data:local(old),horario:time(old)});
- ok(writes.length===0,'notificacao obsoleta nao escreve');
- await trigger('TOMEI',{data:slot.data,horario:slot.horario});
- ok(writes.length===1&&writes[0].status==='taken'&&writes[0].data===slot.data,'tomada grava somente slot exato');
- ok(cancelled.length===1,'cancelamento de atraso so apos registro confirmado');
- await trigger('IGNORAR');
- ok(writes.length===1&&cancelled.length===1,'acao repetida/conflitante nao reescreve dose resolvida');
- const previous=new Date(now.getTime()-25*60000);
- await trigger('IGNORAR',{data:local(previous),horario:time(previous)});
- ok(writes.length===2&&writes[1].status==='ignored'&&writes[1].onlyIfPending,'ignorar legitimo usa trava de pendencia');
- await trigger('ADIAR');
- ok(snoozes.length===1,'adiar preserva rotina original sem escrita clinica');
- await trigger('ADIAR',{data:undefined});
- ok(snoozes.length===1,'adiamento sem data bloqueado');
- await trigger('OUTRA_ACAO');
- ok(writes.length===2,'acao desconhecida nunca escreve');
- await trigger('TOMEI',{personId:''});
- ok(writes.length===2,'falta de pessoa bloqueia escrita');
+ await trigger('TOMEI',{data:undefined});ok(writes.length===0&&routes.length===0,'lembrete legado sem data nao escreve nem navega');
+ await trigger('IGNORAR',{data:'2026-02-30'});ok(writes.length===0,'notificacao com data impossivel nao escreve');
+ await trigger('TOMEI',{data:local(old),horario:time(old)});ok(writes.length===0&&routes.length===0,'notificacao obsoleta nao escreve');
+ await trigger('TOMEI');ok(writes.length===0&&routes.length===1&&cancelled.length===0,'Tomei abre revisao sem inventar quantidade e sem cancelar alerta');
+ const url=new URL(routes[0],'https://test.invalid');const token=url.searchParams.get('native_review');const scope={user_id:'u1',person_id:'p1'};
+ const intent=nativeReview.readNativeDoseReview(token,scope,slot.data);ok(intent?.medicationId==='m1'&&intent.hour===slot.horario,'handoff conserva slot exato');
+ ok(!routes[0].includes('p1')&&!routes[0].includes('u1')&&!routes[0].includes('m1'),'URL sem identidades clinicas');
+ ok(!nativeReview.readNativeDoseReview(token,{...scope,person_id:'p2'},slot.data),'handoff nao atravessa pessoas');
+ ok(!nativeReview.readNativeDoseReview(token,scope,slot.data,Date.now()+301000),'handoff expira');
+ const item={medicamentoId:'m1',horario:slot.horario,tomada:false,ignorada:false};const absent={state:'absent',records:[]};
+ ok(nativeReview.findNativeReviewItem(intent,[item],absent)===item,'slot real atual elegivel');
+ ok(!nativeReview.findNativeReviewItem(intent,[{...item,doseKind:'sos',isAvulsa:true}],absent),'SOS nao substitui rotina');
+ ok(!nativeReview.findNativeReviewItem(intent,[item,item],absent),'duplicidade bloqueia');
+ ok(!nativeReview.findNativeReviewItem(intent,[item],{state:'taken',records:[{id:'r'}]}),'fato resolvido bloqueia');
+ const planned={...item,doseKind:'planned',logId:'r',isAvulsa:true};ok(nativeReview.findNativeReviewItem(intent,[item,planned],{state:'pending',records:[{id:'r',dose_kind:'planned'}]})===planned,'planejada exige ID exato');
+ nativeReview.discardNativeDoseReview(token);ok(!nativeReview.readNativeDoseReview(token,scope,slot.data),'consumo revoga token');
+ uid='u2';await trigger('TOMEI');ok(routes.length===1,'titular diferente nao navega');uid='u1';
+ await trigger('TOMEI',{personId:'p2'});ok(routes.length===1,'pessoa divergente nao navega');
+ await trigger('IGNORAR',{data:local(future),horario:time(future)});ok(writes.length===0,'futuro nao registra fato ignorado');
+ if(slot.data===local(now)){await trigger('IGNORAR');ok(writes.length===1&&writes[0].status==='ignored'&&writes[0].data===slot.data&&cancelled.length===1,'ignorar legitimo grava slot exato e cancela so apos escrita');await trigger('IGNORAR');ok(writes.length===1&&cancelled.length===1,'acao repetida nao reescreve');}else{await trigger('IGNORAR');ok(writes.length===0,'slot historico ausente nao e inventado');ok(cancelled.length===0,'alerta nao cancelado sem escrita');}
+ const before=writes.length;med.estoque_horarios=[];await trigger('IGNORAR',{data:local(previous),horario:time(previous)});ok(writes.length===before,'agenda removida nao cria fato ignorado');
+ await trigger('ADIAR');ok(snoozes.length===1,'adiar preserva rotina original sem escrita clinica');
+ await trigger('ADIAR',{data:undefined});ok(snoozes.length===1,'adiamento sem data bloqueado');
+ await trigger('OUTRA_ACAO');ok(writes.length===before,'acao desconhecida nunca escreve');
+ await trigger('TOMEI',{personId:''});ok(writes.length===before,'falta de pessoa bloqueia escrita');
  cleanup();await Promise.resolve();await Promise.resolve();
  ok(removeCount===1,'listener nativo removido no cleanup');
  const native=read('components/saude/NativeDoseAgendaInspection.tsx');

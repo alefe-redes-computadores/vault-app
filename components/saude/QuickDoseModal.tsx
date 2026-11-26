@@ -2,6 +2,16 @@
 "use client";
 import {useRouter} from "next/navigation";
 import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
+import { DoseHistoricalUnitField, unitDraftSnapshot, type UnitDraft } from "@/components/hoje/DoseHistoricalUnitField";
+import { readDoseUnit, describeHistoricalDose, type DoseUnitFields } from "@/lib/dose-premium/historical-unit";
+import { civilDoseInstant } from "@/lib/dose-premium/review-intent";
+import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
+import { verifyDoseSnapshotAck, type DoseSnapshot } from "@/lib/dose-premium/compatibility";
+import { cycleIdentity } from "@/lib/dose-premium/stock-cycle";
+import { useAuth } from "@/hooks/useAuth";
+import { comparableDebit, readStockEvidence } from "@/lib/dose-premium/stock-evidence";
+import { observedStockContext, observedStockConversion } from "@/lib/dose-premium/stock-context";
 
 import {
   useEffect,
@@ -73,7 +83,7 @@ import type {
 } from "@/lib/types";
 
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
-import { contextualDoseQuantity, isTemporaryCoursePlannedDose } from "@/lib/dose-plan-authority";
+import { contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { useAndroidModalViewport } from "@/hooks/useAndroidModalViewport";
 import { reconcileQuickDoseDraftSTB, selectQuickDoseMedicationSTB, editQuickDoseQuantitySTB, isQuickDoseContextSTB, maySuggestQuickDoseQuantitySTB, isValidQuickDoseDateSTB, type QuickDoseDraftSessionSTB } from "@/lib/ui/quick-dose-draft-stb";
 
@@ -90,6 +100,7 @@ interface QuickDoseModalProps {
    * específico.
    */
   preselectedMedicamentoId?: string;
+  initialSlot?: {day:string;hour:string};
 
   onSuccess?: () => void;
 }
@@ -214,86 +225,11 @@ function timeToMinutes(
   );
 }
 
-function getDelayMinutes(
-  scheduledTime: string
-): number {
-  const scheduled =
-    timeToMinutes(
-      scheduledTime
-    );
-
-  const current =
-    timeToMinutes(
-      getCurrentTime()
-    );
-
-  if (
-    !Number.isFinite(
-      scheduled
-    ) ||
-    !Number.isFinite(
-      current
-    )
-  ) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    current -
-      scheduled
-  );
+function buildLocalTakenAtIso(date:string,time:string):string {
+  return civilDoseInstant(date,time,new Date().toISOString());
 }
 
-function buildLocalTakenAtIso(
-  date: string,
-  time: string
-): string {
-  const [
-    year,
-    month,
-    day,
-  ] =
-    date
-      .split("-")
-      .map(Number);
-
-  const [
-    hour,
-    minute,
-  ] =
-    time
-      .split(":")
-      .map(Number);
-
-  if (
-    !year ||
-    !month ||
-    !day ||
-    !Number.isInteger(
-      hour
-    ) ||
-    !Number.isInteger(
-      minute
-    )
-  ) {
-    throw new Error(
-      "Data ou horário da tomada inválido."
-    );
-  }
-
-  return new Date(
-    year,
-    month - 1,
-    day,
-    hour,
-    minute,
-    0,
-    0
-  ).toISOString();
-}
-
-// ============================================================
+// ==========================================================
 // HELPERS — MEDICAMENTO / DOSE
 // ============================================================
 
@@ -522,6 +458,7 @@ export function QuickDoseModal({
   isOpen,
   onClose,
   preselectedMedicamentoId,
+  initialSlot,
   onSuccess,
 }: QuickDoseModalProps) {
   const router=useRouter();
@@ -529,6 +466,7 @@ export function QuickDoseModal({
   const draftSessionSTB=useRef<QuickDoseDraftSessionSTB|null>(null);
   const extraReasonInputRef=useRef<HTMLInputElement>(null);
   const [portalReady, setPortalReady] = useState(false);
+  const [unitChoice,setUnitChoice]=useState<{key:string;draft:UnitDraft;noStock:boolean;touched:boolean}|null>(null);
   const { layerStyle, keyboardOpen } = useAndroidModalViewport(isOpen && portalReady);
 
   useEffect(() => {
@@ -556,6 +494,7 @@ export function QuickDoseModal({
   } =
     useActivePersonId();
 
+  const {user}=useAuth();
   const today = getLocalTodayISO();
   const maxScheduleDate = useMemo(() => {
     const date = new Date(`${today}T12:00:00`);
@@ -564,7 +503,9 @@ export function QuickDoseModal({
   }, [today]);
   // VAULT_RETROACTIVE_DOSE_V70
   const [doseDate,setDoseDate]=useState(today);
-  const { doseLogs } = useDoseLogs(doseDate);
+  const [actualDraft,setActualDraft]=useState<{context:string;value:string}|null>(null);
+  const reviewedSlotRef=useRef<{context:string;expected:DoseSnapshot|null}|null>(null);
+  const { doseLogs, isLoading: doseScopeLoading } = useDoseLogs(doseDate,user?.id??null);
 
   // ==========================================================
   // MEDICAMENTOS DISPONÍVEIS
@@ -575,6 +516,7 @@ export function QuickDoseModal({
       () => {
         if (
           !activePersonId ||
+          !user?.id ||
           !rawMedicamentos
         ) {
           return [];
@@ -592,12 +534,13 @@ export function QuickDoseModal({
               medicamento.tipo_uso ===
                 "esporadico") &&
             medicamento.person_id ===
-              activePersonId
+              activePersonId && medicamento.user_id === user.id
         );
       },
       [
         rawMedicamentos,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -695,52 +638,13 @@ export function QuickDoseModal({
         targetMedicationId
     );
 
-  const horariosProgramados =
-    useMemo(
-      () => selectedMed?.tipo_uso === "temporario"
-        ? Array.from(new Set(doseLogs.filter(log => log.medicamento_id === selectedMed.id && log.data === doseDate && isTemporaryCoursePlannedDose(log))
-          .map(log => log.horario))).sort()
-        : normalizeSchedules(selectedMed),
-      [selectedMed, doseLogs, doseDate]
-    );
-
-  const existingScheduledLog =
-    useMemo(
-      () => {
-        if (
-          !selectedMed?.id ||
-          !doseHora
-        ) {
-          return undefined;
-        }
-
-        return doseLogs.find(
-          (log) =>
-            log.medicamento_id ===
-              selectedMed.id &&
-            log.data ===
-              doseDate &&
-            log.horario ===
-              doseHora &&
-            log.dose_kind !== "extra" &&
-            log.dose_kind !== "sos"
-        );
-      },
-      [
-        doseLogs,
-        doseHora,
-        selectedMed?.id,
-        doseDate,
-      ]
-    );
-
-  const doseMode:
-    DoseMode =
-    (selectedMed?.tipo_uso === "continuo" && horariosProgramados.includes(doseHora) ||
-      selectedMed?.tipo_uso === "temporario" && isTemporaryCoursePlannedDose(existingScheduledLog)) &&
-    !registerAsExtra
-      ? "scheduled"
-      : "ad-hoc";
+  const horariosProgramados=useMemo(()=>Array.from(new Set([
+    ...normalizeSchedules(selectedMed),
+    ...doseLogs.filter(log=>log.user_id===user?.id&&log.person_id===activePersonId&&log.medicamento_id===selectedMed?.id&&log.data===doseDate&&log.dose_kind==='planned').map(log=>log.horario),
+  ].filter(isValidTime))).sort(),[selectedMed,doseLogs,doseDate,user?.id,activePersonId]);
+  const existingSlot=useMemo(()=>resolveDoseSlot(buildDoseSlotIndex(doseLogs,{userId:user?.id,personId:activePersonId??undefined}),selectedMed?.id??'',doseDate,doseHora),[doseLogs,user?.id,activePersonId,selectedMed?.id,doseDate,doseHora]);
+  const existingScheduledLog=existingSlot.records.length===1?existingSlot.records[0]:undefined;
+  const doseMode:DoseMode=!registerAsExtra&&(horariosProgramados.includes(doseHora)||existingSlot.records.length>0)?'scheduled':'ad-hoc';
 
   const chosenDoseTime =
     isValidTime(doseHora)
@@ -751,6 +655,14 @@ export function QuickDoseModal({
     Number.isFinite(chosenDoseTime) &&
     chosenDoseTime > Date.now() + 30_000;
 
+  const unitContext=JSON.stringify([selectedMed?.user_id,activePersonId,selectedMed?.id]);
+  const actualContext=JSON.stringify([unitContext,doseDate,doseHora,doseMode]);
+  const existingActual=existingScheduledLog?.tomado_em?new Date(existingScheduledLog.tomado_em):null;
+  const actualDefault=existingActual&&Number.isFinite(existingActual.valueOf())?`${existingActual.getFullYear()}-${String(existingActual.getMonth()+1).padStart(2,'0')}-${String(existingActual.getDate()).padStart(2,'0')}T${String(existingActual.getHours()).padStart(2,'0')}:${String(existingActual.getMinutes()).padStart(2,'0')}`:`${doseDate}T${doseHora}`;
+  const actualValue=actualDraft?.context===actualContext?actualDraft.value:actualDefault;
+  const currentUnitChoice=unitChoice?.key===unitContext?unitChoice:null;
+  const historicalUnit=doseMode==='scheduled'?readDoseUnit(existingScheduledLog??{}):readDoseUnit({});
+  const unitDraft:UnitDraft=currentUnitChoice?.draft??{code:null,customLabel:''};
   const scheduledAlreadyTaken =
     doseMode ===
       "scheduled" &&
@@ -879,6 +791,7 @@ export function QuickDoseModal({
       const transition=reconcileQuickDoseDraftSTB(draftSessionSTB.current,isOpen,activePersonId,preselectedMedicamentoId);
       draftSessionSTB.current=transition.session;
       if (transition.reset==="none") return;
+      setUnitChoice(null);setActualDraft(null);reviewedSlotRef.current=null;
       setDoseQtd(0);
 
       setSearchQuery(
@@ -901,8 +814,8 @@ export function QuickDoseModal({
       setDoseReason("");
       setExtraReasonErrorM1(false);
       if (transition.reset==="session") {
-        setDoseDate(today);
-        setDoseHora(getCurrentTime());
+        setDoseDate(initialSlot?.day??today);
+        setDoseHora(initialSlot?.hour??getCurrentTime());
       }
 
       if (
@@ -1029,6 +942,7 @@ export function QuickDoseModal({
       if (preselectedMedicamentoId && preselectedMedicamentoId!==medicamento.id) return;
       if (targetMedicationId!==medicamento.id) {
         draftSessionSTB.current=selectQuickDoseMedicationSTB(draftSessionSTB.current,medicamento.id);
+        setUnitChoice(null);setActualDraft(null);reviewedSlotRef.current=null;
         setDoseQtd(0);
         setRegisterAsExtra(false);
         setDoseReason("");
@@ -1268,13 +1182,8 @@ export function QuickDoseModal({
         return;
       }
 
-      if (
-        !Number.isFinite(
-          doseQtd
-        ) ||
-        doseQtd <=
-          0
-      ) {
+      const requestedStatus = options?.status ?? "taken";
+      if (requestedStatus==="taken" && (doseMode!=="scheduled"||options?.skipLatePrompt) && (!Number.isFinite(doseQtd) || doseQtd<=0)) {
         trigger(
           "error"
         );
@@ -1287,10 +1196,6 @@ export function QuickDoseModal({
         return;
       }
 
-      const requestedStatus =
-        options?.status ??
-        "taken";
-
       const quantityAlreadyAccepted =
         acceptedUnusualQuantity ===
           doseQtd;
@@ -1298,7 +1203,7 @@ export function QuickDoseModal({
       if (
         !willScheduleAdHoc &&
         requestedStatus ===
-          "taken" &&
+          "taken" && Number.isFinite(doseQtd) && doseQtd>0 &&
         quantitySafetyAssessment.level !==
           "normal" &&
         !options?.skipQuantityGuard &&
@@ -1318,44 +1223,40 @@ export function QuickDoseModal({
         return;
       }
 
-      const delayMinutes =
-        doseMode ===
-        "scheduled"
-          ? getDelayMinutes(
-              doseHora
-            )
-          : 0;
-
-      /*
-       * Só perguntamos quando:
-       *
-       * - é dose programada;
-       * - ainda não estava tomada;
-       * - passaram mais de 15 minutos;
-       * - a chamada ainda não veio de uma decisão do usuário.
-       */
-      if (
-        doseMode ===
-          "scheduled" &&
-        !scheduledAlreadyTaken &&
-        requestedStatus ===
-          "taken" &&
-        !options?.skipLatePrompt &&
-        doseDate === today &&
-        delayMinutes >
-          15
-      ) {
-        trigger(
-          "vibrate"
-        );
-
-        setLateDoseDecisionOpen(
-          true
-        );
-
-        return;
+      // Macro02: explicit temporal decision is required even at the expected minute.
+      // Editing the actual timestamp never changes the occurrence's civil slot.
+      let expected:DoseSnapshot|null=null;
+      if(doseMode==='scheduled'){
+        if(doseScopeLoading||!user?.id||existingSlot.state==='conflict'||existingSlot.records.length>1){showToast('Confira os registros deste horário antes de alterar.','info');return;}
+        if(!Number.isFinite(chosenDoseTime)||chosenDoseTime>Date.now()){showToast('O horário programado ainda não chegou. Nenhum registro foi alterado.','info');return;}
+        if(existingScheduledLog){if(!existingScheduledLog.id||!existingScheduledLog.person_id||existingScheduledLog.user_id!==user.id||existingScheduledLog.person_id!==activePersonId){showToast('Registro fora do contexto ativo.','error');return;}expected={...existingScheduledLog,id:existingScheduledLog.id,person_id:existingScheduledLog.person_id};}
+        if(requestedStatus==='taken'&&!options?.skipLatePrompt){reviewedSlotRef.current={context:actualContext,expected};trigger('vibrate');setLateDoseDecisionOpen(true);return;}
+        const reviewed=reviewedSlotRef.current;
+        if(!reviewed||reviewed.context!==actualContext||Boolean(reviewed.expected)!==Boolean(expected)||reviewed.expected&&expected&&!verifyDoseSnapshotAck(reviewed.expected,expected)){showToast('A dose mudou desde a revisão. Confira novamente.','info');setLateDoseDecisionOpen(false);return;}
+        expected=reviewed.expected;
       }
 
+      let explicitUnit:DoseUnitFields|undefined;
+      let adjustDoseStock=true;
+      if(doseScopeLoading||!user?.id||selectedMed.user_id!==user.id){showToast("Aguarde a confirmação dos registros da pessoa ativa.","info");return;}
+      if(!willScheduleAdHoc&&requestedStatus==='taken'){
+        if(historicalUnit.state==='invalid'){showToast('Unidade histórica inconsistente. Revise antes de alterar.','error');return;}
+        if(historicalUnit.state==='known'){explicitUnit=historicalUnit.fields;}
+        else{
+          if(!currentUnitChoice?.touched){showToast('Confira e declare a unidade realmente administrada.','info');return;}
+          try{explicitUnit=unitDraftSnapshot(unitDraft);}catch(error){showToast(error instanceof Error?error.message:'Unidade inválida.','error');return;}
+        }
+        adjustDoseStock=!currentUnitChoice?.noStock;
+        if(!cycleIdentity(selectedMed.estoque_ciclo_id)&&adjustDoseStock){showToast('Confirme uma contagem física do estoque ou escolha registrar somente o histórico.','info');return;}
+        if(readDoseUnit(explicitUnit??{}).state!=='known'&&adjustDoseStock){showToast('Sem unidade confirmada, registre somente o histórico.','info');return;}
+        if(adjustDoseStock){
+          try{const context=observedStockContext(selectedMed,{user_id:user.id,person_id:activePersonId,medicationId:selectedMed.id});
+            const receipt=readStockEvidence(existingScheduledLog?.estoque_movimento);
+            const sameQuantity=Boolean(existingScheduledLog?.tomado_em&&existingScheduledLog.quantidade===doseQtd&&receipt.state==='applied');
+            if(!sameQuantity&&(context.balance===null||comparableDebit(doseQtd,explicitUnit??{},context,observedStockConversion(selectedMed,context))===null)){showToast('Unidade e saldo não comparáveis. Revise o estoque ou escolha somente histórico.','info');return;}
+          }catch(error){showToast(error instanceof Error?error.message:'Estoque requer revisão.','error');return;}
+        }
+      }
       const savingSessionSTB=draftSessionSTB.current;
       saveLock.current=true;
       setIsSaving(
@@ -1375,6 +1276,7 @@ export function QuickDoseModal({
       );
 
       try {
+        let savedDoseId:string|undefined;
         if (willScheduleAdHoc) {
           await doseLogsRepository.agendarDoseAvulsa({
             personId: activePersonId,
@@ -1407,7 +1309,9 @@ export function QuickDoseModal({
           doseMode ===
           "scheduled"
         ) {
-          await doseLogsRepository.setStatus({
+          savedDoseId=await doseLogsRepository.setStatus({
+            unit:explicitUnit,adjustStock:requestedStatus==='taken'?adjustDoseStock:!currentUnitChoice?.noStock,
+            expected,
             personId:
               activePersonId,
 
@@ -1423,8 +1327,7 @@ export function QuickDoseModal({
             status:
               requestedStatus,
 
-            quantidade:
-              doseQtd,
+            quantidade: requestedStatus==='taken'?doseQtd:undefined,
 
             tomadoEm:
               requestedStatus ===
@@ -1447,7 +1350,9 @@ export function QuickDoseModal({
            *
            * cada confirmação representa um evento independente.
            */
-          await doseLogsRepository.registrarTomadaAvulsa({
+          savedDoseId=await doseLogsRepository.registrarTomadaAvulsa({
+            unit:explicitUnit,adjustStock:adjustDoseStock,
+            tomadoEm:buildLocalTakenAtIso(doseDate,doseHora),
             personId:
               activePersonId,
 
@@ -1485,22 +1390,19 @@ export function QuickDoseModal({
         }
 
         if (draftSessionSTB.current!==savingSessionSTB) return;
-        trigger(
-          "success"
-        );
+        const savedEvidence=savedDoseId?await doseLogsRepository.getById(savedDoseId,activePersonId):undefined;
+        if (draftSessionSTB.current!==savingSessionSTB) return;
+        const savedUnit=readDoseUnit(savedEvidence??{});
+        const expectedTakenAt=options?.tomadoEm??(doseMode==='ad-hoc'?buildLocalTakenAtIso(doseDate,doseHora):null);
+        if(!savedEvidence||savedEvidence.user_id!==user.id||savedEvidence.person_id!==activePersonId||savedEvidence.medicamento_id!==selectedMed.id||savedEvidence.data!==doseDate||savedEvidence.horario.slice(0,5)!==doseHora||(requestedStatus==='taken'&&(!savedEvidence.tomado_em||Boolean(savedEvidence.ignorado_em)||savedEvidence.quantidade!==doseQtd||savedUnit.state==='invalid'||savedUnit.fields.unidade_dose!==(explicitUnit?.unidade_dose??null)||savedUnit.fields.unidade_dose_rotulo!==(explicitUnit?.unidade_dose_rotulo??null)||savedUnit.fields.fonte_unidade!==(explicitUnit?.fonte_unidade??null)||Boolean(expectedTakenAt&&Date.parse(savedEvidence.tomado_em)!==Date.parse(expectedTakenAt))))||(requestedStatus==='ignored'&&(!savedEvidence.ignorado_em||Boolean(savedEvidence.tomado_em)))){showToast('O registro local requer conferência. Consulte o histórico antes de tentar novamente.','info');return;}
+        trigger("success");
+        if(savedEvidence?.estoque_movimento?.state==='not_applied'&&requestedStatus==='taken'){
+          showToast('Tomada salva neste aparelho, sem movimentar estoque. Aguardando sincronização.','info');
+          onSuccess?.();onClose();return;
+        }
 
         showToast(
-          requestedStatus ===
-            "ignored"
-            ? `Dose de ${selectedMed.nome} marcada como não tomada.`
-            : doseMode ===
-                "scheduled"
-              ? scheduledAlreadyTaken
-                ? `Registro de ${selectedMed.nome} atualizado.`
-                : `Dose de ${selectedMed.nome} registrada.`
-              : selectedMed.tipo_uso === "sos" || selectedMed.tipo_uso === "esporadico"
-                ? `Tomada SOS de ${selectedMed.nome} registrada.`
-                : `Dose extra de ${selectedMed.nome} registrada.`,
+          `${requestedStatus==='ignored'?`Não tomada de ${selectedMed.nome} registrada`:`Registro de ${selectedMed.nome} salvo neste aparelho`}. ${savedEvidence.synced?'Sincronização confirmada.':'Aguardando sincronização.'}`,
           "success"
         );
 
@@ -1923,7 +1825,7 @@ export function QuickDoseModal({
                     ) =>
                       event.stopPropagation()
                   }
-                  className="w-full rounded-[26px] border border-surface-border bg-surface-raised p-5 shadow-2xl"
+                  className="max-h-full w-full overflow-y-auto overscroll-contain rounded-[26px] border border-surface-border bg-surface-raised p-5 shadow-2xl"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400">
@@ -1936,7 +1838,7 @@ export function QuickDoseModal({
 
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-400">
-                        Dose atrasada
+                        Horário real da tomada
                       </p>
 
                       <h4 className="mt-1 text-base font-bold text-ink-primary">
@@ -1965,20 +1867,7 @@ export function QuickDoseModal({
                         isSaving
                       }
                       onClick={
-                        () =>
-                          handleSalvar({
-                            tomadoEm:
-                              buildLocalTakenAtIso(
-                                today,
-                                doseHora
-                              ),
-
-                            status:
-                              "taken",
-
-                            skipLatePrompt:
-                              true,
-                          })
+                        () => {try{void handleSalvar({tomadoEm:buildLocalTakenAtIso(doseDate,doseHora),status:'taken',skipLatePrompt:true});}catch(error){showToast(error instanceof Error?error.message:'Confira o horário.','error');}}
                       }
                       className="flex w-full items-center gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3.5 text-left transition-all active:scale-[0.99]"
                     >
@@ -2040,11 +1929,16 @@ export function QuickDoseModal({
                         </span>
 
                         <span className="mt-0.5 block text-[10px] text-ink-muted">
-                          Registrar a tomada real como atrasada.
+                          Salvar o instante atual, sem mudar a programação original.
                         </span>
                       </span>
                     </button>
 
+                    <section className="space-y-2 rounded-2xl border border-surface-border bg-surface/70 p-3">
+                      <p className="text-sm font-semibold text-ink-primary">Tomei em outra data e horário</p><p className="text-xs text-ink-muted">Informe o instante real. O dia e horário programados serão preservados.</p>
+                      <HealthDateTimePicker value={actualValue} onChange={value=>setActualDraft({context:actualContext,value})} max={`${today}T23:59`} disabled={isSaving}/>
+                      <button type="button" disabled={isSaving} onClick={()=>{try{const [day,hour]=actualValue.split('T');const at=civilDoseInstant(day,hour,new Date().toISOString());void handleSalvar({tomadoEm:at,status:'taken',skipLatePrompt:true});}catch(error){showToast(error instanceof Error?error.message:'Confira a data e hora reais.','error');}}} className="min-h-11 w-full rounded-xl border border-ice/30 bg-ice/5 text-sm font-semibold text-ice disabled:opacity-50">Registrar neste instante</button>
+                    </section>
                     <button
                       type="button"
                       disabled={
@@ -2600,10 +2494,7 @@ export function QuickDoseModal({
               </div>
 
               {selectedMed && (
-                <p className="truncate px-1 text-[9px] text-ink-faint">
-                  {selectedMed.estoque_unidade_medida ||
-                    "Unidade(s) por tomada"}
-                </p>
+                <p className="break-words px-1 text-[10px] text-ink-muted">{historicalUnit.state==='known'?'Unidade histórica preservada':willScheduleAdHoc?'Quantidade planejada':'Informe a unidade real abaixo'}</p>
               )}
             </div>
 
@@ -2673,6 +2564,12 @@ export function QuickDoseModal({
               <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data</span><CustomDatePicker className="[&_input]:text-xs [&_input]:pl-2 [&_input]:pr-8" value={doseDate} maxDate={maxScheduleDate} disabled={isSaving} onChange={next=>{if(isValidQuickDoseDateSTB(next)&&next<=maxScheduleDate){setAcceptedUnusualQuantity(null);setDoseDate(next);}}} /><span className="mt-1 block text-[9px] text-ink-faint">Horário passado registra a tomada; horário futuro agenda sem baixar o estoque.</span></label>
             </div>
           </div>
+
+          {selectedMed&&!willScheduleAdHoc&&<section className="space-y-3 rounded-2xl border border-surface-border bg-surface-raised p-3" aria-label="Unidade e movimentação">
+            {historicalUnit.state==='known'?<div className="space-y-1"><p className="text-xs font-semibold text-emerald-300">Unidade histórica confirmada</p><p className="break-words text-sm text-ink-primary">{describeHistoricalDose({...historicalUnit.fields,quantidade:doseQtd})}</p><p className="text-xs text-ink-muted">O registro conserva a unidade original.</p></div>:<DoseHistoricalUnitField value={unitDraft} disabled={isSaving} onChange={draft=>setUnitChoice({key:unitContext,draft,touched:true,noStock:currentUnitChoice?.noStock??false})}/>}
+            <div className="rounded-xl border border-surface-border bg-void/40 p-3 text-xs leading-relaxed text-ink-muted">{cycleIdentity(selectedMed.estoque_ciclo_id)?'Movimentação somente com unidade e ciclo comprovados.':'O saldo ainda não tem uma contagem física identificada. Uma tomada pode ser registrada sem alterar o saldo; confira o estoque separadamente.'}</div>
+            <button type="button" aria-pressed={Boolean(currentUnitChoice?.noStock)} disabled={isSaving} onClick={()=>setUnitChoice({key:unitContext,draft:unitDraft,touched:currentUnitChoice?.touched??false,noStock:!currentUnitChoice?.noStock})} className={`flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 text-left text-sm ${currentUnitChoice?.noStock?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-primary'}`}><CheckCircle2 size={17} aria-hidden="true"/>Registrar somente o histórico, sem alterar o estoque</button>
+          </section>}
 
           {selectedMed && willScheduleAdHoc && (
             <div className="flex items-start gap-3 rounded-2xl border border-ice/25 bg-ice/[0.07] p-3.5">

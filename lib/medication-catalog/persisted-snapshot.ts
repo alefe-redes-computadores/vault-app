@@ -1,5 +1,6 @@
+import {medicationPending} from '@/lib/dose-premium/atomic-envelope';
 import { db, safeUpdateMedicamento } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { enfileirarOperacao, solicitarProcessamentoSync } from "@/lib/sync/enfileirarOperacao";
 import type { MedicationCatalogSnapshot } from "@/lib/types";
 import { catalogScopeSTB } from "@/lib/health/medication-reference-fit-stb";
 
@@ -29,6 +30,9 @@ export function persistMedicationCatalogSnapshot(
     if (!current || current.person_id !== personId || (expectedScope && catalogScopeSTB(current) !== expectedScope)) return;
     if (stableSnapshot(current.catalog_snapshot) === stableSnapshot(snapshot)) return;
 
+    await db.transaction('rw',[db.medicamentos,db.syncQueue],async()=>{
+    const fresh=await db.medicamentos.get(medicationId);if(!fresh||fresh.user_id!==current.user_id||fresh.person_id!==personId||fresh.updated_at!==current.updated_at)return;
+    if(medicationPending(await db.syncQueue.toArray(),{user_id:current.user_id,person_id:personId,medicationId}).length)return;
     await safeUpdateMedicamento(medicationId, {
       catalog_snapshot: snapshot,
       updated_at: new Date().toISOString(),
@@ -36,7 +40,8 @@ export function persistMedicationCatalogSnapshot(
     });
 
     const complete = await db.medicamentos.get(medicationId);
-    if (complete) await enfileirarOperacao("medicamentos", "update", complete);
+    if (complete) await enfileirarOperacao("medicamentos", "update", complete,{dispatchSync:false});
+    });solicitarProcessamentoSync();
   })().finally(() => writes.delete(medicationId));
 
   writes.set(medicationId, task);

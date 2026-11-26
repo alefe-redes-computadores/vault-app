@@ -1,3 +1,4 @@
+const {loadMacro02Pure}=require('./vault-macro02-test-pure-loader.cjs');
 /* VAULT CI360 M3 P3 — escopo clínico, vínculos factuais e regressões premium.
  * Executa código real TypeScript por transpilação em memória; não grava dados.
  */
@@ -11,6 +12,7 @@ function load(path,aliases={}){
   const m={exports:{}};
   const sandbox={exports:m.exports,module:m,require:id=>{
     if(Object.prototype.hasOwnProperty.call(aliases,id))return aliases[id];
+    if(['@/lib/dose-premium/historical-unit','@/lib/dose-premium/pharmaceutical-snapshot'].includes(id))return loadMacro02Pure(id);
     throw Error(`M3 P3: dependência inesperada no núcleo puro ${id}`);
   },Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,encodeURIComponent};
   vm.runInNewContext(js,sandbox,{filename:path,timeout:7000});return m.exports;
@@ -131,11 +133,11 @@ assert.ok(mainGate.includes('scripts/test-vault-ci360-m3-p3.cjs'));
  const opts={...args(cB),sections:['doses']};
  const rowB=report=>report.rows.find(x=>x.sourceId==='dose-b');
  const first=med.buildMedicalDossierP3(opts), beforeB=rowB(first);
- assert.ok(beforeB&&beforeB.detail.includes('Quantidade: 5 (unidade não informada)')&&!beforeB.detail.includes('Quantidade: Quantidade'),'Dose histórica com unidade desconhecida explicitada no dossiê');
+ assert.ok(beforeB&&beforeB.detail.includes('Quantidade: 5 · unidade não informada')&&!beforeB.detail.includes('Quantidade: Quantidade'),'Dose histórica com unidade desconhecida explicitada no dossiê');
  const changedB={...cB,medicamentos:cB.medicamentos.map(m=>({...m,estoque_unidade_medida:'comprimidos'}))};
  assert.equal(rowB(med.buildMedicalDossierP3({...opts,context:changedB})).detail,beforeB.detail,'mudança de estoque não altera o fato histórico');
  assert.ok(first.rows.some(x=>x.sourceId==='ignored-b'&&x.detail.includes('Ignorada explicitamente')&&!x.detail.includes('Quantidade registrada: 5')&&x.detail.includes('Motivo informado: Quantidade: 5')),'ignoradas não viram tomadas');
- assert.ok(first.rows.some(x=>x.sourceId==='med-b:2026-11-11:10:00'&&x.detail.includes('3 (unidade não informada)')),'dose legada sem id mantém quantidade factual sem unidade inferida');
+ assert.ok(first.rows.some(x=>x.sourceId==='med-b:2026-11-11:10:00'&&x.detail.includes('3 · unidade não informada')),'dose legada sem id mantém quantidade factual sem unidade inferida');
  const summaryB=med.buildMedicalDossierP3({...opts,mode:'summary'});
  assert.equal(rowB(summaryB).detail,beforeB.detail,'mesma linha factual para resumo, detalhado e entrada do PDF');
 }
