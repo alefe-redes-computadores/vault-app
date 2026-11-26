@@ -1,0 +1,89 @@
+name: VAULT Residual QA07 isolated diagnostics - NO RELEASE
+on:
+  push:
+    branches: ['vault-lab/residual-qa07-50bc30931c2c']
+permissions:
+  contents: read
+concurrency:
+  group: vault-residual-qa07-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  residual-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      VAULT_V63_COLLECT_ALL: '1'
+      RESIDUAL_MODE: 'directed'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin exact tested candidate, outside CI envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '754a0266c5309c13db2eb799edb88de528bce264'
+          test "$(git rev-parse '754a0266c5309c13db2eb799edb88de528bce264^')" = '32373b380fd3ec4bbcead025c4bcb90564c7a549'
+          test "$(git rev-parse '754a0266c5309c13db2eb799edb88de528bce264^{tree}')" = '7ad2668b10254b231e911306fa82015474e47532'
+          git -c advice.detachedHead=false checkout --detach '754a0266c5309c13db2eb799edb88de528bce264'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p "$RUNNER_TEMP/residual-qa07"
+          printf 'CANDIDATE=%s\nTREE=%s\nPUBLICATION=LOCKED\nMODE=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" "$RESIDUAL_MODE" > "$RUNNER_TEMP/residual-qa07/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Locked dependencies (no real credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/residual-qa07/npm-ci.log"
+      - name: Selective residual contracts and existing Macro02 A10 vaccine
+        shell: bash
+        run: |
+          set -uo pipefail
+          d="$RUNNER_TEMP/residual-qa07"; rc=0
+          run() {
+            local name="$1"; shift
+            "$@" 2>&1 | tee "$d/$name.log"
+            local statuses=("${PIPESTATUS[@]}")
+            local s=${statuses[0]}
+            printf '%s_EXIT=%s TEE_EXIT=%s\n' "$name" "$s" "${statuses[1]}" >> "$d/status.txt" || exit 2
+            if [ "$s" -ne 0 ] || [ "${statuses[1]}" -ne 0 ]; then rc=1; fi
+          }
+          run residual-m146 node scripts/test-vault-m146-premium-ux.cjs
+          run residual-r4 node scripts/test-vault-ux360-r4-video.cjs
+          for zone in UTC America/Sao_Paulo America/New_York; do
+            run "residual-consumers-${zone//\//_}" env TZ="$zone" node scripts/test-vault-residual-consumers.cjs
+            run "macro02-a10-${zone//\//_}" env TZ="$zone" node scripts/test-vault-macro02-a10-dose-origin.cjs
+            grep -Fq 'MACRO02_A10_DOSE_ORIGIN_GATE_OK | assertions=57' "$d/macro02-a10-${zone//\//_}.log" || rc=1
+            grep -Fq 'RESIDUAL_CONSUMERS_PASS=42 ' "$d/residual-consumers-${zone//\//_}.log" || rc=1
+          done
+          if [ "$RESIDUAL_MODE" = cumulative ]; then
+            run v63 node scripts/test-v63-release-gate.mjs
+            if ! grep -Fq 'V63_COLETA_INTEGRAL_APROVADA | executadas=581 | falhas=0' "$d/v63.log"; then rc=1; printf 'V63_EXPECTED_RECEIPT=FAIL\n' >> "$d/status.txt"; fi
+            for marker in 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'V63_R06_STATIC_OFFLINE_EXTENSION=PASS' 'MACRO02_A10_DOSE_ORIGIN_GATE_OK | assertions=57' 'MACRO02_PLANNED_WRITER_PROJECTION_OK'; do
+              grep -Fq "$marker" "$d/v63.log" || rc=1
+            done
+            run v70-super node scripts/test-v70-super-integrity-ux-contract.mjs
+            run v70-final node scripts/test-v70-final-completeness-contract.mjs
+            run tsc node node_modules/typescript/bin/tsc --noEmit --incremental false
+          else
+            printf 'V63_V70_TSC=NOT_RUN_DIRECTED_MODE\n' >> "$d/status.txt"
+          fi
+          cat "$d/status.txt" || exit 2
+          exit "$rc"
+      - name: Logs only (not release or APK)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-qa07-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-qa07/
+          if-no-files-found: error
+          retention-days: 7
