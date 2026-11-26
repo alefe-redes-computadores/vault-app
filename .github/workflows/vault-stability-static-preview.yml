@@ -20,6 +20,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: node scripts/test-vault-static-offline-guard.cjs
       - run: npm ci
       - name: Export Android, sem publicar APK ou PWA
         shell: bash

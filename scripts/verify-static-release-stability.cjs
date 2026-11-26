@@ -12,13 +12,18 @@ function verify(root,mode){
  const pages=walk(path.join(root,'app')).filter(p=>/\/page\.(tsx|ts|jsx|js)$/.test(p)).map(p=>path.relative(path.join(root,'app'),path.dirname(p)).split(path.sep).filter(x=>!/^\(.*\)$/.test(x)).join('/')).sort();
  assert(pages.length>100,'incomplete source routes');assert(!pages.some(p=>p.includes('[')||p.includes('@')),'unexpected dynamic/parallel route: manual proof needed');
  const pageFile=p=>p?(mode==='android'?p+'/index.html':p+'.html'):'index.html';
- for(const p of pages)assert(set.has(pageFile(p)),'missing page: '+p);
- for(const p of ['index.html','404.html','manifest.json','sw.js','offline.html'])assert(set.has(p),'missing '+p);
+ const publicRoot=path.join(root,'public');
+ const publicPaths=new Set(walk(publicRoot).map(p=>path.relative(publicRoot,p).split(path.sep).join('/')));
+ // Reject route/public aliases even if coincidentally identical bytes mask the collision.
+ for(const p of pages){const dest=pageFile(p);assert(!publicPaths.has(dest),'route/public collision '+dest);assert(set.has(dest),'missing page: '+p)}
+ assert(pages.includes('offline'),'missing independent offline page');
+ assert(!publicPaths.has('offline.html'),'legacy fallback collides with web /offline');
+ for(const p of ['index.html','404.html','manifest.json','sw.js','vault-offline-fallback.html'])assert(set.has(p),'missing '+p);
  for(const p of ['login','auth/callback','onboarding','hoje','saude/tratamentos/detalhes','saude/medicamentos/detalhes','saude/fornecimento'])assert(set.has(pageFile(p)),'missing key route '+p);
  const manifest=JSON.parse(fs.readFileSync(path.join(out,'manifest.json'),'utf8'));
  for(const u of [manifest.start_url,...(manifest.shortcuts||[]).map(s=>s.url)]){assert(typeof u==='string'&&u.startsWith('/'),'invalid manifest URL');const route=new URL(u,'https://example.invalid').pathname.replace(/^\/|\/$/g,'');assert(set.has(pageFile(route)),'manifest route missing '+u)}
  for(const icon of manifest.icons||[])assert(set.has(icon.src.replace(/^\//,'')),'missing icon '+icon.src);
- for(const name of ['sw.js','manifest.json','offline.html'])assert(sha(path.join(root,'public',name))===sha(path.join(out,name)),'public asset drift '+name);
+ for(const name of ['sw.js','manifest.json','vault-offline-fallback.html'])assert(sha(path.join(root,'public',name))===sha(path.join(out,name)),'public asset drift '+name);
  let html=0,assets=0;for(const p of paths.filter(x=>x.endsWith('.html'))){const s=fs.readFileSync(path.join(out,p),'utf8');html++;for(const m of s.matchAll(/(?:src|href)=["'](\/_next\/static\/[^"'#?]+)(?:[^"']*)["']/g)){assert(set.has(decodeURIComponent(m[1].slice(1))),'missing static asset '+m[1]);assets++}}
  assert(assets>0,'no Next static assets referenced');
  const cap=JSON.parse(fs.readFileSync(path.join(root,'capacitor.config.json'),'utf8'));assert(cap.webDir==='out'&&!cap.server?.url,'Android not bundled locally');

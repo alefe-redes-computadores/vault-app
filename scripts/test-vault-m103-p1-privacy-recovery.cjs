@@ -63,7 +63,7 @@ ok(readiness({...base,pending:-999}).status==='review','contagem negativa nao ge
 ok(readiness({...base,pending:NaN}).status==='review','contagem invalida nao vira certificacao');
 ok(readiness(base).explanation.includes('APK'),'APK nao homologado por visualizacao');
 ok(readiness({...base,native:false}).explanation.includes('PWA'),'PWA nao homologado pela fila');
-const plan=read('app/saude/plano-seguranca/page.tsx'),more=read('app/mais/page.tsx'),offline=read('app/offline/page.tsx'),fallback=read('public/offline.html'),exporter=read('components/ExportButton.tsx');
+const plan=read('app/saude/plano-seguranca/page.tsx'),more=read('app/mais/page.tsx'),offline=read('app/offline/page.tsx'),fallback=read('public/vault-offline-fallback.html'),exporter=read('components/ExportButton.tsx');
 for(const token of ['readSafetyPlan(activePersonId, user?.id)','saveSafetyPlan(activePersonId, plan, user.id)','importLegacySafetyPlan(activePersonId,user.id)','legacyConfirm','hasScopedSafetyPlan','hasLegacySafetyPlan','SAMU 192','CVV 188'])ok(plan.includes(token),`plano mantem ${token}`);
 ok(plan.includes('não é criptografado'),'plano distingue armazenamento local e criptografia');
 ok(!plan.includes('localStorage.clear('),'nunca limpa armazenamento global');
