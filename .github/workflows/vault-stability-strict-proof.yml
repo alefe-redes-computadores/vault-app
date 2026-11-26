@@ -1,0 +1,40 @@
+# Proposta: somente prova isolada. NAO copiar na main ou incluir na candidata.
+name: VAULT Stability 01-02 — prova estrita do SHA fixo
+on:
+  push:
+    branches: ['vault/qa/stability-r06-gate-20261126']
+permissions:
+  contents: read
+jobs:
+  strict-gate:
+    if: github.ref == 'refs/heads/vault/qa/stability-r06-gate-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0d1fe07b921499ad7240eb3028b98da0602c8816
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Provar SHA e instalar dependências
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 0d1fe07b921499ad7240eb3028b98da0602c8816
+          npm ci
+      - name: Gate canônico estrito V63 V70 TSC
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'CERTIFIED_SOURCE_SHA=%s\n' "$(git rev-parse HEAD)" | tee "$RUNNER_TEMP/stability-strict.txt"
+          npm run test:release 2>&1 | tee -a "$RUNNER_TEMP/stability-strict.txt"
+          printf 'CUMULATIVE_STRICT_GATE=PASS\n' | tee -a "$RUNNER_TEMP/stability-strict.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stability-strict-proof
+          path: ${{ runner.temp }}/stability-strict.txt
+          if-no-files-found: ignore
+          retention-days: 7
