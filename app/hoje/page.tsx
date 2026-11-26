@@ -1,5 +1,7 @@
 // app/hoje/page.tsx
 "use client";
+import DormantHojePage from "@/components/hoje/DormantHojePage";
+import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
 import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
 import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
@@ -173,7 +175,7 @@ type FiltroCompromisso =
 
 // P15 R1 R2: estilos de prazo centralizados em lib/today; sem alterar lógica de retiradas.
 
-export default function HojePage() {
+function PremiumHojePage() {
   const supplyOverview = useSupplyOverview();
   const brainPulse = useBrainV5Pulse();
   const healthIntelligence = useSharedHealthIntelligence({
@@ -2245,3 +2247,6 @@ export default function HojePage() {
     </PageTransition>
   );
 }
+
+// The dormant release retains the certified legacy UX. Premium remains preserved for the gated cutover.
+export default function HojePage(){return MACRO02_PREMIUM_UI_ENABLED ? <PremiumHojePage/> : <DormantHojePage/>;}

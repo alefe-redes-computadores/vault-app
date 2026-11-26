@@ -53,5 +53,6 @@ try{
  });
  assert.equal(cp.spawnSync(process.execPath,[path.join(__dirname,'macro02-tests/receipt-recovery.cjs'),out],{stdio:'inherit'}).status,0,'Macro02 receipt import classification failed');
  for(const name of ['account-authority','transaction-routing','authority-session'])assert.equal(cp.spawnSync(process.execPath,[path.join(__dirname,'macro02-tests',name+'.cjs'),name==='authority-session'?out:path.join(out,'account-authority.js')],{stdio:'inherit'}).status,0,'Macro02 authority contract failed: '+name);
+ assert.equal(cp.spawnSync(process.execPath,[path.join(__dirname,'macro02-tests/r2-transport.cjs'),out],{stdio:'inherit'}).status,0,'Macro02 R2 transport failed');
  console.log('MACRO02_STOCK_CHAIN_RECOVERY_PASS='+n);
 }finally{fs.rmSync(out,{recursive:true,force:true});}

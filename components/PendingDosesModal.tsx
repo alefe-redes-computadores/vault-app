@@ -1,5 +1,7 @@
 // components/PendingDosesModal.tsx
 "use client";
+import {DormantPendingDosesModal} from "@/components/DormantPendingDosesModal";
+import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
 import { nextPendingDose, pendingDoseCustomTime, pendingDoseKey } from "@/lib/pending-dose-review";
 import { summarizePendingTimeGroups } from "@/lib/health-intelligence/pending-dose-brief";
 import { DoseHistoricalUnitField } from "@/components/hoje/DoseHistoricalUnitField";
@@ -139,7 +141,7 @@ function getDefaultCustomValue(
   return pendingDoseCustomTime(dose);
 }
 
-export function PendingDosesModal({
+function PremiumPendingDosesModal({
   isOpen,
   onClose,
   doses,
@@ -1147,4 +1149,13 @@ export function PendingDosesModal({
       </motion.div>
     </div>
   );
+}
+
+export function PendingDosesModal(props:PendingDosesModalProps){
+ if(MACRO02_PREMIUM_UI_ENABLED)return <PremiumPendingDosesModal {...props}/>;
+ return <DormantPendingDosesModal {...props} onResolveDose={async(dose,resolution)=>{
+  const matches=props.doses.filter(x=>x.data===dose.data&&x.horario===dose.horario&&x.medicamentoId===dose.medicamentoId);
+  if(matches.length!==1)throw Error('Ocorrência ambígua; confira novamente.');
+  await props.onResolveDose(matches[0],resolution.kind==='ignored'&&resolution.motivo==='sem_estoque'?{...resolution,requireKnownEmptyStock:true}:resolution);
+ }}/>;
 }

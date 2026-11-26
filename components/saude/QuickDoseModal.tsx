@@ -1,5 +1,7 @@
 // components/saude/QuickDoseModal.tsx
 "use client";
+import {DormantQuickDoseModal} from "@/components/saude/DormantQuickDoseModal";
+import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
 import {useRouter} from "next/navigation";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
@@ -454,7 +456,7 @@ function formatQuantity(
 // COMPONENTE
 // ============================================================
 
-export function QuickDoseModal({
+export function PremiumQuickDoseModal({
   isOpen,
   onClose,
   preselectedMedicamentoId,
@@ -2730,3 +2732,5 @@ export function QuickDoseModal({
     document.body
   );
 }
+
+export function QuickDoseModal(props:QuickDoseModalProps){return MACRO02_PREMIUM_UI_ENABLED ? <PremiumQuickDoseModal {...props}/> : <DormantQuickDoseModal {...props}/>;}

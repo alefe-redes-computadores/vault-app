@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict'),path=require('node:path');
+const {createDormantReleaseAuthority,MACRO02_RELEASE_AUTHORITY}=require(path.join(process.argv[2],'dormant-release-authority.js'));
+let account='a',rows=[],host,grant,n=0,changeDuringRead=false,changeDuringIdentity=false;
+const make=()=>createDormantReleaseAuthority({localAccount:async()=>{if(changeDuringIdentity){changeDuringIdentity=false;host.invalidate();}return account;},queue:async()=>{if(changeDuringRead){changeDuringRead=false;host.invalidate();}return rows;}});
+const check=async(label,f)=>{await f();n++;console.log('PASS '+label)};
+(async()=>{
+ await check('dormant release is an explicit independent policy',async()=>{assert.equal(MACRO02_RELEASE_AUTHORITY,'dormant-legacy-r2-20261126212304');host=make();grant=await host.prepareWrite('a');assert.equal(grant.writer,'legacy');await grant.assertCurrent();});
+ await check('no TTL, network or R2 cache required for long offline or restart',async()=>{host=make();const a=await host.prepareWrite('a');await a.assertCurrent();host=make();assert.equal((await host.prepareWrite('a')).writer,'legacy');});
+ await check('wrong or absent local account denied',async()=>{account='b';await assert.rejects(host.prepareWrite('a'),/LOCAL_ACCOUNT_UNCONFIRMED/);account=null;await assert.rejects(host.prepareWrite('a'));account='a';});
+ await check('logout and relogin invalidate same-account operation',async()=>{grant=await host.prepareWrite('a');host.invalidate();await assert.rejects(grant.assertCurrent(),/AUTHORITY_CHANGED/);assert.equal((await host.prepareWrite('a')).writer,'legacy');});
+ await check('identity event while resolving account fails closed',async()=>{changeDuringIdentity=true;await assert.rejects(host.prepareWrite('a'),/ACCOUNT_UNCONFIRMED/);});
+ await check('session event while checking queue invalidates transaction',async()=>{grant=await host.prepareWrite('a');changeDuringRead=true;await assert.rejects(grant.assertCurrent(),/AUTHORITY_CHANGED/);});
+ await check('ordinary queue survives prolonged offline',async()=>{rows=[{table:'doseLogs',operation:'update',chave:'doseLogs:d',payload:{user_id:'a',person_id:'p',id:'d'}}];assert.equal((await host.prepareWrite('a')).writer,'legacy');});
+ await check('unknown or malformed protected intent remains blocked',async()=>{rows=[{table:'doseLogs',payload:{user_id:'a',macro02_atomic:{version:2}}}];await assert.rejects(host.prepareWrite('a'),/PENDING_CONFLICT/);rows=[{table:'doseLogs',payload:{user_id:'a',unidade_dose:'tablet'}}];await assert.rejects(host.prepareWrite('a'),/PENDING_CONFLICT/);});
+ await check('queue becoming incompatible before commit cancels operation',async()=>{rows=[];grant=await host.prepareWrite('a');rows=[{table:'doseLogs',payload:{user_id:'a',unidade_dose:'tablet'}}];await assert.rejects(grant.assertCurrent(),/PENDING_CONFLICT/);});
+ await check('foreign owned queue not mistaken for current account',async()=>{rows=[{table:'doseLogs',payload:{user_id:'b',unidade_dose:'tablet'}}];assert.equal((await host.prepareWrite('a')).writer,'legacy');});
+ await check('unowned clinical queue is ambiguous',async()=>{rows=[{table:'doseLogs',payload:{}}];await assert.rejects(host.prepareWrite('a'),/PENDING_CONFLICT/);});
+ console.log('MACRO02_DORMANT_RELEASE_PASS='+n);
+})().catch(e=>{console.error(e);process.exitCode=1});

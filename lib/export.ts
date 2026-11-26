@@ -1,3 +1,4 @@
+import {MACRO02_CLINICAL_BACKUP_TABLES} from "@/lib/dose-premium/clinical-backup-evidence";
 import {validateMacro02Backup} from "@/lib/dose-premium/backup-contract";
 import { db } from "@/lib/db";
 import {TABLES as VITAL_TABLES} from '@/lib/vital/model';
@@ -24,7 +25,7 @@ export async function exportAllData(userId: string): Promise<string> {
       db.anexos_clinicos, db.settings, db.registros_saude, db.health_reminders,
       db.health_goals, db.health_profiles, db.health_devices, db.versiculos,
       db.medicamento_tratamentos, db.exame_tratamentos, db.vaultMembers,
-      db.syncQueue, ...VITAL_TABLES.map(name => db.table(name)),
+      db.syncQueue, db.a1_treatment_phases, db.a1_prescription_links, db.a1_supply_locations, ...VITAL_TABLES.map(name => db.table(name)),
     ];
     const snapshot = await db.transaction("r", tables, async () => {
       const [
@@ -131,9 +132,13 @@ export async function exportAllData(userId: string): Promise<string> {
       const ownedPeople=new Set(persons.filter(p=>p.user_id===userId).map(p=>p.id));
       const vitalEntries=await Promise.all(VITAL_TABLES.map(async name=>[name,(await db.table(name).where('user_id').equals(userId).toArray()).filter(r=>r.user_id===userId&&ownedPeople.has(r.person_id))] as const));
       const queue = await db.syncQueue.toArray();
+      const a1Entries=await Promise.all((["a1_treatment_phases","a1_prescription_links","a1_supply_locations"] as const).map(async name=>[name,(await db.table(name).where("user_id").equals(userId).toArray()).filter(r=>r.user_id===userId&&ownedPeople.has(r.person_id))] as const));
+      const clinicalQueue=queue.filter(q=>(MACRO02_CLINICAL_BACKUP_TABLES as readonly string[]).includes(q.table)&&q.payload.user_id===userId);
       const recovery = validateMacro02Backup({userId,persons,medications:medicamentos,doses:doseLogs.map(row=>({...row})),acquisitions:renovacoes.map(row=>({...row})),withdrawals:retiradas.map(row=>({...row})),queue});
       const data = {
         ...Object.fromEntries(vitalEntries),
+        ...Object.fromEntries(a1Entries),
+        macro02_clinical_outbox: {version:1,user_id:userId,mode:"evidence_only_no_replay",rows:clinicalQueue},
         macro02_recovery: recovery,
         export_date: new Date().toISOString(),
         version: "3.0",

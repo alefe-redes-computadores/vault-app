@@ -10,9 +10,11 @@ function load(file){const filename=path.resolve(file);if(cache.has(filename))ret
  const m=new Module(filename,module);m.paths=Module._nodeModulePaths(path.dirname(filename));cache.set(filename,m);
  m.require=name=>{
   if(name==='@/lib/db')return {db};
+  // Real IndexedDB planning test; explicitly model the dormant account authority.
+  if(name==='@/lib/sync/macro02-authority')return {prepareMacro02ClinicalWrite:async()=>({writer:'legacy',assertCurrent:async()=>{}})};
   if(name==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:'u'}},error:null})};
   if(name==='@/lib/supabase/client')return {supabase:{}};
-  if(name==='@/lib/sync/enfileirarOperacao')return {enfileirarOperacao:async(table,action,row)=>{if(failQueue)throw Error('queue unavailable');await db.syncQueue.add({id:crypto.randomUUID(),table,action,row})}};
+  if(name==='@/lib/sync/enfileirarOperacao')return {solicitarProcessamentoSync:()=>{},enfileirarOperacao:async(table,action,row)=>{if(failQueue)throw Error('queue unavailable');await db.syncQueue.add({id:crypto.randomUUID(),table,action,row})}};
   return name.startsWith('@/')?load(name.slice(2)+'.ts'):name.startsWith('.')?load(path.resolve(path.dirname(filename),name)+'.ts'):require(name);
  };
  m._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,filename);return m.exports;

@@ -1,0 +1,2717 @@
+// app/hoje/page.tsx
+"use client";
+import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
+import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
+import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
+import { formatPtBrQuantity } from "@/lib/ui/quantity-ptbr";
+import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
+import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
+import { TodayRemindersPanel } from "@/components/hoje/TodayRemindersPanel";
+import { TodayAgendaOverview } from "@/components/hoje/TodayAgendaOverview";
+import { buildTodayAgendaOverview } from "@/lib/today/agenda-overview";
+import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
+import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
+import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
+import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
+import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
+import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
+import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
+import { TodayUnscheduledRoutine } from "@/components/hoje/TodayUnscheduledRoutine";
+import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
+import { VaccinationAccessA8 } from "@/components/saude/VaccinationAccessA8";
+import { A10ContextLink } from "@/components/saude/A10ContextLink";
+import { A9ReadOnlySummary360 } from "@/components/saude/A9ReadOnlySummary360";
+import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
+import { HospitalizationA5AgendaStrip } from "@/components/saude/HospitalizationA5AgendaStrip";
+import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
+import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
+import { DoseMonthOverview } from "@/components/saude/DoseMonthOverview";
+import { eligibleGroupDoseKeys } from "@/lib/dose-schedule-groups";
+import { partitionDoseBatchByStock } from "@/lib/today/dose-batch-stock";
+import { WithdrawalPreparationView } from "@/components/saude/WithdrawalPreparationSummary";
+import { useSupplyOverview } from "@/hooks/useSupplyOverview";
+
+import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { withReturnTarget } from "@/lib/navigation/return-context";
+import {
+  buildTodayContextUrlM120,
+  consumeTodayActionM120,
+  todayOriginM120,
+} from "@/lib/navigation/today-context-m120";
+import { TodayNavigationContextM120 } from "@/components/hoje/TodayNavigationContextM120";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  CheckCircle2,
+  Circle,
+  Pill,
+  Clock,
+  AlertTriangle,
+  Stethoscope,
+  Calendar,
+  FlaskConical,
+  X,
+  DollarSign,
+  Filter,
+  XCircle,
+  FileWarning,
+  AlertOctagon,
+  Activity,
+  Sun,
+  Moon,
+  Sunrise,
+  Zap,
+  Trash2,
+  RotateCcw,
+  Loader2,
+  ListChecks,
+  ChevronRight,
+  ChevronLeft,
+  Bell,
+  PackageX,
+  SmilePlus,
+} from "lucide-react";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
+import { useDoseLogs } from "@/hooks/useDoseLogs";
+import { useHapticFeedback } from "@/lib/haptics";
+import { PageTransition } from "@/components/PageTransition";
+import {VitalContextCard} from "@/components/vital/VitalContextCard";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { addDaysToLocalDate, getLocalTodayISO } from "@/lib/health-utils";
+import {
+  isReceitaVencidaSegura,
+  analisarRotinaDiaria,
+} from "@/lib/health-insights";
+import { useToast } from "@/components/ToastProvider";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
+import { useRetiradas } from "@/hooks/useRetiradas";
+import { LazyQuickDoseModal as QuickDoseModal } from "@/components/saude/LazyQuickDoseModal";
+import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
+import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
+import { useHealthReminders } from "@/hooks/useHealthReminders";
+import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
+import { VersiculoDia } from "@/components/VersiculoDia";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
+import {
+  isOpenWithdrawal,
+  isOverdueWithdrawal,
+  withdrawalDaysOverdue,
+  withdrawalsForAgendaDate,
+} from "@/lib/withdrawal-agenda";
+import {
+  decideMedicationCarePath,
+  plannedPrescriptionAgendaState,
+} from "@/lib/health-intelligence/medication-care-decision";
+import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
+import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
+import { TodayActionCenter } from "@/components/hoje/TodayActionCenter";
+import { TodayFilterPanel } from "@/components/hoje/TodayFilterPanel";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
+import {
+  filterTimelineItems,
+  groupTimelineItems,
+  isScheduledRoutineEvidence,
+  summarizeTimeline,
+  visibleTimelineItems,
+} from "@/lib/today/timeline-summary";
+import {
+  buildTodayTimelineItems,
+  type TodayTimelineItem as DoseItemExt,
+} from "@/lib/today/build-timeline-items";
+import { buildTodayAppointmentProjection } from "@/lib/today/appointment-projection";
+import {
+  useTodayPersistedFilters,
+  type FiltroStatus,
+  type FiltroPeriodo,
+} from "@/hooks/useTodayPersistedFilters";
+import { TodaySymptomTimelineCard } from "@/components/hoje/TodaySymptomTimelineCard";
+import { TodayPrescriptionRenewalCard } from "@/components/hoje/TodayPrescriptionRenewalCard";
+import { TodayAppointmentCard } from "@/components/hoje/TodayAppointmentCard";
+import { isSameLocalMinute } from "@/lib/today/clock-minute";
+import {
+  TodayDoseTimelineCard,
+  type TodayDoseTimelineCardScope,
+} from "@/components/hoje/TodayDoseTimelineCard";
+import { TodayDoseGroupHeading } from "@/components/hoje/TodayDoseGroupHeading";
+import { todayTimelineEmptyCopy } from "@/lib/today/timeline-empty-copy";
+import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresentation";
+import { TodayRetroReviewPanel } from "@/components/hoje/TodayRetroReviewPanel";
+import { buildTodayRetroReviewSummary } from "@/lib/today/retro-review-projection";
+import { useTodayOwnerData } from "@/hooks/useTodayOwnerData";
+import {
+  reconcileTodayTimelineItems,
+  type TodayTimelineSnapshot,
+} from "@/lib/today/timeline-identity";
+
+type FiltroCompromisso =
+  | "todos"
+  | "consultas"
+  | "cirurgias"
+  | "exames"
+  | "retiradas";
+
+// P15 R1 R2: estilos de prazo centralizados em lib/today; sem alterar lógica de retiradas.
+
+export default function DormantHojePage() {
+  const supplyOverview = useSupplyOverview();
+  const brainPulse = useBrainV5Pulse();
+  const healthIntelligence = useSharedHealthIntelligence({
+    includeAudit: false,
+  });
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const focusDoseQueue = searchParams.get("focus") === "doses";
+  // P8: selecionar o grupo das 23:00, sem forçar confirmação de doses.
+  const focusDoseTime = focusDoseQueue ? searchParams.get("time") : null;
+
+  const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
+  const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
+
+  const hoje = getLocalTodayISO();
+
+  const requestedDate = searchParams.get("data");
+
+  const retroReviewMode = searchParams.get("retro") === "1";
+
+  const retroReviewMedicationId = searchParams.get("medicamento");
+
+  const {
+    dataSelecionada,
+    isHoje,
+    isPassado,
+    isFuturo,
+    ontem,
+    amanha,
+    dataSelecionadaLabel,
+    dataSelecionadaDescricao,
+  } = describeTodayDate(hoje, requestedDate);
+
+  // M120: restaura filtros efetivos, data e origem segura ao atravessar módulos.
+  // Não transfere autoridade clínica ou ID de pessoa pela URL.
+  const buildTimelineUrl = (date: string) =>
+    buildTodayContextUrlM120({
+      date,
+      today: hoje,
+      query: searchParams,
+      status: filtroStatus,
+      period: filtroPeriodo,
+      appointment: filtroCompromisso,
+      showResolved: mostrarConcluidas,
+    });
+  const navigateWithReturnM120 = (href: string) => {
+    try {
+      sessionStorage.setItem(
+        "vault:today:r4-return",
+        JSON.stringify({
+          user: user?.id,
+          person: activePersonId,
+          date: dataSelecionada,
+          query: buildTimelineUrl(dataSelecionada),
+          y: Math.max(0, window.scrollY),
+        })
+      );
+    } catch {
+      /* privado/local, falha nao impede navegar */
+    }
+    router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)));
+  };
+  // R4: retorno com contexto igual; filtros/dia/perfil diferentes nunca reaproveitam scroll.
+  useEffect(() => {
+    let saved: {
+      user?: string;
+      person?: string;
+      date?: string;
+      query?: string;
+      y?: number;
+    } | null = null;
+    try {
+      const raw = sessionStorage.getItem("vault:today:r4-return");
+      if (raw) saved = JSON.parse(raw);
+      sessionStorage.removeItem("vault:today:r4-return");
+    } catch {
+      return;
+    }
+    if (
+      !saved ||
+      saved.user !== user?.id ||
+      saved.person !== activePersonId ||
+      saved.date !== dataSelecionada ||
+      saved.query !== buildTimelineUrl(dataSelecionada) ||
+      !Number.isFinite(saved.y)
+    )
+      return;
+    const frame = requestAnimationFrame(() =>
+      window.scrollTo({ top: Math.max(0, saved!.y || 0), behavior: "auto" })
+    );
+    const late = window.setTimeout(
+      () =>
+        window.scrollTo({ top: Math.max(0, saved!.y || 0), behavior: "auto" }),
+      180
+    );
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(late);
+    };
+    // Retorno apenas na montagem; o marcador e consumido uma vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const originM120 = todayOriginM120(searchParams);
+
+  const navegarData = (delta: number) => {
+    const destino = addDaysToLocalDate(dataSelecionada, delta);
+
+    if (!destino) {
+      return;
+    }
+
+    trigger("vibrate");
+
+    router.replace(buildTimelineUrl(destino));
+  };
+
+  const navegarParaData = (date: string) => {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      Number.isNaN(new Date(`${date}T12:00:00`).getTime())
+    )
+      return;
+    if (date === dataSelecionada) return;
+    trigger("vibrate");
+    router.replace(buildTimelineUrl(date));
+  };
+
+  const voltarParaHoje = () => {
+    if (isHoje) {
+      return;
+    }
+
+    trigger("vibrate");
+
+    router.replace(buildTimelineUrl(hoje));
+  };
+
+  const { medicamentos: rawMedicamentos } = useMedicamentos();
+
+  const { retiradas } = useRetiradas();
+
+  const { reminders: healthReminders } = useHealthReminders();
+
+  const remindersDoDia = useMemo(
+    () => projectRemindersForDay(healthReminders, dataSelecionada),
+    [healthReminders, dataSelecionada]
+  );
+  const remindersForaDaAgenda = useMemo(
+    () => remindersDoDia.filter((reminder) => !reminder.careflow_m2?.plan_id),
+    [remindersDoDia]
+  );
+
+  // R9 R7: único critério de propriedade para Home e Hoje; sem nova leitura.
+  const medicamentos = useMemo(
+    () => medicationsForOwner(rawMedicamentos, activePersonId, user?.id),
+    [rawMedicamentos, activePersonId, user?.id]
+  );
+
+  // V196: one indexed lookup shared by timeline, appointments and actions.
+  // This avoids repeatedly scanning the full medication collection while rendering.
+  const medicamentosById = useMemo(
+    () =>
+      new Map<string, any>(
+        medicamentos.map((medicamento: any) => [medicamento.id, medicamento])
+      ),
+    [medicamentos]
+  );
+
+  const regulatoryProfiles = useMedicationRegulatoryProfiles(medicamentos);
+
+  const {
+    doseLogs,
+    marcarComoTomada: marcarDose,
+    marcarComoTomadaEm,
+    marcarComoTomadaHistoricaEm,
+    marcarComoIgnorada,
+    marcarComoIgnoradaHistorica,
+    desmarcarDose,
+    desmarcarDoseHistorica,
+    removerDosePorId,
+  } = useDoseLogs(
+    dataSelecionada,
+    // M20: require an authenticated owner before exposing day dose rows.
+    user?.id ?? null
+  );
+
+  // M16: owner/date reads live in one hook; the page consumes scoped results.
+  const {
+    tratamentos,
+    renovacoes,
+    medicos,
+    farmacias,
+    hospitais,
+    consultasHoje,
+    cirurgiasHoje,
+    examesHoje,
+    registrosHoje,
+    historicoDosesCompleto,
+  } = useTodayOwnerData({
+    userId: user?.id,
+    personId: activePersonId,
+    date: dataSelecionada,
+  });
+
+  const renovacoesReceitaHoje = useMemo(() => {
+    if (!activePersonId) {
+      return [];
+    }
+
+    const renewalsByMedication = new Map<string, typeof renovacoes>();
+    for (const renewal of renovacoes) {
+      const rows = renewalsByMedication.get(renewal.medicamento_id);
+      if (rows) rows.push(renewal);
+      else renewalsByMedication.set(renewal.medicamento_id, [renewal]);
+    }
+
+    return medicamentos.flatMap((medicamento) => {
+      if (!medicamento.id) return [];
+      const agenda = plannedPrescriptionAgendaState(
+        medicamento.proxima_renovacao,
+        dataSelecionada,
+        hoje
+      );
+      if (!agenda.visible) return [];
+      const decision = decideMedicationCarePath({
+        medication: medicamento,
+        renewals: renewalsByMedication.get(medicamento.id!) ?? [],
+        today: getLocalTodayISO(),
+        needsPrescription: true,
+        needsStock: false,
+      });
+      if (decision.stage === "prescription_needed")
+        return [
+          {
+            id: `renovacao-receita-${medicamento.id}-${dataSelecionada}`,
+
+            tipo: "renovacao_receita" as const,
+
+            medicamentoId: medicamento.id!,
+
+            medicamentoNome: medicamento.nome,
+
+            titulo: `Renovar receita de ${medicamento.nome}`,
+
+            descricao: agenda.overdue
+              ? `Planejada para ${agenda.day
+                  .split("-")
+                  .reverse()
+                  .join("/")} · continua pendente até registrar ou reagendar`
+              : "Data planejada para renovação da receita",
+            atrasada: agenda.overdue,
+            actionHref: withReturnTarget(
+              decision.actionHref,
+              buildTimelineUrl(dataSelecionada)
+            ),
+          },
+        ];
+      return [];
+    });
+  }, [medicamentos, renovacoes, activePersonId, dataSelecionada, hoje]);
+
+  const retiradasHoje = useMemo(
+    () => withdrawalsForAgendaDate(retiradas, dataSelecionada, hoje),
+    [retiradas, dataSelecionada, hoje]
+  );
+
+  const {
+    filtroStatus,
+    setFiltroStatus,
+    filtroPeriodo,
+    setFiltroPeriodo,
+    hydrated: filtersHydrated,
+  } = useTodayPersistedFilters();
+  // M44: link da busca aplica o filtro, sem mexer em registros clínicos.
+  const commandDoseStatus = searchParams.get("status");
+  useEffect(() => {
+    if (commandDoseStatus !== "pendentes") return;
+    setFiltroStatus("pendentes");
+    setFiltroPeriodo("todos");
+  }, [commandDoseStatus, setFiltroStatus, setFiltroPeriodo]);
+  // M110: links para doses já tomadas/ignoradas preservam o filtro explícito.
+  useEffect(() => {
+    if (commandDoseStatus !== "tomados" && commandDoseStatus !== "ignorados")
+      return;
+    setFiltroStatus(commandDoseStatus);
+    setFiltroPeriodo("todos");
+  }, [commandDoseStatus, setFiltroStatus, setFiltroPeriodo]);
+  const [mostrarConcluidas, setMostrarConcluidas] = useState(false);
+  const [mostrarTodosCompromissos, setMostrarTodosCompromissos] =
+    useState(false);
+  const [filtroCompromisso, setFiltroCompromisso] =
+    useState<FiltroCompromisso>("todos");
+  // M120: um link explícito prevalece sobre a preferência persistida.
+  const periodFromLinkM120 = searchParams.get("periodo");
+  const appointmentFromLinkM120 = searchParams.get("compromisso");
+  const resolvedFromLinkM120 = searchParams.get("concluidas");
+  // M153 visual: a entrada comum em Hoje sempre começa limpa. Persistência só
+  // restaura filtros quando a própria URL declara um contexto de visualização.
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const hasExplicitFilter = Boolean(
+      commandDoseStatus ||
+        periodFromLinkM120 ||
+        appointmentFromLinkM120 ||
+        resolvedFromLinkM120
+    );
+    if (hasExplicitFilter) return;
+    setFiltroStatus("todos");
+    setFiltroPeriodo("todos");
+  }, [
+    filtersHydrated,
+    commandDoseStatus,
+    periodFromLinkM120,
+    appointmentFromLinkM120,
+    resolvedFromLinkM120,
+    setFiltroStatus,
+    setFiltroPeriodo,
+  ]);
+  useEffect(() => {
+    if (
+      periodFromLinkM120 === "manha" ||
+      periodFromLinkM120 === "tarde" ||
+      periodFromLinkM120 === "noite"
+    ) {
+      setFiltroPeriodo(periodFromLinkM120);
+    }
+  }, [periodFromLinkM120, setFiltroPeriodo]);
+  useEffect(() => {
+    if (
+      appointmentFromLinkM120 === "consultas" ||
+      appointmentFromLinkM120 === "cirurgias" ||
+      appointmentFromLinkM120 === "exames" ||
+      appointmentFromLinkM120 === "retiradas"
+    ) {
+      setFiltroCompromisso(appointmentFromLinkM120);
+    }
+  }, [appointmentFromLinkM120]);
+  useEffect(() => {
+    if (resolvedFromLinkM120 === "1") setMostrarConcluidas(true);
+  }, [resolvedFromLinkM120]);
+
+  const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(
+    null
+  );
+
+  // HOJE V5 — CENTRAL DIÁRIA
+  // Relógio reativo: mantém atrasos, próximos horários e ações em lote
+  // corretos mesmo quando a PWA permanece aberta por muito tempo.
+  const [agora, setAgora] = useState(() => new Date());
+
+  const [processandoTodos, setProcessandoTodos] = useState(false);
+
+  // Mutex síncrono: dois toques antes do próximo render não podem
+  // iniciar dois lotes e disputar o mesmo estoque.
+  const batchOperationLock = useRef(false);
+  // V223: a troca de conta/pessoa invalida o lote ainda em revisão.
+  const batchOwnerRef = useRef(`${user?.id || ""}:${activePersonId || ""}`);
+  const [batchTargetKeys, setBatchTargetKeys] = useState<string[] | null>(null);
+
+  const [loteConfirmado, setLoteConfirmado] = useState<DoseItemExt[]>([]);
+
+  // VAULT_MOTOR_TEMPORAL_V46
+  // Slot programado e instante real da tomada são conceitos distintos.
+  const [isBatchTimeModalOpen, setIsBatchTimeModalOpen] = useState(false);
+
+  useEffect(() => {
+    const key = `${user?.id || ""}:${activePersonId || ""}`;
+    if (batchOwnerRef.current === key) return;
+    batchOwnerRef.current = key;
+    setBatchTargetKeys(null);
+    setLoteConfirmado([]);
+    if (!batchOperationLock.current) setIsBatchTimeModalOpen(false);
+  }, [user?.id, activePersonId]);
+
+  const [batchCustomTime, setBatchCustomTime] = useState("");
+
+  const [isDoseModalOpen, setIsDoseModalOpen] = useState(false);
+
+  const [historicalDoseReviewItem, setHistoricalDoseReviewItem] =
+    useState<DoseItemExt | null>(null);
+
+  const [historicalCustomTakenAt, setHistoricalCustomTakenAt] = useState("");
+
+  const [historicalCustomMode, setHistoricalCustomMode] = useState(false);
+
+  const [isHistoricalProcessing, setIsHistoricalProcessing] = useState(false);
+
+  useEffect(() => {
+    const atualizarRelogio = () => {
+      if (document.visibilityState !== "visible") return;
+      const instante = new Date();
+      setAgora((anterior) =>
+        isSameLocalMinute(anterior, instante) ? anterior : instante
+      );
+    };
+
+    atualizarRelogio();
+
+    const intervalId = window.setInterval(atualizarRelogio, 30_000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        atualizarRelogio();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    const action = searchParams.get("action");
+
+    if (action === "dose") {
+      setIsDoseModalOpen(true);
+      router.replace(
+        consumeTodayActionM120(searchParams, dataSelecionada, hoje)
+      );
+    } else if (action === "sintoma") {
+      router.replace("/saude/registros/novo");
+    }
+  }, [searchParams, router]);
+
+  const retroReviewSummary = useMemo(
+    () =>
+      buildTodayRetroReviewSummary({
+        enabled: retroReviewMode,
+        medicationId: retroReviewMedicationId,
+        medications: medicamentos,
+        renewals: renovacoes,
+        doseLogs: historicoDosesCompleto,
+        personId: activePersonId,
+        today: hoje,
+      }),
+    [
+      retroReviewMode,
+      retroReviewMedicationId,
+      medicamentos,
+      renovacoes,
+      historicoDosesCompleto,
+      activePersonId,
+      hoje,
+    ]
+  );
+  const irParaProximoPendenteRetroativo = () => {
+    if (!retroReviewSummary || retroReviewSummary.pendingDates.length === 0) {
+      showToast("Não há doses retroativas pendentes de revisão", "success");
+
+      return;
+    }
+
+    const pendingDates = retroReviewSummary.pendingDates;
+
+    const nextAfterCurrent = pendingDates.find(
+      (date) => date > dataSelecionada
+    );
+
+    const destino = nextAfterCurrent || pendingDates[0];
+
+    trigger("vibrate");
+
+    router.replace(buildTimelineUrl(destino));
+  };
+
+  const sairRevisaoRetroativa = () => {
+    trigger("vibrate");
+
+    router.replace(
+      dataSelecionada === hoje ? "/hoje" : `/hoje?data=${dataSelecionada}`
+    );
+  };
+
+  const horaAtual = [
+    String(agora.getHours()).padStart(2, "0"),
+    String(agora.getMinutes()).padStart(2, "0"),
+  ].join(":");
+
+  // M18: past/future timelines have no moving "now" bucket. Keep their
+  // projections stable during minute ticks; today still uses the live clock.
+  const operationalMinute = isHoje ? horaAtual : "00:00";
+
+  // M22: restore unchanged rows by clinical identity only within the same owner,
+  // person, selected day and retroactive review. Snapshot is committed after
+  // React has committed the UI, never mutated by speculative renders.
+  const committedTimeline = useRef<TodayTimelineSnapshot<DoseItemExt> | null>(
+    null
+  );
+  const doseIdentityContext = JSON.stringify([
+    user?.id ?? null,
+    activePersonId ?? null,
+    dataSelecionada,
+    retroReviewMode,
+    retroReviewMedicationId ?? null,
+  ]);
+  const doses = useMemo<DoseItemExt[]>(() => {
+    const projected = buildTodayTimelineItems({
+      medicamentos,
+      doseLogs: doseLogs || [],
+      medicos,
+      tratamentos,
+      farmacias,
+      hospitais,
+      historicoDoses: historicoDosesCompleto,
+      registros: registrosHoje,
+      renovacoes,
+      dataSelecionada,
+      isHoje,
+      userId: user?.id,
+      personId: activePersonId || undefined,
+      retroReviewMode,
+      retroReviewMedicationId,
+    });
+    return reconcileTodayTimelineItems(
+      committedTimeline.current,
+      doseIdentityContext,
+      projected
+    ).items;
+  }, [
+    medicamentos,
+    doseLogs,
+    medicos,
+    tratamentos,
+    farmacias,
+    hospitais,
+    historicoDosesCompleto,
+    registrosHoje,
+    renovacoes,
+    dataSelecionada,
+    isHoje,
+    user?.id,
+    activePersonId,
+    retroReviewMode,
+    retroReviewMedicationId,
+    doseIdentityContext,
+  ]);
+  useLayoutEffect(() => {
+    committedTimeline.current = { scopeKey: doseIdentityContext, items: doses };
+  }, [doseIdentityContext, doses]);
+
+  const medicamentosSemHorario = useMemo(
+    () =>
+      medicamentos.filter((med) => {
+        if (
+          !med.id ||
+          med.status === "descontinuado" ||
+          med.tipo_uso !== "continuo"
+        ) {
+          return false;
+        }
+
+        return !(med.estoque_horarios || []).some((horario: string) =>
+          /^([01]\d|2[0-3]):[0-5]\d$/.test(String(horario || "").trim())
+        );
+      }),
+    [medicamentos]
+  );
+
+  const compromissosFiltrados = useMemo(
+    () =>
+      buildTodayAppointmentProjection({
+        consultas: consultasHoje,
+        cirurgias: cirurgiasHoje,
+        exames: examesHoje,
+        retiradas: retiradasHoje,
+        filter: filtroCompromisso,
+      }),
+    [consultasHoje, cirurgiasHoje, examesHoje, retiradasHoje, filtroCompromisso]
+  );
+
+  const assistenteDiario = useMemo(() => {
+    if (!isHoje) {
+      return null;
+    }
+
+    return analisarRotinaDiaria(doses, compromissosFiltrados);
+  }, [isHoje, doses, compromissosFiltrados]);
+
+  const dosesFiltradas = useMemo(
+    () => filterTimelineItems(doses, filtroStatus, filtroPeriodo, isHoje),
+    [doses, filtroStatus, filtroPeriodo, isHoje]
+  );
+
+  const dosesParaExibir = useMemo(
+    () =>
+      visibleTimelineItems(dosesFiltradas, {
+        isToday: isHoje,
+        status: filtroStatus,
+        showResolved: mostrarConcluidas,
+      }),
+    [dosesFiltradas, filtroStatus, isHoje, mostrarConcluidas]
+  );
+
+  // R9 R8: a contagem de itens recolhidos usa a mesma autoridade da timeline visível.
+  const concluidasOcultas = useMemo(
+    () =>
+      countHiddenTodayResolved(dosesFiltradas, {
+        isToday: isHoje,
+        status: filtroStatus,
+        showResolved: mostrarConcluidas,
+      }),
+    [dosesFiltradas, isHoje, filtroStatus, mostrarConcluidas]
+  );
+
+  const dosesAgrupadas = useMemo(() => {
+    // Visual presentation is outside this 168KB page; grouping remains canonical.
+    const metadata = todayTimelineGroupPresentation;
+    return groupTimelineItems(dosesParaExibir, {
+      isToday: isHoje,
+      selectedDate: dataSelecionada,
+      today: hoje,
+      nowTime: operationalMinute,
+      // The normal view still hides resolved rows. Co-location is opt-in
+      // only after they are explicitly shown by the user.
+      coLocatePlannedWithScheduled: isHoje && filtroStatus === "todos" && mostrarConcluidas,
+    }).map(([key, items]) => {
+      const meta = key === "horarios"
+        ? { icon: Clock, label: "Mesmo horário", sub: "Doses regulares e planejamentos" }
+        : metadata[key];
+      const total = items.filter(isScheduledRoutineEvidence).length;
+      const completed = items.reduce(
+        (count, item) => count + (isScheduledRoutineEvidence(item) && item.tomada ? 1 : 0),
+        0
+      );
+      const plannedCount = items.filter(item => item.doseKind === "planned").length;
+      return [
+        key,
+        {
+          ...meta,
+          sub: todayTimelineGroupContext(meta.sub, items.length) +
+            (plannedCount ? ` · ${plannedCount} planejada${plannedCount === 1 ? "" : "s"}` : ""),
+          items,
+          total,
+          completed,
+          progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+        },
+      ] as const;
+    });
+  }, [dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada, filtroStatus, mostrarConcluidas]);
+
+  // M76: read-only agenda projection across categories. It never changes dose state.
+  const agendaOverview = useMemo(
+    () =>
+      buildTodayAgendaOverview({
+        doses,
+        reminders: remindersDoDia,
+        appointments: compromissosFiltrados,
+        now: operationalMinute,
+      }),
+    [doses, remindersDoDia, compromissosFiltrados, operationalMinute]
+  );
+
+  // Métricas de adesão contam somente slots programados.
+  // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
+  // inflam nem derrubam artificialmente o progresso da rotina.
+  // P10: esta projeção não deve ser recalculada a cada interação na tela.
+  const metricItems = useMemo(
+    () =>
+      doses.filter(
+        (dose) =>
+          !dose.isExpectedUnconfirmed &&
+          !dose.isDataConflict &&
+          !dose.isAvulsa &&
+          !dose.isSintoma &&
+          isScheduledRoutineEvidence(dose)
+      ),
+    [doses]
+  );
+  const {
+    totalTomadas,
+    totalPendentes,
+    totalEsperadasSemConfirmacao,
+    totalIgnoradas,
+  } = useMemo(() => summarizeTimeline(doses), [doses]);
+
+  // P7: um lembrete de dose navega até o grupo real, após renderização dos dados.
+  useEffect(() => {
+    if (!focusDoseQueue || !isHoje) return;
+    const focus = () =>
+      document.getElementById("hoje-doses")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    const frame = window.requestAnimationFrame(focus);
+    const late = window.setTimeout(focus, 450);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(late);
+    };
+  }, [focusDoseQueue, isHoje, totalPendentes]);
+
+  const totalRegistros = metricItems.length;
+
+  const totalCompromissosDoDia = compromissosFiltrados.length;
+
+  // Includes only scheduled withdrawals with dates strictly earlier than today.
+  const overdueWithdrawalsForToday = isHoje
+    ? retiradasHoje.filter((item) => isOpenWithdrawal(item) && item.data < hoje)
+        .length
+    : 0;
+
+  const totalEventosMedicamento = renovacoesReceitaHoje.length;
+
+  const totalItensPlanejados =
+    totalEsperadasSemConfirmacao +
+    totalCompromissosDoDia +
+    totalEventosMedicamento;
+
+  const percentualConclusao =
+    totalRegistros > 0 ? Math.round((totalTomadas / totalRegistros) * 100) : 0;
+
+  // VAULT_HOJE_DOSES_V45
+  // Somente slots programados vencidos/agora e ainda não resolvidos.
+  // A chave medicamento+horário impede baixa dupla por dado legado.
+  useEffect(() => {
+    if (!isBatchTimeModalOpen) setBatchTargetKeys(null);
+  }, [isBatchTimeModalOpen]);
+
+  // P10: confirmações só consultam slots elegíveis já resolvidos pelo Hoje.
+  // O lote nunca inclui SOS avulso, dose futura, tomada, ignorada ou conflito.
+  const dosesElegiveisLote = useMemo(() => {
+    const selectedKeys = batchTargetKeys ? new Set(batchTargetKeys) : null;
+    return isHoje
+      ? Array.from(
+          metricItems
+            .filter(
+              (dose) =>
+                Boolean(dose.medicamentoId) &&
+                !dose.tomada &&
+                !dose.ignorada &&
+                !dose.isDataConflict &&
+                (selectedKeys
+                  ? selectedKeys.has(`${dose.medicamentoId}-${dose.horario}`)
+                  : dose.horario <= operationalMinute)
+            )
+            .reduce((map, dose) => {
+              const key = `${dose.medicamentoId}-${dose.horario}`;
+              if (!map.has(key)) map.set(key, dose);
+              return map;
+            }, new Map<string, DoseItemExt>())
+            .values()
+        )
+      : [];
+  }, [isHoje, metricItems, batchTargetKeys, operationalMinute]);
+
+  // V141: pending stockless doses are visible, but never silently marked taken or ignored.
+  // P9: uma passagem para separar lote com/sem saldo, sem inferir tomada.
+  const {
+    withoutStock: dosesSemEstoqueNoLote,
+    withStock: dosesComEstoqueNoLote,
+  } = useMemo(
+    () =>
+      partitionDoseBatchByStock(dosesElegiveisLote, (d) => {
+        const med = d.medicamentoId
+          ? medicamentosById.get(d.medicamentoId)
+          : undefined;
+        return med ? hasKnownEmptyMedicationStock(med) : false;
+      }),
+    [dosesElegiveisLote, medicamentosById]
+  );
+
+  const isLoading = rawMedicamentos === undefined || doseLogs === undefined;
+
+  if (isLoading) {
+    return <CardListSkeleton />;
+  }
+
+  const abrirRevisaoHistorica = (item: DoseItemExt) => {
+    if (!isPassado || !item.medicamentoId || item.isAvulsa || item.isSintoma) {
+      return;
+    }
+
+    trigger("vibrate");
+
+    setHistoricalDoseReviewItem(item);
+
+    setHistoricalCustomTakenAt(`${dataSelecionada}T${item.horario || "00:00"}`);
+
+    setHistoricalCustomMode(false);
+  };
+
+  const fecharRevisaoHistorica = () => {
+    if (isHistoricalProcessing) {
+      return;
+    }
+
+    setHistoricalDoseReviewItem(null);
+
+    setHistoricalCustomMode(false);
+
+    setHistoricalCustomTakenAt("");
+  };
+
+  const executarRevisaoHistorica = async (
+    action: "scheduled" | "custom" | "ignored" | "clear"
+  ) => {
+    const item = historicalDoseReviewItem;
+
+    if (!item?.medicamentoId || !isPassado || isHistoricalProcessing) {
+      return;
+    }
+
+    setIsHistoricalProcessing(true);
+
+    try {
+      if (action === "scheduled") {
+        const scheduledLocal = `${dataSelecionada}T${
+          item.horario || "00:00"
+        }:00`;
+
+        const takenAt = new Date(scheduledLocal);
+
+        if (Number.isNaN(takenAt.getTime())) {
+          throw new Error("Horário histórico inválido.");
+        }
+
+        await marcarComoTomadaHistoricaEm(
+          item.medicamentoId,
+          item.horario,
+          takenAt.toISOString(),
+          item.unidadePorDose
+        );
+
+        trigger("success");
+
+        showToast("Dose histórica confirmada", "success");
+      } else if (action === "custom") {
+        if (!historicalCustomTakenAt) {
+          showToast("Informe quando a dose foi tomada", "error");
+
+          return;
+        }
+
+        const customDate = historicalCustomTakenAt.slice(0, 10);
+
+        if (customDate !== dataSelecionada) {
+          showToast(
+            "O horário informado precisa pertencer ao dia selecionado",
+            "error"
+          );
+
+          return;
+        }
+
+        const takenAt = new Date(historicalCustomTakenAt);
+
+        if (Number.isNaN(takenAt.getTime())) {
+          showToast("Data ou horário inválido", "error");
+
+          return;
+        }
+
+        await marcarComoTomadaHistoricaEm(
+          item.medicamentoId,
+          item.horario,
+          takenAt.toISOString(),
+          item.unidadePorDose
+        );
+
+        trigger("success");
+
+        showToast("Horário histórico atualizado", "success");
+      } else if (action === "ignored") {
+        await marcarComoIgnoradaHistorica(
+          item.medicamentoId,
+          item.horario,
+          item.unidadePorDose
+        );
+
+        trigger("vibrate");
+
+        showToast("Dose marcada como não tomada", "info");
+      } else {
+        await desmarcarDoseHistorica(item.medicamentoId, item.horario);
+
+        trigger("vibrate");
+
+        showToast("Confirmação histórica removida", "info");
+      }
+
+      setHistoricalDoseReviewItem(null);
+
+      setHistoricalCustomMode(false);
+
+      setHistoricalCustomTakenAt("");
+    } catch (error) {
+      console.error("Erro ao revisar dose histórica:", error);
+
+      trigger("error");
+
+      showToast("Erro ao atualizar histórico", "error");
+    } finally {
+      setIsHistoricalProcessing(false);
+    }
+  };
+
+  const handleCancelPlannedDose = async (item: DoseItemExt) => {
+    if (processandoDoseId || item.doseKind !== "planned" || !item.logId) return;
+
+    const confirmed = window.confirm(
+      `Cancelar a dose de ${
+        item.medicamentoNome || "medicamento"
+      } agendada para ${item.horario}? O estoque não será alterado.`
+    );
+    if (!confirmed) return;
+
+    setProcessandoDoseId(`log-${item.logId}`);
+    try {
+      await removerDosePorId(item.logId);
+      trigger("success");
+      showToast("Agendamento cancelado. O estoque não foi alterado.", "info");
+    } catch (error) {
+      console.error("Erro ao cancelar dose agendada:", error);
+      trigger("error");
+      showToast("Não foi possível cancelar o agendamento", "error");
+    } finally {
+      setProcessandoDoseId(null);
+    }
+  };
+
+  const handleToggle = async (item: DoseItemExt) => {
+    if (!isHoje) {
+      trigger("vibrate");
+
+      showToast(
+        isPassado
+          ? "Histórico em modo de consulta. Nenhuma dose passada será presumida."
+          : "Doses futuras só poderão ser registradas no dia correspondente.",
+        "info"
+      );
+
+      return;
+    }
+
+    if (processandoDoseId || !item.medicamentoId) {
+      return;
+    }
+
+    const chaveDose = item.logId
+      ? `log-${item.logId}`
+      : `${item.medicamentoId}-${item.horario}`;
+
+    setProcessandoDoseId(chaveDose);
+
+    try {
+      // ======================================================
+      // DOSE AVULSA / SOS
+      //
+      // A remoção passa obrigatoriamente pelo repository.
+      //
+      // Ele é responsável por:
+      //
+      // - validar person_id;
+      // - validar usuário;
+      // - recuperar a quantidade histórica;
+      // - restaurar estoque quando calculável;
+      // - excluir o DoseLog;
+      // - enfileirar DELETE para sincronização.
+      // ======================================================
+
+      if (item.isAvulsa && item.logId && item.doseKind !== "planned") {
+        await removerDosePorId(item.logId);
+
+        trigger("vibrate");
+
+        showToast("Dose avulsa removida", "info");
+
+        return;
+      }
+
+      // ======================================================
+      // DOSE PROGRAMADA JÁ TOMADA → DESFAZER
+      //
+      // Nenhuma alteração manual de estoque é feita aqui.
+      //
+      // O repository usa a quantidade histórica do DoseLog para
+      // restaurar exatamente o consumo que havia sido registrado.
+      // ======================================================
+
+      if (item.tomada) {
+        await desmarcarDose(item.medicamentoId, item.horario);
+
+        trigger("vibrate");
+
+        return;
+      }
+
+      // ======================================================
+      // DOSE PROGRAMADA PENDENTE → TOMADA
+      //
+      // O repository registra o DoseLog e movimenta o estoque.
+      // ======================================================
+
+      const medicamentoDaDose = medicamentosById.get(item.medicamentoId);
+      if (
+        medicamentoDaDose &&
+        hasKnownEmptyMedicationStock(medicamentoDaDose)
+      ) {
+        showToast(
+          "Estoque registrado zerado. Confira o saldo ou registre que a dose não foi tomada.",
+          "info"
+        );
+        return;
+      }
+
+      // VAULT_HOJE_DOSES_V45 — ação individual e lote usam
+      // a quantidade real da dose; o repository continua dono do estoque.
+      await marcarDose(item.medicamentoId, item.horario, item.unidadePorDose);
+
+      trigger("success");
+    } catch (error) {
+      console.error("Erro ao atualizar dose:", error);
+
+      trigger("error");
+
+      showToast("Erro ao atualizar dose", "error");
+    } finally {
+      setProcessandoDoseId(null);
+    }
+  };
+
+  // V223: a group opens the existing temporal review, never writes dose logs
+  // directly. The repository remains the sole stock/sync authority.
+  const handleRevisarHorario = (items: DoseItemExt[]) => {
+    if (
+      !isHoje ||
+      !user?.id ||
+      !activePersonId ||
+      processandoTodos ||
+      processandoDoseId ||
+      batchOperationLock.current
+    )
+      return;
+    const keys = eligibleGroupDoseKeys(items);
+    if (keys.length < 2) return;
+    setBatchTargetKeys(keys);
+    const hhmm = `${String(agora.getHours()).padStart(2, "0")}:${String(
+      agora.getMinutes()
+    ).padStart(2, "0")}`;
+    setBatchCustomTime(hhmm);
+    trigger("vibrate");
+    setIsBatchTimeModalOpen(true);
+  };
+
+  const handleTomarTodos = () => {
+    setBatchTargetKeys(null);
+    if (
+      processandoTodos ||
+      processandoDoseId ||
+      dosesElegiveisLote.length < 2
+    ) {
+      return;
+    }
+
+    trigger("vibrate");
+
+    const hhmm = `${String(agora.getHours()).padStart(2, "0")}:${String(
+      agora.getMinutes()
+    ).padStart(2, "0")}`;
+
+    setBatchCustomTime(hhmm);
+    setIsBatchTimeModalOpen(true);
+  };
+
+  type BatchTimeMode = "now" | "scheduled" | "custom";
+
+  const executarTomadaEmLote = async (mode: BatchTimeMode) => {
+    if (
+      batchOperationLock.current ||
+      processandoTodos ||
+      processandoDoseId ||
+      dosesComEstoqueNoLote.length < 1
+    ) {
+      return;
+    }
+
+    if (
+      mode === "scheduled" &&
+      dosesComEstoqueNoLote.some(
+        (dose) =>
+          new Date(`${dataSelecionada}T${dose.horario}:00`).getTime() >
+          Date.now()
+      )
+    ) {
+      showToast(
+        "Esse horário ainda não chegou. Use Tomei agora ou informe a hora real.",
+        "error"
+      );
+      return;
+    }
+
+    let customTakenAt: Date | null = null;
+
+    if (mode === "custom") {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(batchCustomTime)) {
+        showToast("Informe um horário válido", "error");
+        return;
+      }
+
+      customTakenAt = new Date(`${dataSelecionada}T${batchCustomTime}:00`);
+
+      if (
+        Number.isNaN(customTakenAt.getTime()) ||
+        customTakenAt.getTime() > Date.now()
+      ) {
+        showToast("O horário da tomada não pode estar no futuro", "error");
+        return;
+      }
+    }
+
+    // Um único instante para todo o lote no modo "agora".
+    const batchNow = mode === "now" ? new Date() : null;
+
+    batchOperationLock.current = true;
+    setProcessandoTodos(true);
+    setLoteConfirmado([]);
+
+    const confirmadas: DoseItemExt[] = [];
+    let falhas = 0;
+    const snapshotLote = [...dosesComEstoqueNoLote];
+    const ownerAtStart = batchOwnerRef.current;
+    let interrompidoPorTrocaDePessoa = false;
+
+    try {
+      // Serial de propósito: protege duas doses do mesmo medicamento
+      // contra disputa de leitura/gravação do saldo.
+      for (const dose of snapshotLote) {
+        if (batchOwnerRef.current !== ownerAtStart) {
+          interrompidoPorTrocaDePessoa = true;
+          break;
+        }
+        if (!dose.medicamentoId) continue;
+
+        try {
+          let takenAt: Date;
+
+          if (mode === "scheduled") {
+            takenAt = new Date(`${dataSelecionada}T${dose.horario}:00`);
+          } else if (mode === "custom") {
+            takenAt = customTakenAt!;
+          } else {
+            takenAt = batchNow!;
+          }
+
+          if (Number.isNaN(takenAt.getTime())) {
+            throw new Error("Horário real da tomada inválido.");
+          }
+
+          await marcarComoTomadaEm(
+            dose.medicamentoId,
+            dose.horario,
+            takenAt.toISOString(),
+            dose.unidadePorDose,
+            true
+          );
+
+          confirmadas.push(dose);
+        } catch (error) {
+          falhas += 1;
+          console.error("Erro ao registrar dose no lote temporal:", error);
+        }
+      }
+    } finally {
+      // Nenhuma exceção inesperada pode deixar a tela travada em processamento.
+      setLoteConfirmado(
+        batchOwnerRef.current === ownerAtStart ? confirmadas : []
+      );
+      setProcessandoTodos(false);
+      batchOperationLock.current = false;
+    }
+
+    if (confirmadas.length > 0) {
+      setIsBatchTimeModalOpen(false);
+      trigger("success");
+
+      const descricao =
+        mode === "scheduled"
+          ? "nos horários programados"
+          : mode === "custom"
+          ? `às ${batchCustomTime}`
+          : "agora";
+
+      showToast(
+        interrompidoPorTrocaDePessoa
+          ? `${confirmadas.length} registradas antes da troca de pessoa; lote interrompido por segurança`
+          : falhas > 0
+          ? `${confirmadas.length} doses registradas ${descricao}; ${falhas} falharam`
+          : `${confirmadas.length} doses registradas ${descricao}`,
+        falhas > 0 || interrompidoPorTrocaDePessoa ? "info" : "success"
+      );
+    } else {
+      trigger("error");
+      showToast("Nenhuma dose pôde ser registrada", "error");
+    }
+  };
+
+  const confirmarDosesNaoTomadasPorEstoque = async () => {
+    if (
+      batchOperationLock.current ||
+      processandoTodos ||
+      !dosesSemEstoqueNoLote.length
+    )
+      return;
+    batchOperationLock.current = true;
+    setProcessandoTodos(true);
+    let registradas = 0,
+      falhas = 0;
+    try {
+      for (const dose of [...dosesSemEstoqueNoLote]) {
+        if (!dose.medicamentoId) continue;
+        try {
+          await marcarComoIgnorada(
+            dose.medicamentoId,
+            dose.horario,
+            dose.unidadePorDose,
+            "sem_estoque",
+            true
+          );
+          registradas++;
+        } catch (error) {
+          console.error(
+            "Falha ao registrar dose não tomada por falta de estoque",
+            error
+          );
+          falhas++;
+        }
+      }
+    } finally {
+      batchOperationLock.current = false;
+      setProcessandoTodos(false);
+    }
+    if (registradas)
+      showToast(
+        `${registradas} dose${registradas === 1 ? "" : "s"} não tomada${
+          registradas === 1 ? "" : "s"
+        } registrada${registradas === 1 ? "" : "s"} com motivo: sem estoque`,
+        "info"
+      );
+    if (falhas)
+      showToast(
+        `${falhas} registro${falhas === 1 ? "" : "s"} não ${
+          falhas === 1 ? "pôde" : "puderam"
+        } ser salvo${falhas === 1 ? "" : "s"}`,
+        "error"
+      );
+  };
+
+  const handleDesfazerLote = async () => {
+    if (
+      batchOperationLock.current ||
+      processandoTodos ||
+      processandoDoseId ||
+      loteConfirmado.length === 0
+    ) {
+      return;
+    }
+
+    batchOperationLock.current = true;
+    setProcessandoTodos(true);
+
+    const naoDesfeitas: DoseItemExt[] = [];
+
+    try {
+      for (const dose of loteConfirmado) {
+        if (!dose.medicamentoId) continue;
+
+        try {
+          await desmarcarDose(dose.medicamentoId, dose.horario);
+        } catch (error) {
+          naoDesfeitas.push(dose);
+          console.error("Erro ao desfazer dose do lote:", error);
+        }
+      }
+    } finally {
+      setLoteConfirmado(naoDesfeitas);
+      setProcessandoTodos(false);
+      batchOperationLock.current = false;
+    }
+
+    if (naoDesfeitas.length === 0) {
+      trigger("vibrate");
+      showToast("Lote desfeito com segurança", "info");
+    } else {
+      trigger("error");
+      showToast("Algumas doses não puderam ser desfeitas", "error");
+    }
+  };
+
+  const handleIgnorar = async (item: DoseItemExt) => {
+    if (!isHoje) {
+      trigger("vibrate");
+
+      showToast(
+        isPassado
+          ? "Histórico em modo de consulta."
+          : "Ainda não é possível ignorar uma dose futura.",
+        "info"
+      );
+
+      return;
+    }
+
+    if (processandoDoseId || !item.medicamentoId) {
+      return;
+    }
+
+    setProcessandoDoseId(`${item.medicamentoId}-${item.horario}`);
+
+    trigger("vibrate");
+
+    try {
+      await marcarComoIgnorada(item.medicamentoId, item.horario);
+
+      showToast("Dose ignorada", "info");
+    } catch (error) {
+      console.error("Erro ao ignorar dose:", error);
+
+      trigger("error");
+
+      showToast("Erro ao ignorar dose", "error");
+    } finally {
+      setProcessandoDoseId(null);
+    }
+  };
+
+  const filtrosAtivosCount =
+    Number(filtroStatus !== "todos") +
+    Number(filtroPeriodo !== "todos") +
+    Number(filtroCompromisso !== "todos") +
+    Number(isHoje && mostrarConcluidas);
+  const hasFiltrosAtivos = filtrosAtivosCount > 0;
+
+  // Pure empty-state copy never writes a clinical or dose event.
+  const emptyTimelineCopy = todayTimelineEmptyCopy({
+    hasFilters: hasFiltrosAtivos,
+    retroReview: retroReviewMode,
+    isToday: isHoje,
+    isPast: isPassado,
+    selectedDateDescription: dataSelecionadaDescricao,
+  });
+
+  const limparFiltros = () => {
+    trigger("vibrate");
+    setFiltroStatus("todos");
+    setFiltroPeriodo("todos");
+    setFiltroCompromisso("todos");
+    setMostrarConcluidas(false);
+  };
+
+  const navegarCompromisso = (item: any) => {
+    trigger("vibrate");
+
+    const rotas: Record<string, string> = {
+      consulta: "/saude/consultas/detalhes",
+      cirurgia: "/saude/cirurgias/detalhes",
+      exame: "/saude/exames/detalhes",
+      retirada: "/saude/retiradas/detalhes",
+    };
+
+    const rota = rotas[item.tipo];
+
+    if (rota && item.id) {
+      router.push(
+        withReturnTarget(
+          `${rota}?id=${encodeURIComponent(String(item.id))}`,
+          buildTimelineUrl(dataSelecionada)
+        )
+      );
+    }
+  };
+
+  // M17: one interaction context per parent render, shared by every visual dose card.
+  // Clinical operations, owner scope, stock authority and idempotent writes stay above.
+  const doseCardScope: TodayDoseTimelineCardScope = {
+    returnTo: buildTimelineUrl(dataSelecionada),
+    isHoje,
+    isPassado,
+    isFuturo,
+    horaAtual,
+    regulatoryProfiles,
+    processandoDoseId,
+    trigger,
+    router,
+    medicamentosById,
+    abrirRevisaoHistorica,
+    isHistoricalProcessing,
+    handleCancelPlannedDose,
+    isProcessing: false,
+    handleIgnorar,
+    handleToggle,
+  };
+
+  return (
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))] vault-adaptive-tail">
+        {/* M40 — Cabeçalho compacto: data e progresso, sem filtros redundantes. */}
+        <header className="border-b border-surface-border/40 bg-void px-4 pb-3 pt-3 shadow-[0_10px_26px_-24px_rgba(47,227,201,0.4)]">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">
+                LINHA DO TEMPO
+              </p>
+              <h1 className="font-display text-2xl font-semibold capitalize leading-tight text-ink-primary">
+                {dataSelecionadaLabel}
+              </h1>
+            </div>
+            {!isHoje && (
+              <span className="shrink-0 rounded-lg border border-ice/20 bg-ice/10 px-2 py-1 text-[10px] font-semibold text-ice">
+                {isPassado ? "Histórico" : "Planejado"}
+              </span>
+            )}
+          </div>
+          <TodayDateNavigation
+            label="Escolher data da linha do tempo"
+            date={dataSelecionada}
+            isHoje={isHoje}
+            isPassado={isPassado}
+            isFuturo={isFuturo}
+            description={dataSelecionadaDescricao}
+            onPrevious={() => navegarData(-1)}
+            onNext={() => navegarData(1)}
+            onToday={voltarParaHoje}
+            onSelectDate={navegarParaData}
+          />
+          <TodayRoutinePulse
+            isHoje={isHoje}
+            isPassado={isPassado}
+            isFuturo={isFuturo}
+            pending={totalPendentes}
+            unconfirmed={totalEsperadasSemConfirmacao}
+            completed={totalTomadas}
+            ignored={totalIgnoradas}
+            recorded={totalRegistros}
+            projected={totalItensPlanejados}
+            percentage={percentualConclusao}
+          />
+          <TodayNavigationContextM120
+            status={filtroStatus}
+            period={filtroPeriodo}
+            time={focusDoseTime}
+            isPast={isPassado}
+            isFuture={isFuturo}
+            origin={originM120}
+            showContext={Boolean(
+              requestedDate ||
+                focusDoseQueue ||
+                searchParams.get("status") ||
+                searchParams.get("periodo") ||
+                searchParams.get("compromisso") ||
+                originM120
+            )}
+            onBack={() => {
+              if (originM120) router.push(originM120);
+            }}
+            onOpenFilters={() => {
+              const panel = document.querySelector<HTMLDetailsElement>(
+                "[data-vault-today-filters]"
+              );
+              if (panel) {
+                panel.open = true;
+                panel.querySelector("summary")?.focus();
+              }
+            }}
+          />
+          <span className="sr-only">
+            Doses futuras não estão atrasadas antes do horário. Registros
+            contraditórios exigem revisão separada.
+          </span>
+        </header>
+        {/* P5: a navegação de seções é uma camada de apresentação sobre dados já selecionados. */}
+        <div className="mx-auto max-w-3xl px-4 pt-2">
+          <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
+          <TodayJourneyRailP5
+            isToday={isHoje}
+            pendingCount={isHoje ? totalPendentes : 0}
+            onInteraction={() => trigger("vibrate")}
+          />
+        </div>
+        <div className="mx-auto max-w-3xl px-4 pt-3">
+          <CareFlowSummaryM2 />
+        </div>
+        <div className="mx-auto max-w-3xl px-4 pt-2">
+          <ExamAgendaM2 day={dataSelecionada} />
+        </div>
+
+        {/* =========================================================
+            CONTEÚDO
+        ========================================================= */}
+        <section className="space-y-2.5 px-4 pt-2.5">
+          {/* M40 — O conteúdo clínico vem antes dos atalhos e painéis complementares. */}
+          <span
+            id="hoje-agora"
+            className="block scroll-mt-24"
+            aria-hidden="true"
+          />
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink-primary">
+                {isFuturo
+                  ? "Doses previstas"
+                  : isPassado
+                  ? "Registros do dia"
+                  : "Sua rotina"}
+              </h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                {isFuturo
+                  ? "Planejamento, sem confirmar tomadas"
+                  : isPassado
+                  ? "Histórico e registros confirmados"
+                  : "Horários, registros e próximas doses"}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <TodayTimelineGuide
+                isHoje={isHoje}
+                isPassado={isPassado}
+                isFuturo={isFuturo}
+              />
+              <TodayFilterPanel
+                status={filtroStatus}
+                period={filtroPeriodo}
+                appointment={filtroCompromisso}
+                showResolved={mostrarConcluidas}
+                isToday={isHoje}
+                isPast={isPassado}
+                activeCount={filtrosAtivosCount}
+                onStatus={(value) => {
+                  trigger("vibrate");
+                  setFiltroStatus(value);
+                  if (value !== "todos") setMostrarConcluidas(false);
+                }}
+                onPeriod={(value) => {
+                  trigger("vibrate");
+                  setFiltroPeriodo(value);
+                }}
+                onAppointment={(value) => {
+                  trigger("vibrate");
+                  setFiltroCompromisso(value);
+                }}
+                onShowResolved={(value) => {
+                  trigger("vibrate");
+                  setMostrarConcluidas(value);
+                }}
+                onReset={limparFiltros}
+              />
+            </div>
+          </div>
+          {isHoje && filtroStatus !== "todos" && (
+            <div
+              role="status"
+              className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-ice/20 bg-ice/[0.045] px-3 py-1.5 text-xs"
+            >
+              <span className="min-w-0 text-ink-secondary">
+                Exibindo{" "}
+                {filtroStatus === "tomados"
+                  ? "doses tomadas"
+                  : filtroStatus === "ignorados"
+                  ? "doses ignoradas"
+                  : "doses pendentes"}
+                {focusDoseTime ? ` · ${focusDoseTime}` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={limparFiltros}
+                className="shrink-0 font-semibold text-ice underline underline-offset-2"
+              >
+                Ver tudo
+              </button>
+            </div>
+          )}
+          {retroReviewMode ? (
+            <TodayRetroReviewPanel
+              summary={retroReviewSummary}
+              onNext={irParaProximoPendenteRetroativo}
+              onClose={sairRevisaoRetroativa}
+            />
+          ) : null}
+
+          {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
+          {isHoje && dosesElegiveisLote.length > 1 && (
+            <TodayBatchAction
+              count={dosesElegiveisLote.length}
+              processing={processandoTodos}
+              disabled={Boolean(processandoTodos || processandoDoseId)}
+              onClick={() => void handleTomarTodos()}
+            />
+          )}
+
+          {/* =======================================================
+              TIMELINE / DOSES
+          ======================================================= */}
+          <span
+            id="hoje-doses"
+            className="block scroll-mt-24"
+            aria-hidden="true"
+          />
+          {isHoje && filtroStatus === "todos" && concluidasOcultas > 0 && (
+            <p className="px-1 text-xs text-ink-muted">
+              {formatPtBrQuantity(
+                concluidasOcultas,
+                "registro recolhido",
+                "registros recolhidos"
+              )}{" "}
+              na visualização padrão. Eles continuam disponíveis em Filtros.
+            </p>
+          )}
+
+          {dosesParaExibir.length === 0 && concluidasOcultas > 0 ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.045] px-3 py-3">
+              <p className="text-xs text-ink-secondary">
+                Não há outros horários visíveis neste filtro.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMostrarConcluidas(true)}
+                className="min-h-11 shrink-0 rounded-lg border border-emerald-400/25 px-3 text-[11px] font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                Ver registros
+              </button>
+            </div>
+          ) : dosesParaExibir.length === 0 ? (
+            <EmptyState
+              icon={Pill}
+              title={emptyTimelineCopy.title}
+              description={emptyTimelineCopy.description}
+              actionLabel={
+                !hasFiltrosAtivos && isHoje && !retroReviewMode
+                  ? "Registrar Dose Avulsa"
+                  : undefined
+              }
+              onAction={
+                !hasFiltrosAtivos && isHoje && !retroReviewMode
+                  ? () => {
+                      trigger("vibrate");
+                      setIsDoseModalOpen(true);
+                    }
+                  : undefined
+              }
+              iconClassName="border-ice/20 bg-ice/10 text-ice"
+            />
+          ) : (
+            dosesAgrupadas.map(([key, grupo]) => {
+              const total = grupo.total;
+              const concluidos = grupo.completed;
+              const progresso = grupo.progress;
+
+              return (
+                <div key={key} className="vault-deferred-lg space-y-2">
+                  <TodayDoseGroupHeading
+                    icon={grupo.icon}
+                    label={grupo.label}
+                    description={grupo.sub}
+                    total={total}
+                    completed={concluidos}
+                    progress={progresso}
+                  />
+
+                  <div className="space-y-2">
+                    <DoseScheduleGroups
+                      items={grupo.items}
+                      focusTime={focusDoseTime}
+                      renderItem={(item) => (
+                        <TodayDoseTimelineCard
+                          item={item}
+                          scope={doseCardScope}
+                        />
+                      )}
+                      disabled={Boolean(processandoTodos || processandoDoseId)}
+                      onTakeGroup={isHoje ? handleRevisarHorario : undefined}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {/* M150 P5 P5 — depois das doses, orientacoes e agenda reais permanecem acessiveis. */}
+          {/* M150 P5 P5: comando do Brain permanece visivel, mas depois da fila de doses. */}
+          {/* Conteudo de evidencias separado da autoridade do registro de doses. */}
+
+          {/* R4: Brain na area de prioridades, fora dos grupos cronologicos de doses. */}
+          <section aria-label="Prioridades do dia" className="space-y-2">
+            {isHoje && !retroReviewMode ? (
+              <TodayActionCenter
+                pendingDoses={totalPendentes}
+                showDoseShortcut={false}
+                command={healthIntelligence.careCommand}
+                brainFallback={
+                  !brainPulse.isLoading && brainPulse.brief.primary
+                    ? {
+                        insightId: brainPulse.brief.primary.insight_id,
+                        headline: brainPulse.brief.headline,
+                        title: brainPulse.brief.primary.snapshot.titulo,
+                        supporting: brainPulse.brief.supporting,
+                      }
+                    : null
+                }
+                onOpenDoses={() => {
+                  trigger("vibrate");
+                  document
+                    .getElementById("hoje-doses")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                onNavigate={(href) => navigateWithReturnM120(href)}
+              />
+            ) : null}
+          </section>
+          {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
+          {isHoje && !retroReviewMode && (
+            <nav
+              className="grid min-w-0 grid-cols-3 gap-1.5"
+              aria-label="Acessos rápidos do cuidado"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  document
+                    .getElementById("hoje-diario")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.055] px-1.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                <Activity size={14} className="shrink-0" aria-hidden="true" />
+                <span className="break-words">Check-in</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  navigateWithReturnM120("/saude/central-m144");
+                }}
+                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-ice/20 bg-ice/[.055] px-1.5 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                <Calendar size={14} className="shrink-0" aria-hidden="true" />
+                <span className="break-words">Ocorrências</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  navigateWithReturnM120("/saude/plano-seguranca");
+                }}
+                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-400/20 bg-rose-400/[.055] px-1.5 text-[11px] font-semibold text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                <AlertTriangle
+                  size={14}
+                  className="shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="break-words">Plano pessoal</span>
+              </button>
+            </nav>
+          )}
+          {isHoje && !retroReviewMode ? (
+            <TodayAgendaOverview
+              overview={agendaOverview}
+              overdueWithdrawals={overdueWithdrawalsForToday}
+              remindersCount={remindersDoDia.length}
+              onJump={(section) => {
+                trigger("vibrate");
+                document
+                  .getElementById(section)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              onJumpDose={(time) => {
+                trigger("vibrate");
+                router.push(
+                  `/hoje?focus=doses&status=pendentes&time=${encodeURIComponent(
+                    time
+                  )}`
+                );
+              }}
+              onOpenReminder={(href) => {
+                trigger("vibrate");
+                navigateWithReturnM120(href);
+              }}
+              onOpenWithdrawals={() => {
+                trigger("vibrate");
+                navigateWithReturnM120("/saude/retiradas");
+              }}
+            />
+          ) : null}
+          {/* VAULT_V321_DAILY_FOCUS: acesso preservado; Brain apos doses na P5 P5. */}
+          {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
+          {isHoje && medicamentosSemHorario.length > 0 && (
+            <TodayUnscheduledRoutine
+              medications={medicamentosSemHorario}
+              onEdit={(medicationId) => {
+                trigger("vibrate");
+                navigateWithReturnM120(
+                  `/saude/medicamentos/editar?id=${encodeURIComponent(
+                    medicationId
+                  )}`
+                );
+              }}
+            />
+          )}
+
+          {/* M40 — Orientação complementar discreta; nunca substitui o Brain nem os registros. */}
+          {assistenteDiario && (
+            <details
+              className={`group rounded-xl border px-3 py-2 ${
+                assistenteDiario.urgencia === "alta"
+                  ? "border-coral/30 bg-coral/[0.04]"
+                  : assistenteDiario.urgencia === "media"
+                  ? "border-amber-400/25 bg-amber-400/[0.035]"
+                  : "border-surface-border/45 bg-surface/40"
+              }`}
+            >
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <Activity
+                  size={16}
+                  className={
+                    assistenteDiario.urgencia === "alta"
+                      ? "text-coral"
+                      : "text-ice"
+                  }
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-primary">
+                  {assistenteDiario.titulo}
+                </span>
+                <span className="text-[10px] text-ink-muted">Dica</span>
+                <ChevronRight
+                  size={15}
+                  className="shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="pb-2 pl-6 text-xs leading-relaxed text-ink-secondary">
+                {assistenteDiario.mensagem}
+              </p>
+            </details>
+          )}
+
+          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
+          {isHoje && !retroReviewMode && (
+            <section
+              id="hoje-diario"
+              aria-label="Diário rápido do dia"
+              className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-ink-primary">
+                    Como você está se sentindo?
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-ink-muted">
+                    Registro opcional de humor e sintomas.
+                  </p>
+                </div>
+                <Calendar size={15} className="shrink-0 text-violet-300" />
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(
+                      "/saude/registros/novo?preset=humor&return_to=%2Fhoje"
+                    );
+                  }}
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-2 text-xs font-semibold text-violet-200"
+                >
+                  <SmilePlus size={15} aria-hidden="true" />
+                  Registrar humor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(
+                      "/saude/registros/novo?preset=sintoma&return_to=%2Fhoje"
+                    );
+                  }}
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-sky-300/25 bg-sky-300/[.06] px-2 text-xs font-semibold text-sky-200"
+                >
+                  <Activity size={15} aria-hidden="true" />
+                  Registrar sintoma
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  router.push("/saude/registros/relatorio?return_to=%2Fhoje")
+                }
+                className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300"
+              >
+                Ver resumo longitudinal
+              </button>
+            </section>
+          )}
+
+          {/* VAULT_M144_TODAY_ENTRY — destinos de ocorrência e segurança já estão na grade, quatro eixos continuam acessíveis */}
+          {isHoje && !retroReviewMode ? (
+            <button
+              type="button"
+              aria-label="Check-in dos quatro eixos"
+              onClick={() => navigateWithReturnM120("/saude/visual-studio")}
+              className="mb-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.04] px-3 text-left text-xs font-semibold text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <Activity size={15} aria-hidden="true" />
+                Check-in dos 4 eixos{" "}
+                <span className="text-[11px] font-normal text-ink-muted">
+                  (opcional)
+                </span>
+              </span>
+              <ChevronRight size={15} className="shrink-0" aria-hidden="true" />
+            </button>
+          ) : null}
+          {/* V33: visíveis somente hoje e sem revisão retroativa; ausência não gera cartões vazios. */}
+          {isHoje && !retroReviewMode ? (
+            <div data-vault-v33="today-care-context" className="space-y-2">
+              <TreatmentContinuityA4 context="today" maxItems={2} />
+              <RehabM5AgendaStrip />
+              <HospitalizationA5AgendaStrip day={dataSelecionada} />
+              <VaccinationAccessA8 context="today" />
+              <A9ReadOnlySummary360 context="today" />
+              <A10ContextLink context="today" compact />
+            </div>
+          ) : null}
+          <span
+            id="hoje-agenda"
+            className="block scroll-mt-24"
+            aria-hidden="true"
+          />
+
+          {remindersForaDaAgenda.length > 0 && (
+            <TodayRemindersPanel
+              reminders={remindersForaDaAgenda}
+              onNavigate={(href) => navigateWithReturnM120(href)}
+            />
+          )}
+
+          {/* =======================================================
+              CUIDADOS DO DIA
+          ======================================================= */}
+
+          {renovacoesReceitaHoje.length > 0 && (
+            <div className="vault-deferred space-y-3">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Pill size={16} className="text-emerald-400" />
+
+                  <div>
+                    <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
+                      Cuidados do dia
+                    </h2>
+
+                    <p className="mt-0.5 text-xs text-ink-faint">
+                      Eventos planejados dos seus medicamentos
+                    </p>
+                  </div>
+                </div>
+
+                <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 font-mono text-[9px] font-bold text-ice">
+                  {renovacoesReceitaHoje.length}
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {renovacoesReceitaHoje.map((evento) => (
+                  <TodayPrescriptionRenewalCard
+                    key={evento.id}
+                    event={evento}
+                    onOpen={() => {
+                      trigger("vibrate");
+                      router.push(evento.actionHref);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* =======================================================
+              COMPROMISSOS
+          ======================================================= */}
+          {compromissosFiltrados.length > 0 && (
+            <div
+              id="hoje-compromissos"
+              className="vault-deferred scroll-mt-24 space-y-3"
+            >
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} className="text-coral" />
+
+                  <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
+                    Compromissos do Dia
+                  </h2>
+                </div>
+
+                <span className="rounded-full bg-coral/10 px-2 py-1 font-mono text-xs font-bold text-coral">
+                  {compromissosFiltrados.length}
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {(mostrarTodosCompromissos
+                  ? compromissosFiltrados
+                  : compromissosFiltrados.slice(0, 3)
+                ).map((item: any) => (
+                  <TodayAppointmentCard
+                    key={item.id}
+                    item={item}
+                    medication={
+                      item.tipo === "retirada"
+                        ? medicamentosById.get(item.medicamento_id)
+                        : undefined
+                    }
+                    today={hoje}
+                    dayLabel={dataSelecionadaLabel}
+                    overview={supplyOverview}
+                    onOpen={() => navegarCompromisso(item)}
+                  />
+                ))}
+                {compromissosFiltrados.length > 3 && (
+                  <button
+                    type="button"
+                    aria-expanded={mostrarTodosCompromissos}
+                    onClick={() =>
+                      setMostrarTodosCompromissos((value) => !value)
+                    }
+                    className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+                  >
+                    {mostrarTodosCompromissos
+                      ? "Recolher compromissos"
+                      : `Ver mais ${
+                          compromissosFiltrados.length - 3
+                        } compromisso${
+                          compromissosFiltrados.length - 3 === 1 ? "" : "s"
+                        }`}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* VAULT_V321_MONTH_DEFERRED: keep original owner and onNavigate; mount only when requested. */}
+          {user?.id && activePersonId && isHoje && (
+            <ClinicalDisclosure
+              id="hoje-mes"
+              title="Mês · doses e planejamento"
+              description="Consultar o mês sob demanda · sem antecipar tomadas futuras"
+              icon={<Calendar size={18} />}
+            >
+              <DoseMonthOverview
+                userId={user.id}
+                personId={activePersonId}
+                today={hoje}
+                context={healthIntelligence.context}
+                onNavigate={(href) => router.push(href)}
+              />
+            </ClinicalDisclosure>
+          )}
+          {isHoje && (
+            <section className="pt-2" aria-label="Versículo do dia">
+              <VersiculoDia />
+            </section>
+          )}
+        </section>
+
+        {/* =========================================================
+            V46 — CONFIRMAÇÃO TEMPORAL DO LOTE
+        ========================================================= */}
+        <AnimatePresence>
+          {isBatchTimeModalOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Fechar confirmação de doses"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  if (!processandoTodos) {
+                    setIsBatchTimeModalOpen(false);
+                  }
+                }}
+                className="fixed inset-0 z-[98] bg-black/70 backdrop-blur-sm"
+              />
+
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Quando as doses foram tomadas"
+                initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 24, scale: 0.98 }}
+                className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[99] mx-auto max-h-[calc(100dvh-env(safe-area-inset-bottom)-8rem)] max-w-md overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                    <Clock size={19} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-emerald-400">
+                      Revisão de doses
+                    </p>
+                    <h3 className="mt-1 text-base font-bold text-ink-primary">
+                      Como registrar estas {dosesElegiveisLote.length} doses?
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                      O horário programado continua como referência. O horário
+                      real é salvo separadamente para o histórico e para a
+                      inteligência do Vault. Se a dose for antecipada, use
+                      "Tomei agora" ou informe o horário real; o Vault não
+                      altera a programação original.
+                    </p>
+                  </div>
+                </div>
+
+                {dosesSemEstoqueNoLote.length > 0 && (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-amber-400/25 bg-amber-400/[0.055]">
+                    <div className="flex items-start gap-2 p-3">
+                      <PackageX
+                        size={16}
+                        className="mt-0.5 shrink-0 text-amber-300"
+                      />
+                      <div>
+                        <p className="text-xs font-bold text-amber-200">
+                          Saldo insuficiente em {dosesSemEstoqueNoLote.length}{" "}
+                          {dosesSemEstoqueNoLote.length === 1
+                            ? "dose"
+                            : "doses"}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                          Saldo zerado não comprova que a dose deixou de ser
+                          tomada. Revise o que aconteceu.
+                        </p>
+                      </div>
+                    </div>
+                    <ul className="border-y border-amber-400/15 bg-void/15 px-3 py-2 text-xs text-ink-primary">
+                      {dosesSemEstoqueNoLote.map((d) => (
+                        <li
+                          key={`${d.medicamentoId}-${d.horario}`}
+                          className="flex min-h-8 items-center justify-between gap-2"
+                        >
+                          <span className="truncate">{d.medicamentoNome}</span>
+                          <span className="shrink-0 text-ink-muted">
+                            {d.horario}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      disabled={processandoTodos}
+                      onClick={() => void confirmarDosesNaoTomadasPorEstoque()}
+                      className="min-h-11 w-full px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40"
+                    >
+                      Confirmar que não tomei por falta de estoque
+                    </button>
+                  </div>
+                )}
+                {dosesComEstoqueNoLote.length > 0 ? (
+                  <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/[0.06] p-2.5 text-xs text-emerald-300">
+                    <CheckCircle2 size={14} />
+                    {dosesComEstoqueNoLote.length}{" "}
+                    {dosesComEstoqueNoLote.length === 1
+                      ? "dose disponível"
+                      : "doses disponíveis"}{" "}
+                    para confirmar
+                  </p>
+                ) : (
+                  <p className="mt-3 text-xs text-amber-300">
+                    Nenhuma dose com saldo confirmado para registrar como tomada
+                    neste lote.
+                  </p>
+                )}
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    disabled={
+                      processandoTodos || dosesComEstoqueNoLote.length === 0
+                    }
+                    onClick={() => void executarTomadaEmLote("now")}
+                    className="flex min-h-[58px] w-full items-center justify-between rounded-xl bg-emerald-400 px-4 py-3 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">Tomei agora</p>
+                      <p className="mt-0.5 text-xs opacity-70">
+                        Mesmo instante real para as doses disponíveis
+                      </p>
+                    </div>
+                    {processandoTodos ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={18} />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      processandoTodos ||
+                      dosesComEstoqueNoLote.length === 0 ||
+                      dosesComEstoqueNoLote.some(
+                        (dose) =>
+                          new Date(
+                            `${dataSelecionada}T${dose.horario}:00`
+                          ).getTime() > Date.now()
+                      )
+                    }
+                    onClick={() => void executarTomadaEmLote("scheduled")}
+                    className="flex min-h-[58px] w-full items-center justify-between rounded-xl border border-ice/20 bg-ice/5 px-4 py-3 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">
+                        Tomei nos horários programados
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        Cada dose mantém seu próprio horário previsto
+                      </p>
+                    </div>
+                    <Clock size={18} className="text-ice" />
+                  </button>
+
+                  <div className="rounded-xl border border-surface-border bg-surface-raised p-3">
+                    <label
+                      htmlFor="vault-batch-real-time"
+                      className="text-xs font-semibold text-ink-muted"
+                    >
+                      Tomei as disponíveis em outro horário
+                    </label>
+                    <div className="mt-2 flex gap-2">
+                      <fieldset
+                        disabled={processandoTodos}
+                        className="min-w-0 flex-1"
+                      >
+                        <HealthTimePicker
+                          value={batchCustomTime}
+                          onChange={setBatchCustomTime}
+                        />
+                      </fieldset>
+                      <button
+                        type="button"
+                        disabled={
+                          processandoTodos ||
+                          dosesComEstoqueNoLote.length === 0 ||
+                          !batchCustomTime
+                        }
+                        onClick={() => void executarTomadaEmLote("custom")}
+                        className="rounded-xl border border-ice/25 bg-ice/10 px-4 py-2.5 text-xs font-bold text-ice transition-all active:scale-[0.98] disabled:opacity-40"
+                      >
+                        Registrar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={processandoTodos}
+                  onClick={() => setIsBatchTimeModalOpen(false)}
+                  className="mt-3 w-full rounded-2xl px-4 py-2.5 text-xs font-semibold text-ink-muted transition-all active:scale-[0.99] disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* =========================================================
+            MODAL — DOSE AVULSA
+        ========================================================= */}
+        <AnimatePresence>
+          {historicalDoseReviewItem && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Fechar revisão histórica"
+                initial={{
+                  opacity: 0,
+                }}
+                animate={{
+                  opacity: 1,
+                }}
+                exit={{
+                  opacity: 0,
+                }}
+                onClick={fecharRevisaoHistorica}
+                className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{
+                  opacity: 0,
+
+                  y: 36,
+                }}
+                animate={{
+                  opacity: 1,
+
+                  y: 0,
+                }}
+                exit={{
+                  opacity: 0,
+
+                  y: 36,
+                }}
+                transition={{
+                  duration: 0.18,
+                }}
+                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[120] mx-auto max-w-lg rounded-[30px] border border-surface-border bg-surface p-5 shadow-2xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                    <Clock size={20} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-ice">
+                      Revisão histórica
+                    </p>
+
+                    <h3 className="mt-1 truncate text-base font-bold text-ink-primary">
+                      {historicalDoseReviewItem.medicamentoNome}
+                    </h3>
+
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {dataSelecionadaDescricao} •{" "}
+                      {historicalDoseReviewItem.horario}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={fecharRevisaoHistorica}
+                    disabled={isHistoricalProcessing}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted disabled:opacity-40"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-ice/15 bg-ice/5 p-3">
+                  <p className="text-xs leading-relaxed text-ink-muted">
+                    Esta revisão altera apenas o histórico.{" "}
+                    <strong className="text-ink-primary">
+                      O estoque atual não será movimentado.
+                    </strong>
+                  </p>
+                </div>
+
+                {(historicalDoseReviewItem.tomada ||
+                  historicalDoseReviewItem.ignorada) && (
+                  <div className="mt-3 flex items-center gap-2 rounded-2xl border border-surface-border bg-surface-raised px-3 py-2.5">
+                    {historicalDoseReviewItem.tomada ? (
+                      <CheckCircle2 size={15} className="text-emerald-400" />
+                    ) : (
+                      <XCircle size={15} className="text-ink-muted" />
+                    )}
+
+                    <p className="text-xs text-ink-muted">
+                      Estado atual:{" "}
+                      <strong className="text-ink-primary">
+                        {historicalDoseReviewItem.tomada
+                          ? "tomada"
+                          : "não tomada"}
+                      </strong>
+                    </p>
+                  </div>
+                )}
+
+                {!historicalCustomMode ? (
+                  <div className="mt-4 space-y-2">
+                    <button
+                      type="button"
+                      disabled={isHistoricalProcessing}
+                      onClick={() => executarRevisaoHistorica("scheduled")}
+                      className="flex w-full items-center justify-between rounded-2xl bg-emerald-400 px-4 py-3.5 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <div>
+                        <p className="text-xs font-bold">Tomei no horário</p>
+
+                        <p className="mt-0.5 text-xs opacity-70">
+                          Registrar às {historicalDoseReviewItem.horario}
+                        </p>
+                      </div>
+
+                      <CheckCircle2 size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isHistoricalProcessing}
+                      onClick={() => setHistoricalCustomMode(true)}
+                      className="flex w-full items-center justify-between rounded-2xl border border-ice/25 bg-ice/10 px-4 py-3.5 text-left text-ice transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <div>
+                        <p className="text-xs font-bold">
+                          Tomei em outro horário
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          Informar quando realmente tomou
+                        </p>
+                      </div>
+
+                      <Clock size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isHistoricalProcessing}
+                      onClick={() => executarRevisaoHistorica("ignored")}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <div>
+                        <p className="text-xs font-bold">Não tomei</p>
+
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          Confirmar ausência daquela dose
+                        </p>
+                      </div>
+
+                      <XCircle size={18} className="text-ink-muted" />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isHistoricalProcessing}
+                      onClick={fecharRevisaoHistorica}
+                      className="w-full rounded-2xl border border-surface-border/60 px-4 py-3 text-xs font-semibold text-ink-muted transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      Não lembro
+                    </button>
+
+                    {(historicalDoseReviewItem.tomada ||
+                      historicalDoseReviewItem.ignorada) && (
+                      <button
+                        type="button"
+                        disabled={isHistoricalProcessing}
+                        onClick={() => executarRevisaoHistorica("clear")}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-2xl px-4 py-3 text-[10px] font-semibold text-coral transition-all active:scale-[0.99] disabled:opacity-50"
+                      >
+                        <RotateCcw size={13} />
+                        Remover confirmação histórica
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+                        Quando tomou?
+                      </span>
+
+                      <HealthDateTimePicker
+                        value={historicalCustomTakenAt}
+                        onChange={setHistoricalCustomTakenAt}
+                        min={`${dataSelecionada}T00:00`}
+                        max={`${dataSelecionada}T23:59`}
+                        disabled={isHistoricalProcessing}
+                        className="mt-2"
+                      />
+                    </label>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={isHistoricalProcessing}
+                        onClick={() => setHistoricalCustomMode(false)}
+                        className="rounded-2xl border border-surface-border px-4 py-3 text-xs font-semibold text-ink-muted disabled:opacity-50"
+                      >
+                        Voltar
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          isHistoricalProcessing || !historicalCustomTakenAt
+                        }
+                        onClick={() => executarRevisaoHistorica("custom")}
+                        className="rounded-2xl bg-ice px-4 py-3 text-xs font-bold text-void disabled:opacity-50"
+                      >
+                        {isHistoricalProcessing
+                          ? "Salvando..."
+                          : "Confirmar horário"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
+                  “Não lembro” não cria nenhum registro e permanece fora das
+                  métricas de adesão.
+                </p>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {loteConfirmado.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.96 }}
+              className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md rounded-[22px] border border-emerald-400/25 bg-surface/95 p-3 shadow-2xl backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-400">
+                  <CheckCircle2 size={17} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-ink-primary">
+                    {loteConfirmado.length}{" "}
+                    {loteConfirmado.length === 1
+                      ? "dose registrada"
+                      : "doses registradas"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Estoque movimentado pela quantidade real de cada dose.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDesfazerLote()}
+                  disabled={processandoTodos}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-surface-raised px-3 py-2 text-[10px] font-bold text-ice disabled:opacity-50"
+                >
+                  {processandoTodos ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <RotateCcw size={13} />
+                  )}
+                  Desfazer
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <QuickDoseModal
+          isOpen={isDoseModalOpen}
+          onClose={() => setIsDoseModalOpen(false)}
+          onSuccess={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("sync:process"));
+            }
+          }}
+        />
+      </main>
+    </PageTransition>
+  );
+}

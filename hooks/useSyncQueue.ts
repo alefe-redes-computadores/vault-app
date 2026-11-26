@@ -3,6 +3,7 @@
 "use client";
 
 import {syncTreatmentVisualIntentR03,finalizeTreatmentVisualIntentR03,TreatmentVisualConflictR03} from "@/lib/sync/treatment-visual-transport-r03";
+import { countMacro02Pending } from "@/lib/dose-premium/authority-session";
 import { isMacro02Atomic, pendingAtomicPredecessor, sendMacro02Atomic, finalizeMacro02Atomic } from "@/lib/sync/macro02-atomic";
 import { intentFromQueue, type AtomicAck } from "@/lib/dose-premium/atomic-envelope";
 import { DOSE_PREMIUM_SELECT, dosePremiumWireFields, assertDosePremiumAck } from "@/lib/dose-premium/wire-fields";
@@ -5856,6 +5857,12 @@ export function useSyncQueue() {
                   );
 
                 try {
+                  // Dormant release: keep original incompatible envelopes and clinical
+                  // outbox rows intact. Do not consume retries or reclassify them.
+                  if(['doseLogs','medicamentos','renovacoes','retiradas'].includes(item.table)){
+                    const pending=countMacro02Pending(await db.syncQueue.toArray(),authenticatedUser.id);
+                    if(item.payload.user_id!==authenticatedUser.id||pending.premium||pending.unclassified){result.processed--;addLog('Macro02: intenção clínica preservada para revisão de autoridade.','info');continue;}
+                  }
                   if (
                     item.operation !==
                       "delete" &&

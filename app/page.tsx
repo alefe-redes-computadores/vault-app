@@ -1,5 +1,6 @@
 // app/page.tsx
 "use client";
+import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
 import { selectHomeDocumentAlerts, countHomeTakenDoseLogs, selectHomeOverdueWithdrawals } from "@/lib/home/home-view-projections";
 import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
 import { selectHomeAttentionP4R3 } from "@/lib/home/home-attention-authority-p4-r3";
@@ -1048,13 +1049,14 @@ export default function HomePage() {
           const saved=await doseLogsRepository.getById(id,scope.person_id);
           if(!saved||saved.id!==id||saved.user_id!==scope.user_id||saved.person_id!==scope.person_id||saved.medicamento_id!==dose.medicamentoId||saved.data!==dose.data||saved.horario.slice(0,5)!==dose.horario||!saved.ignorado_em||saved.tomado_em||saved.motivo!==(resolution.motivo?.trim()||'nao_realizada'))throw Error('Registro local requer conferência antes de nova tentativa.');
         }else{
-          if(!resolution.confirmation)throw Error('Confira a quantidade e a unidade antes de registrar.');
+          if(MACRO02_PREMIUM_UI_ENABLED&&!resolution.confirmation)throw Error('Confira a quantidade e a unidade antes de registrar.');
+          if(!MACRO02_PREMIUM_UI_ENABLED&&resolution.confirmation)throw Error('A declaração explícita pertence à experiência Premium ainda dormente. Nenhum registro foi alterado.');
           const asOf=new Date().toISOString();
           const actualAt=resolution.kind==='scheduled'?civilDoseInstant(dose.data,dose.horario,asOf):resolution.kind==='now'?(resolution.confirmedAt??asOf):civilDoseInstant(resolution.takenAtLocal.slice(0,10),resolution.takenAtLocal.slice(11),asOf);
-          const id=await doseLogsRepository.setStatus({personId:scope.person_id,medicamentoId:dose.medicamentoId,data:dose.data,horario:dose.horario,status:'taken',tomadoEm:actualAt,quantidade:resolution.confirmation.quantity,unit:resolution.confirmation.unit,expected:dose.review.expected,onlyIfPending:true,adjustStock:resolution.confirmation.adjustStock,requireRegisteredStock:resolution.requireRegisteredStock});
+          const id=await doseLogsRepository.setStatus({personId:scope.person_id,medicamentoId:dose.medicamentoId,data:dose.data,horario:dose.horario,status:'taken',tomadoEm:actualAt,quantidade:resolution.confirmation?.quantity,unit:resolution.confirmation?.unit,expected:dose.review.expected,onlyIfPending:true,adjustStock:resolution.confirmation?.adjustStock??dose.data===hoje,requireRegisteredStock:resolution.requireRegisteredStock});
           const saved=await doseLogsRepository.getById(id,scope.person_id);
-          const actualUnit=readDoseUnit(saved??{}),expectedUnit=readDoseUnit(resolution.confirmation.unit);
-          if(!saved||saved.id!==id||saved.user_id!==scope.user_id||saved.person_id!==scope.person_id||saved.medicamento_id!==dose.medicamentoId||saved.data!==dose.data||saved.horario.slice(0,5)!==dose.horario||saved.ignorado_em||Date.parse(saved.tomado_em??'')!==Date.parse(actualAt)||saved.quantidade!==resolution.confirmation.quantity||actualUnit.state!==expectedUnit.state||JSON.stringify(actualUnit.fields)!==JSON.stringify(expectedUnit.fields))throw Error("Registro local requer conferência antes de nova tentativa.");
+          const actualUnit=readDoseUnit(saved??{}),expectedUnit=readDoseUnit(resolution.confirmation?.unit??{});
+          if(!saved||saved.id!==id||saved.user_id!==scope.user_id||saved.person_id!==scope.person_id||saved.medicamento_id!==dose.medicamentoId||saved.data!==dose.data||saved.horario.slice(0,5)!==dose.horario||saved.ignorado_em||Date.parse(saved.tomado_em??'')!==Date.parse(actualAt)||(resolution.confirmation!==undefined&&saved.quantidade!==resolution.confirmation.quantity)||actualUnit.state!==expectedUnit.state||JSON.stringify(actualUnit.fields)!==JSON.stringify(expectedUnit.fields))throw Error("Registro local requer conferência antes de nova tentativa.");
         }
 
         trigger(

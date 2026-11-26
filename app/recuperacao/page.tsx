@@ -4,8 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P13DeviceDoseAudit } from "@/components/saude/P13DeviceDoseAudit";
 import { useRouter } from "next/navigation";
-import {ConfirmationModal} from "@/components/ConfirmationModal";
-import {inspectMacro02Backup,recoverMacro02Pending} from "@/lib/sync/macro02-backup-recovery";
+import {inspectMacro02Backup} from "@/lib/sync/macro02-backup-recovery";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -63,19 +62,13 @@ export default function RecoveryCenterPage() {
   const [diagnostics, setDiagnostics] = useState<VaultPullRun>(() => getPullDiagnostics());
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const [backupReview,setBackupReview]=useState<Awaited<ReturnType<typeof inspectMacro02Backup>>|null>(null);
   const [backupBusy,setBackupBusy]=useState(false);
   const [backupResult,setBackupResult]=useState<string|null>(null);
-  useEffect(()=>{setBackupReview(null);setBackupResult(null);},[user?.id]);
+  useEffect(()=>{setBackupResult(null);},[user?.id]);
   async function reviewFile(file:File){
-    if(!user||backupBusy)return;setBackupBusy(true);setBackupReview(null);setBackupResult(null);
-    try{const review=await inspectMacro02Backup(file,user.id);setBackupReview(review);if(!review.pendingCount)setBackupResult('Backup conferido: não contém intenções de doses e estoque pendentes.');}
+    if(!user||backupBusy)return;setBackupBusy(true);setBackupResult(null);
+    try{const review=await inspectMacro02Backup(file,user.id);setBackupResult((review.pendingCount?`${review.pendingCount} intenção(ões) conferida(s): ${review.confirmed} com recibo íntegro e ${review.needsReview} precisam de revisão de estado remoto. Nenhuma operação foi reenviada nem restaurada.`:'Backup conferido: não contém intenções Premium pendentes. Nenhum dado foi restaurado.')+(review.outbox.complete?` Fila original preservada no arquivo: ${review.outbox.legacy} legada(s), ${review.outbox.premium} Premium, ${review.outbox.unclassified} ambígua(s), ${review.outbox.dependency} dependência(s).`:' Esta cópia não comprova a integralidade da fila legada.'));}
     catch(e){setBackupResult(e instanceof Error?e.message:'Não foi possível conferir o backup.');}finally{setBackupBusy(false);}
-  }
-  async function recoverQueue(){
-    if(!user||!backupReview||backupBusy||backupReview.userId!==user.id)return;
-    setBackupBusy(true);try{const n=await recoverMacro02Pending(user.id,backupReview.pending);setBackupResult(n?`${n} intenção(ões) original(is) recuperada(s) localmente. A confirmação na nuvem ainda está pendente.`:'Nenhuma intenção ausente. Nenhuma dose ou saldo alterado.');setBackupReview(null);}
-    catch(e){setBackupResult(e instanceof Error?e.message:'Recuperação não confirmada.');setBackupReview(null);}finally{setBackupBusy(false);}
   }
 
   useEffect(() => {
@@ -241,7 +234,7 @@ export default function RecoveryCenterPage() {
             <ExportButton variant="full" />
           </div>
           <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
-            O JSON pode conter dados médicos e credenciais. Guarde-o em local privado e protegido. A recuperação de fila só é permitida se os fatos já presentes neste dispositivo coincidirem com o backup. Não restaura automaticamente registros clínicos ausentes.
+            O JSON pode conter dados médicos e credenciais. Guarde-o em local privado e protegido. A conferência consulta os recibos originais da conta. Ausência de recibo não autoriza reenvio. A restauração integral ainda exige verificação das dependências e do estado remoto.
           </p>
           <label className="mt-4 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-violet-400/20 bg-violet-400/5 px-3 py-3 text-sm font-semibold text-violet-300 focus-within:ring-2 focus-within:ring-violet-300">
             {backupBusy?<Loader2 size={16} className="motion-safe:animate-spin"/>:<ShieldCheck size={16}/>}
@@ -249,7 +242,6 @@ export default function RecoveryCenterPage() {
             <input type="file" accept="application/json,.json" className="sr-only" aria-label="Selecionar backup de doses" disabled={!user||backupBusy||syncBusy} onChange={e=>{const f=e.currentTarget.files?.[0];e.currentTarget.value='';if(f)void reviewFile(f);}}/>
           </label>
           {backupResult&&<p role="status" className="mt-3 rounded-2xl bg-void p-3 text-xs leading-relaxed text-ink-muted">{backupResult}</p>}
-          {backupReview&&backupReview.pendingCount>0&&<ConfirmationModal isOpen={true} onClose={()=>{if(!backupBusy)setBackupReview(null);}} onConfirm={recoverQueue} isLoading={backupBusy} type="info" title="Revisar fila preservada" confirmLabel="Recuperar intenções" message={<div className="space-y-2"><p>{backupReview.pendingCount} intenção(ões) original(is) foram encontradas neste backup.</p><p>Somente as intenções ausentes e compatíveis com os dados locais poderão voltar à fila. Nenhuma dose, quantidade ou saldo será regravado.</p><p>O recibo remoto continua necessário para confirmar a sincronização.</p></div>}/>}
         </section>
 
         <section className="mx-auto mt-4 max-w-2xl rounded-[26px] border border-surface-border bg-surface p-4">

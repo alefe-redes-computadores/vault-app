@@ -1,3 +1,4 @@
+import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {capturePharmaceuticalSnapshot} from '@/lib/dose-premium/pharmaceutical-snapshot';
 import { atomicQueueKey, nextAtomicPosition, parseAtomicIntent, type AtomicIntent } from "@/lib/dose-premium/atomic-envelope";
 import { prepareClinicalWrite, confirmObservedWrite, type ClinicalWriteRequest } from "@/lib/dose-premium/writer-contract";
@@ -477,7 +478,6 @@ async function getMedicamentoForPerson(
   }
 
   if (
-    medicamento.user_id &&
     medicamento.user_id !==
       userId
   ) {
@@ -521,6 +521,181 @@ function premiumSnapshot(row:DoseLog|undefined):DoseSnapshot|null {
 function hasPremiumEvidence(row:DoseLog|undefined):boolean {
   return Boolean(row&&(row.unidade_dose!=null||row.unidade_dose_rotulo!=null||row.fonte_unidade!=null||row.estoque_movimento!=null||row.farmaco_snapshot!=null));
 }
+function isDropMedication(
+  medicamento: Medicamento
+): boolean {
+  const forma =
+    String(
+      medicamento.forma_farmaceutica ||
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const formato =
+    String(
+      medicamento.formato ||
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  return (
+    forma.includes(
+      "gota"
+    ) ||
+    formato.includes(
+      "gota"
+    )
+  );
+}
+
+/**
+ * Converte a quantidade da dose para a unidade utilizada pelo estoque.
+ *
+ * Retorna null quando não há dados suficientes para uma conversão
+ * confiável.
+ */
+function legacyQuantityInStockUnit(
+  medicamento: Medicamento,
+  doseQuantity:
+    | number
+    | undefined
+): number | null {
+  if (
+    doseQuantity ===
+    undefined
+  ) {
+    return null;
+  }
+
+  if (
+    !Number.isFinite(
+      doseQuantity
+    ) ||
+    doseQuantity <= 0
+  ) {
+    return null;
+  }
+
+  const unidade =
+    String(
+      medicamento.estoque_unidade_medida ||
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    !isDropMedication(
+      medicamento
+    )
+  ) {
+    return doseQuantity;
+  }
+
+  // ==========================================================
+  // ESTOQUE EM GOTAS
+  // ==========================================================
+
+  if (
+    unidade.includes(
+      "gota"
+    )
+  ) {
+    return doseQuantity;
+  }
+
+  // ==========================================================
+  // GOTAS → ML
+  // ==========================================================
+
+  if (
+    unidade.includes(
+      "ml"
+    )
+  ) {
+    const gotasPorMl =
+      medicamento.estoque_gotas_por_ml;
+
+    if (
+      typeof gotasPorMl !==
+        "number" ||
+      !Number.isFinite(
+        gotasPorMl
+      ) ||
+      gotasPorMl <= 0
+    ) {
+      return null;
+    }
+
+    return (
+      doseQuantity /
+      gotasPorMl
+    );
+  }
+
+  // ==========================================================
+  // GOTAS → FRASCO
+  // ==========================================================
+
+  if (
+    unidade.includes(
+      "frasco"
+    )
+  ) {
+    return null;
+  }
+
+  return null;
+}
+/** Legacy writer under the explicit dormant release contract. A protected fact or
+ * stock cycle never enters this path. One local transaction owns the old
+ * separate row outbox, never a Premium envelope or a fallback after RPC. */
+async function commitDormantLegacyDose(request:Omit<ClinicalWriteRequest,'expected'> & {expected?:DoseSnapshot|null},existing:DoseLog|undefined,medication:Medicamento):Promise<string>{
+ const id=request.identity;
+ if(hasPremiumEvidence(existing)||medication.estoque_ciclo_id!=null)throw Error('Evidência Premium presente; revisão necessária antes de escrever pelo legado.');
+ const current=premiumSnapshot(existing);
+ if(request.expected!==undefined&&(Boolean(current)!==Boolean(request.expected)||current&&request.expected&&!verifyDoseSnapshotAck(request.expected,current)))throw Error('Dose alterada desde a revisão.');
+ if(request.status==='clear'&&!existing?.id)throw Error('Não existe registro de dose para desmarcar.');
+ if(request.status==='taken'&&request.identity.data!==getLocalTodayISO()&&!request.actualAt)throw Error('Informe o instante real da tomada histórica.');
+ if(request.status==='taken'&&(!request.actualAt||Date.parse(request.actualAt)>Date.parse(request.asOf)||!Number.isFinite(Date.parse(request.actualAt))))throw Error('Informe o instante real da tomada.');
+ // Do not fabricate a historical quantity from today's medication configuration.
+ const quantity=request.quantity===null?undefined:request.quantity===undefined?existing?getExistingDoseQuantity(existing):resolveDoseQuantity(medication):normalizePositiveQuantity(request.quantity);
+ const wasTaken=Boolean(existing?.tomado_em),willBeTaken=request.status==='taken';
+ const oldAmount=wasTaken?legacyQuantityInStockUnit(medication,getExistingDoseQuantity(existing)):0;
+ const newAmount=willBeTaken?legacyQuantityInStockUnit(medication,quantity):0;
+ // The dormant UI must not request Premium-only explicit unit declarations.
+ // An explicitly supplied unit that differs from the legacy converter cannot be discarded.
+ if(request.unit&&readDoseUnit(request.unit).state!=='unknown')throw Error('A unidade Premium exige a experiência ativada. Preserve a declaração e revise pelo fluxo legado.');
+ const balance=medication.estoque_quantidade;
+ if(request.requireRegisteredStock&&willBeTaken&&!wasTaken&&(hasKnownEmptyMedicationStock(medication)||(typeof balance==='number'&&Number.isFinite(balance)&&newAmount!==null&&newAmount>balance)))throw Error('Estoque registrado insuficiente. Confira a dose individualmente.');
+ const timestamp=request.asOf;
+ if(request.status==='clear'){
+  await db.doseLogs.delete(id.id);
+  await enfileirarOperacao('doseLogs','delete',{id:id.id,person_id:id.person_id,user_id:id.user_id},{dispatchSync:false});
+ }else{
+  const kind=existing?.dose_kind??request.origin??'scheduled';
+  const row:DoseLog={...existing,...id,quantidade:quantity,dose_kind:kind,tomado_em:willBeTaken?request.actualAt:undefined,ignorado_em:request.status==='ignored'?existing?.ignorado_em??timestamp:undefined,motivo:request.status==='ignored'?request.ignoredReason?.trim()||'nao_realizada':request.note?.trim()||(kind==='planned'||kind==='sos'||kind==='extra'?existing?.motivo:undefined),created_at:existing?.created_at??timestamp,updated_at:timestamp,synced:false};
+  if(existing)await db.doseLogs.put(row);else await db.doseLogs.add(row);
+  const saved=await db.doseLogs.get(id.id);if(!saved||!verifyDoseSnapshotAck(premiumSnapshot(row)!,premiumSnapshot(saved)!))throw Error('Dose legada não confirmada localmente.');
+  await enfileirarOperacao('doseLogs',existing?'update':'add',saved,{dispatchSync:false});
+ }
+ const doseQueue=await db.syncQueue.where('chave').equals(`doseLogs:${id.id}`).first();
+ if(!doseQueue||doseQueue.payload.user_id!==id.user_id||doseQueue.payload.person_id!==id.person_id||doseQueue.payload.macro02_atomic!==undefined||(request.status==='clear'?doseQueue.operation!=='delete':doseQueue.operation==='delete'||doseQueue.payload.updated_at!==timestamp))throw Error('Fila legada não confirmou a dose.');
+ const delta=oldAmount===null||newAmount===null?null:newAmount-oldAmount;
+ if(request.adjustStock&&delta!==null&&delta!==0&&typeof balance==='number'&&Number.isFinite(balance)){
+  const next=balance-delta;
+  await db.medicamentos.update(id.medicamento_id,{estoque_quantidade:next,estoque_data_referencia:getLocalTodayISO(),updated_at:timestamp,synced:false});
+  const saved=await db.medicamentos.get(id.medicamento_id);
+  if(!saved||saved.user_id!==id.user_id||saved.person_id!==id.person_id||saved.estoque_quantidade!==next||saved.estoque_ciclo_id!=null)throw Error('Saldo legado não confirmado.');
+  await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});
+  const stockQueue=await db.syncQueue.where('chave').equals(`medicamentos:${id.medicamento_id}`).first();
+  if(!stockQueue||stockQueue.operation==='delete'||stockQueue.payload.user_id!==id.user_id||stockQueue.payload.person_id!==id.person_id||stockQueue.payload.estoque_quantidade!==next||stockQueue.payload.updated_at!==timestamp||stockQueue.payload.macro02_atomic!==undefined)throw Error('Fila legada não confirmou o saldo.');
+ }
+ return id.id;
+}
+
 async function verifyPendingPremiumQueue(medicationId:string,scope:{user_id:string;person_id:string}){
   const rows=await db.syncQueue.toArray();
   if(rows.some(q=>q.payload.user_id===scope.user_id&&q.payload.person_id===scope.person_id&&(
@@ -807,6 +982,7 @@ export const doseLogsRepository = {
     const user =
       await requireAuthenticatedUser();
 
+    const authority=await prepareMacro02ClinicalWrite(user.id);
     const result = await db.transaction(
       "rw",
       [
@@ -815,6 +991,8 @@ export const doseLogsRepository = {
         db.syncQueue,
       ],
       async () => {
+        await authority.assertCurrent();
+        const write=async()=>{
         const medicamento =
           await getMedicamentoForPerson(
             safeMedicamentoId,
@@ -861,7 +1039,10 @@ export const doseLogsRepository = {
           if(!hasKnownEmptyMedicationStock(medicamento))throw Error("O saldo mudou ou não está comprovado. Revise individualmente.");
         }
 
-        // Clinical facts never use the legacy split stock writer. The old
+        if(status==='taken'&&!existing?.tomado_em&&targetDate!==getLocalTodayISO()&&!safeTakenAt)throw Error('Informe o instante real da tomada histórica.');
+        if(authority.writer==='legacy')return commitDormantLegacyDose({identity:{id:existing?.id??crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:existing?.horario??safeHorario},expected,status,actualAt:status==='taken'?(safeTakenAt??existing?.tomado_em??new Date().toISOString()):undefined,ignoredReason:motivo?.trim()||existing?.motivo||'nao_realizada',quantity:quantidade,unit,asOf:new Date().toISOString(),adjustStock,requireRegisteredStock,origin:existing?.dose_kind??'scheduled'},existing,medicamento);
+
+        // Premium facts never use the legacy split stock writer. The old
         // quantity configured in the prescription is a suggestion, not evidence.
         if(status==='clear'&&!existing?.id)throw Error('Não existe registro de dose para desmarcar.');
         if(status==='taken'&&!existing?.tomado_em&&adjustStock&&readDoseUnit(unit??{}).state!=='known'&&readDoseUnit(existing??{}).state!=='known')throw Error('Confira a unidade administrada no registro individual antes de movimentar o estoque.');
@@ -871,6 +1052,8 @@ export const doseLogsRepository = {
         return commitPremiumDose({identity:{id:existing?.id??crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:existing?.horario??safeHorario},
           expected,status,actualAt:status==='taken'?(safeTakenAt??existing?.tomado_em??timestamp):undefined,
           ignoredReason:motivo?.trim()||existing?.motivo||'nao_realizada',quantity,unit,asOf:timestamp,adjustStock,historicalReview:!adjustStock,requireRegisteredStock,origin:existing?.dose_kind??'scheduled'},existing,medicamento);
+        };
+        const saved=await write();await authority.assertCurrent();return saved;
       }
     );
     solicitarProcessamentoSync();
@@ -894,13 +1077,17 @@ export const doseLogsRepository = {
     // Alertas nativos continuam filtrando somente os horários futuros.
     const desired = course ? temporaryCourseSlots(course) : [];
     const reason = course ? temporaryCourseNote(course) : "";
-    return db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+    const authority=await prepareMacro02ClinicalWrite(user.id);
+    const result=await db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+      await authority.assertCurrent();
+      if(authority.writer!=='legacy')throw Error('MACRO02_PLANNING_CUTOVER_NOT_CERTIFIED');
       const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
       if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso temporário para um tratamento de duração definida.");
       const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
         .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id && row.dose_kind !== "sos" && row.dose_kind !== "extra");
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
         !row.tomado_em && !row.ignorado_em);
+      if(medication.estoque_ciclo_id!=null||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
       const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
       if (oldBySlot.size !== oldPending.length) throw new Error("Há agendamentos duplicados no período. Revise-os antes de continuar.");
       // Não converter tomadas/ignoradas históricas em slots novos nem reaplicar consumo.
@@ -921,12 +1108,12 @@ export const doseLogsRepository = {
           if (row.motivo !== reason || row.quantidade !== targetQuantity) {
             await db.doseLogs.update(row.id!, { motivo: reason, quantidade: targetQuantity, updated_at: new Date().toISOString(), synced: false });
             const updated = await db.doseLogs.get(row.id!);
-            if (updated) await enfileirarOperacao("doseLogs", "update", updated);
+            if (updated) await enfileirarOperacao("doseLogs", "update", updated,{dispatchSync:false});
           }
           continue;
         }
         await db.doseLogs.delete(row.id!);
-        await enfileirarOperacao("doseLogs", "delete", { id: row.id!, person_id: safePersonId, user_id: user.id });
+        await enfileirarOperacao("doseLogs", "delete", { id: row.id!, person_id: safePersonId, user_id: user.id },{dispatchSync:false});
         cancelled++;
       }
       for (const slot of desired) {
@@ -937,11 +1124,12 @@ export const doseLogsRepository = {
           quantidade: resolveDoseQuantity(medication, course?.quantityPerDose), dose_kind: "planned", motivo: reason,
           tomado_em: undefined, ignorado_em: undefined, created_at: timestamp, updated_at: timestamp, synced: false };
         await db.doseLogs.add(log);
-        await enfileirarOperacao("doseLogs", "add", log);
+        await enfileirarOperacao("doseLogs", "add", log,{dispatchSync:false});
         scheduled++;
       }
-      return { scheduled, cancelled };
+      await authority.assertCurrent();return { scheduled, cancelled };
     });
+    solicitarProcessamentoSync();return result;
   },
 
   async agendarDoseAvulsa({
@@ -964,12 +1152,16 @@ export const doseLogsRepository = {
 
     const user = await requireAuthenticatedUser();
 
-    return db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+    const authority=await prepareMacro02ClinicalWrite(user.id);
+    const result=await db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+      await authority.assertCurrent();
+      if(authority.writer!=='legacy')throw Error('MACRO02_PLANNING_CUTOVER_NOT_CERTIFIED');
       const medicamento = await getMedicamentoForPerson(
         safeMedicamentoId,
         safePersonId,
         user.id
       );
+      if(medicamento.estoque_ciclo_id!=null)throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
       const existing = await getDoseLogForSlot(
         safeMedicamentoId,
         safePersonId,
@@ -1006,12 +1198,13 @@ export const doseLogsRepository = {
       if (!saved || saved.person_id !== safePersonId) {
         throw new Error("Não foi possível confirmar o agendamento da dose.");
       }
-      await enfileirarOperacao("doseLogs", "add", saved);
+      await enfileirarOperacao("doseLogs", "add", saved,{dispatchSync:false});
 
       // Agendar nunca altera o estoque. O consumo acontece somente
       // quando a pessoa confirma a tomada.
-      return id;
+      await authority.assertCurrent();return id;
     });
+    solicitarProcessamentoSync();return result;
   },
 
   async registrarTomadaAvulsa({
@@ -1046,6 +1239,7 @@ export const doseLogsRepository = {
     const user =
       await requireAuthenticatedUser();
 
+    const authority=await prepareMacro02ClinicalWrite(user.id);
     const result = await db.transaction(
       "rw",
       [
@@ -1054,6 +1248,8 @@ export const doseLogsRepository = {
         db.syncQueue,
       ],
       async () => {
+        await authority.assertCurrent();
+        const write=async()=>{
         const medicamento =
           await getMedicamentoForPerson(
             safeMedicamentoId,
@@ -1061,11 +1257,15 @@ export const doseLogsRepository = {
             user.id
           );
 
+        if(targetDate!==getLocalTodayISO()&&!tomadoEm)throw Error('Informe o instante real da tomada avulsa histórica.');
+        if(authority.writer==='legacy')return commitDormantLegacyDose({identity:{id:crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:safeHorario},expected:null,status:'taken',actualAt:normalizeTakenAt(tomadoEm)??new Date().toISOString(),quantity:quantidade,unit,note:motivo,asOf:new Date().toISOString(),adjustStock,origin:doseKind},undefined,medicamento);
         const doseQuantity=quantidade===undefined?undefined:normalizePositiveQuantity(quantidade);
         if(adjustStock&&readDoseUnit(unit??{}).state!=='known')throw Error('Confira a unidade administrada antes de movimentar o estoque.');
         const timestamp=new Date().toISOString();
         if(targetDate!==getLocalTodayISO()&&!tomadoEm)throw Error('Informe o instante real da tomada avulsa histórica.');
         return commitPremiumDose({identity:{id:crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:safeHorario},expected:null,status:'taken',actualAt:normalizeTakenAt(tomadoEm)??timestamp,quantity:doseQuantity,unit,note:motivo,asOf:timestamp,adjustStock,historicalReview:!adjustStock,origin:doseKind},undefined,medicamento);
+        };
+        const saved=await write();await authority.assertCurrent();return saved;
       }
     );
     solicitarProcessamentoSync();
@@ -1113,6 +1313,7 @@ export const doseLogsRepository = {
     const user =
       await requireAuthenticatedUser();
 
+    const authority=await prepareMacro02ClinicalWrite(user.id);
     const result = await db.transaction(
       "rw",
       [
@@ -1121,6 +1322,8 @@ export const doseLogsRepository = {
         db.syncQueue,
       ],
       async () => {
+        await authority.assertCurrent();
+        const write=async()=>{
         const existing =
           await db.doseLogs.get(
             safeId
@@ -1158,13 +1361,16 @@ export const doseLogsRepository = {
             user.id
           );
 
+        if(authority.writer==='legacy')return commitDormantLegacyDose({identity:{id:safeId,user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:existing.data,horario:existing.horario},expected,status:'clear',asOf:new Date().toISOString(),adjustStock,origin:existing.dose_kind},existing,medicamento);
         if(hasPremiumEvidence(existing)||Boolean(existing.tomado_em)||Boolean(existing.ignorado_em)||expected!==undefined){
           return commitPremiumDose({identity:{id:safeId,user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:existing.data,horario:existing.horario},expected,status:'clear',asOf:new Date().toISOString(),adjustStock,historicalReview:!adjustStock,origin:existing.dose_kind},existing,medicamento);
         }
         // Unresolved planning record only: no factual dose or stock movement.
         await db.doseLogs.delete(safeId);
-        await enfileirarOperacao('doseLogs','delete',{id:safeId,person_id:safePersonId,user_id:user.id});
+        await enfileirarOperacao('doseLogs','delete',{id:safeId,person_id:safePersonId,user_id:user.id},{dispatchSync:false});
         return safeId;
+        };
+        const saved=await write();await authority.assertCurrent();return saved;
       }
     );
     solicitarProcessamentoSync();

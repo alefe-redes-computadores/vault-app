@@ -28,7 +28,7 @@ export type AuthorityEvidence = Readonly<{
   deadlineMono: number;
 }>;
 export type PendingAuthority = Readonly<{legacy: number; premium: number; unclassified: number}>;
-export type Decision = Readonly<{kind:'allow';writer:Macro02Writer;epoch:string;fenceId:string;deadlineMono:number} | {kind:'hold';reason:'unknown'|'scope'|'expired'|'client'|'pending-conflict'|'invalid-clock'}>;
+export type Decision = Readonly<{kind:'allow';writer:Macro02Writer;epoch:string;fenceId:string;deadlineMono:number;sessionEpoch:string} | {kind:'hold';reason:'unknown'|'scope'|'expired'|'client'|'pending-conflict'|'invalid-clock'}>;
 const maxLeaseMs=5*60*1000;
 const issuedEvidence=new WeakSet<AuthorityEvidence>();
 const isString=(v:unknown):v is string=>typeof v==='string'&&v.length>0&&v.length<=256&&v.trim()===v;
@@ -62,13 +62,13 @@ export function selectMacro02Writer(ctx:AuthorityContext,e:AuthorityEvidence|nul
   if(nowMono>=e.deadlineMono)return {kind:'hold',reason:'expired'};
   if(!isInt(ctx.clientProtocol)||ctx.clientProtocol<e.wire.minimum_protocol)return {kind:'hold',reason:'client'};
   if(![pending.legacy,pending.premium,pending.unclassified].every(isInt)||pending.unclassified!==0||(e.wire.writer==='legacy'?pending.premium!==0:pending.legacy!==0))return {kind:'hold',reason:'pending-conflict'};
-  return {kind:'allow',writer:e.wire.writer,epoch:e.wire.epoch,fenceId:e.wire.fence_id,deadlineMono:e.deadlineMono};
+  return {kind:'allow',writer:e.wire.writer,epoch:e.wire.epoch,fenceId:e.wire.fence_id,deadlineMono:e.deadlineMono,sessionEpoch:e.sessionEpoch};
 }
 /** Validate that the same grant still permits this transaction, not another
  * account, epoch or writer. A replacement grant requires a new reviewed intent. */
 export function assertSameMacro02Authority(selected:Decision,ctx:AuthorityContext,e:AuthorityEvidence|null,nowMono:number,pending:PendingAuthority):void{
   const current=selectMacro02Writer(ctx,e,nowMono,pending);
-  if(selected.kind!=='allow'||current.kind!=='allow'||selected.writer!==current.writer||selected.epoch!==current.epoch||selected.fenceId!==current.fenceId||selected.deadlineMono!==current.deadlineMono)throw Error('MACRO02_AUTHORITY_CHANGED');
+  if(selected.kind!=='allow'||current.kind!=='allow'||selected.writer!==current.writer||selected.epoch!==current.epoch||selected.fenceId!==current.fenceId||selected.deadlineMono!==current.deadlineMono||selected.sessionEpoch!==current.sessionEpoch)throw Error('MACRO02_AUTHORITY_CHANGED');
 }
 /** Existing intents stay tied to their originating writer. Changing capability,
  * timeout, RPC rejection or lost ACK can defer an intent, never migrate it. */

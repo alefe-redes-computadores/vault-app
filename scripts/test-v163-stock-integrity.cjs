@@ -5,6 +5,7 @@ const db=new Dexie('vault-v163-stock-integrity');db.version(1).stores({medicamen
 let failQueue=false;const cache=new Map();
 function load(file){const filename=path.resolve(file);if(cache.has(filename))return cache.get(filename).exports;const m=new Module(filename,module);m.paths=Module._nodeModulePaths(path.dirname(filename));cache.set(filename,m);
  m.require=name=>{
+ if(name==='@/lib/sync/macro02-authority')return {prepareMacro02ClinicalWrite:async()=>({writer:'premium',assertCurrent:async()=>{assert(Dexie.currentTransaction);}}),macro02Authority:()=>({prepareWrite:async()=>({writer:'premium',assertCurrent:async()=>{assert(Dexie.currentTransaction);}})})};
  if(name==='@/lib/db')return {db};
  if(name==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:'u'}},error:null})};
  if(name==='@/lib/supabase/client')return {supabase:{}};

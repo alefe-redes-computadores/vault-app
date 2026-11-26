@@ -43,4 +43,5 @@ test('unknown or expired capability retains original intent',()=>{assert.equal(s
 test('same authority allows original idempotent dispatch',()=>assert.equal(send('premium',select(ctx,premium,500,empty)),'send-original'));
 test('serialized or forged grant is not accepted after restart',()=>assert.equal(select(ctx,JSON.parse(JSON.stringify(grant)),500,empty).reason,'unknown'));
 test('object coercion cannot fabricate a writer',()=>assert.throws(()=>accept({...inactive,writer:{toString:()=>"legacy"}},ctx,100,300)));
+test('new session with identical server fence and deadline invalidates old selection',()=>{const next={...ctx,sessionEpoch:'boot-2'};assert.throws(()=>check(select(ctx,grant,500,empty),next,accept(inactive,next,100,300),501,empty));});
 console.log('MACRO02_AUTHORITY_CONTRACT_PASS='+n+' (pure contract; server fence, runtime and Dexie integration pending)');

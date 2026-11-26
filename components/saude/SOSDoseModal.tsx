@@ -1,5 +1,7 @@
 // components/saude/SOSDoseModal.tsx
 "use client";
+import {DormantSOSDoseModal} from "@/components/saude/DormantSOSDoseModal";
+import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
 import { useAuth } from "@/hooks/useAuth";
 import { DoseHistoricalUnitField, unitDraftSnapshot, type UnitDraft } from "@/components/hoje/DoseHistoricalUnitField";
 import { cycleIdentity } from "@/lib/dose-premium/stock-cycle";
@@ -37,7 +39,7 @@ interface SOSDoseModalProps {
   onClose: () => void;
 }
 
-export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
+function PremiumSOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
   const router = useRouter();
   const {user}=useAuth();
   const saveLock=useRef(false);
@@ -406,3 +408,4 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
     </AnimatePresence>
   );
 }
+export function SOSDoseModal(props:SOSDoseModalProps){return MACRO02_PREMIUM_UI_ENABLED ? <PremiumSOSDoseModal {...props}/> : <DormantSOSDoseModal {...props}/>;}
