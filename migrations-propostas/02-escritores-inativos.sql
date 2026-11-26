@@ -14,7 +14,8 @@ CREATE SCHEMA vault_macro02_private;
 REVOKE ALL ON SCHEMA vault_macro02_private FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE ROLE vault_macro02_worker NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-GRANT vault_macro02_worker TO postgres WITH ADMIN OPTION;
+-- PG17 CREATEROLE already grants ADMIN via the bootstrap role. Only SET is required for ownership transfers.
+GRANT vault_macro02_worker TO postgres WITH SET TRUE, INHERIT FALSE, ADMIN FALSE;
 GRANT USAGE,CREATE ON SCHEMA vault_macro02_private TO vault_macro02_worker;
 CREATE FUNCTION vault_macro02_private.actor_uid() RETURNS uuid
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$ SELECT auth.uid() $$;
@@ -34,9 +35,9 @@ CREATE FUNCTION vault_macro02_private.active_for(p_user uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT coalesce(p_user=vault_macro02_private.actor_uid() AND EXISTS(SELECT 1 FROM vault_macro02_private.active_accounts a WHERE a.user_id=p_user),false)
 $$;
-ALTER FUNCTION vault_macro02_private.active_for(uuid) OWNER TO vault_macro02_worker;
 REVOKE ALL ON FUNCTION vault_macro02_private.active_for(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.active_for(uuid) TO authenticated,service_role;
+ALTER FUNCTION vault_macro02_private.active_for(uuid) OWNER TO vault_macro02_worker;
 GRANT USAGE ON SCHEMA vault_macro02_private TO service_role;
 
 -- The RPC gate remains JWT-bound. Trigger checks also cover privileged maintenance

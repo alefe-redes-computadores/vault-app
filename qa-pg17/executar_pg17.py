@@ -25,7 +25,9 @@ def run(name,args,env_override=None):
  with (logs/(name+'.log')).open('wb') as f:
   p=subprocess.run(args,env=env_override or env,stdout=f,stderr=subprocess.STDOUT,timeout=180)
  status[name]=p.returncode;print(name,'EXIT=',p.returncode,flush=True)
- if p.returncode: raise RuntimeError(name+' failed; inspect evidence')
+ if p.returncode:
+  print((logs/(name+'.log')).read_text(errors='replace')[-12000:],flush=True)
+  raise RuntimeError(name+' failed; inspect evidence')
 
 def query(name,filename,admin=False,atomic=False):
  e=dict(env);e['PGUSER']='qa_admin' if admin else 'postgres'

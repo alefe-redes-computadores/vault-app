@@ -4,7 +4,7 @@
   "R4_application_zip_sha256": "a1495afedc5c1f57c37adf15490dcc197f24f7e9d53022f051eae1007123e99c",
   "sql_hashes": {
     "01-expansao-inativa.sql": "bce06df5d5cfbe8912712ac64a4d61d2436dfd1d058bb745eaa2153731090c6d",
-    "02-escritores-inativos.sql": "c242eac613e5558488183b320a14d3de66330b2377c42d73a5293fe69e60c3d7",
+    "02-escritores-inativos.sql": "08571ea37ea9b804f1409c04ca0f260ff65384af5f0a1750dac6ea0a1ed76e64",
     "03-ativacao-conta.template.sql": "80ada5fa748728934bdd7312adb8dfe2ba6a989e834118bdb3b2511d8cc85c8e"
   },
   "postgres_17_executed": false,
@@ -12,5 +12,13 @@
   "production_ddl_executed": false,
   "production_backup_verified": false,
   "guardian_exact_hash_approved": false,
-  "app_bytes_changed": false
+  "app_bytes_changed": false,
+  "prior_pg17_run": {
+    "run_id": 45873978111,
+    "result": "R5_WRITERS_GRANT_FAILED",
+    "server": "17.6",
+    "expand": "PASS",
+    "expand_compat": "PASS"
+  },
+  "revision": "R6_PENDING"
 }
