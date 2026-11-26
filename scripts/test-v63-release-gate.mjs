@@ -39,7 +39,6 @@ const contracts = [
   "scripts/test-vault-m103-p3-sync-truth.cjs",
   "scripts/test-vault-m103-p2-dose-actions.cjs",
   "scripts/test-vault-m103-p1-privacy-recovery.cjs",
-  "scripts/test-vault-static-offline-guard.cjs",
   "scripts/test-vault-m102-p4-followup-inbox.cjs",
   "scripts/test-vault-m102-p3-fenix-brain.cjs",
   "scripts/test-vault-m102-p2-face-performance.cjs",
@@ -588,6 +587,17 @@ for (const contract of contracts) {
   if (collectAll && (checkedContracts % 25 === 0 || checkedContracts === contracts.length)) {
     console.log(`[V63 COLETA] ${checkedContracts}/${contracts.length} | falhas=${failedContracts.length}`);
   }
+}
+// Extensao obrigatoria R06: preservar a matriz historica selada (A11/STB).
+// Executada em ambos os modos; uma falha bloqueia o release e nunca vira PASS.
+const staticOfflineGuard = "scripts/test-vault-static-offline-guard.cjs";
+console.log(`\n=== ${staticOfflineGuard} (R06 mandatory extension) ===`);
+const staticOfflineResult = spawnSync(process.execPath, ["--require", vaultM2TestPreload, staticOfflineGuard], {stdio:"inherit"});
+if (staticOfflineResult.status !== 0) {
+  if (!collectAll) process.exit(staticOfflineResult.status ?? 1);
+  failedContracts.push({contract:staticOfflineGuard,code:staticOfflineResult.status ?? 1});
+} else {
+  console.log("V63_R06_STATIC_OFFLINE_EXTENSION=PASS");
 }
 const guardianMacroA = "scripts/test-vault-guardian-ux360-macro-a.cjs";
 console.log(`
