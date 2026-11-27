@@ -23,7 +23,8 @@ assert(docs.includes('onExport={() => exportDocumentSummariesToPDF(filteredDocs)
 const med=read(paths[4]);
 assert(med.includes('statsProgresso.completados}/{statsProgresso.total}')&&med.includes('if (item.isSOS || item.isSuspenso) continue;'),"Doses oficiais e SOS fora do total");
 assert(med.includes('role="progressbar"')&&med.includes('density="compact"')&&med.includes('compactTight'),"Progresso e base compacta dos cards");
-assert(med.includes('catalogIdentity?.activeIngredient')&&med.includes('Princípio ativo · confirmar referência nos detalhes'),"Sem inferir principio ativo inexistente");
+const ingredientCases=require("./residual-ingredient-contract.cjs").verifyList(med);
+assert.equal(ingredientCases,72,"Sem inferir principio ativo inexistente no consumidor real");
 assert(med.includes('aria-label="Ações do medicamento"')&&med.includes('regulatoryBorderColor')&&med.includes('MedicationOperationalStrip'),"Acoes, identidade regulatoria e estoque continuam");
 const follow=read(paths[5]);
 assert(follow.includes('hasToggledDetails ? expanded : !checked')&&follow.includes('insight.titulo')&&follow.includes('onMarkChecked(insight)'),"Aviso revisado compacto, nao revisado acessivel");
