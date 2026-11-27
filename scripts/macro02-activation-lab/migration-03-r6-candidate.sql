@@ -911,7 +911,7 @@ BEGIN
   r:=m->0->'changes'->0->'after';
   IF b->'data_receita' IS DISTINCT FROM r->'data' OR b->'medico_id' IS DISTINCT FROM r->'medico_id' OR (n=1 AND a IS DISTINCT FROM b) THEN RAISE EXCEPTION 'M02_R6_RX_REFERENCE';END IF;
  ELSIF kind='acquisition-unquantified' THEN
-  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(m) x WHERE x->'changes'->0->>'table'='medicamentos') AND a IS DISTINCT FROM b THEN RAISE EXCEPTION 'M02_R7_UNQUANTIFIED_POSTIMAGE';END IF;
+  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(m) AS child_entry(child_payload) WHERE child_entry.child_payload->'changes'->0->>'table'='medicamentos') AND a IS DISTINCT FROM b THEN RAISE EXCEPTION 'M02_R7_UNQUANTIFIED_POSTIMAGE';END IF;
  ELSE stock_ack:=vault_macro02_private.commit_atomic_r5(ep,s);END IF;
  FOR x IN SELECT value FROM jsonb_array_elements(m) LOOP
   meta_ack:=meta_ack||jsonb_build_array(vault_macro02_private.commit_metadata_r5(x));
