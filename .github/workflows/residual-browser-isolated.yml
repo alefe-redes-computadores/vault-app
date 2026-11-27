@@ -1,0 +1,174 @@
+name: VAULT Residual CAS R04 and contextual returns - NO RELEASE
+on:
+  push:
+    branches: ['vault-lab/residual-premium-ux360-cas-r04-1bd868d24b06']
+permissions:
+  contents: read
+concurrency:
+  group: vault-residual-cas-r04-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  cas-delta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: vault-local-synthetic-only
+          POSTGRES_DB: vault_r04_lab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vault_r04_lab"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: vault-local-synthetic-only
+      PGDATABASE: vault_r04_lab
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin immutable parent and delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/cas-r04" "$RUNNER_TEMP/r04-ddl"
+          test "$(git rev-parse HEAD^)" = '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test "$(git rev-parse '03ec3c5014256fa754a7459e39e090f89af1c8f7^')" = 'dc84224e84c9a6e62025fe58106a3ca4091cdc33'
+          test "$(git rev-parse '03ec3c5014256fa754a7459e39e090f89af1c8f7^{tree}')" = 'ada65b46d73a42d0fbad862107f9b153123870ff'
+          cp .github/residual-qa/ddl/*.sql "$RUNNER_TEMP/r04-ddl/"
+          cp .github/residual-qa/priority.cjs "$RUNNER_TEMP/priority.cjs"
+          git checkout --detach '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:docs/VAULT-STB11-R03-CAS-PRODUCTION-REVIEW.sql)" = '204bc8ee542143c4e1ddaa96ee38657315261a2b'
+          printf 'PARENT_RUN=46002797458\nCANDIDATE=03ec3c5014256fa754a7459e39e090f89af1c8f7\nTREE=ada65b46d73a42d0fbad862107f9b153123870ff\nDELTA=12\nPUBLICATION=LOCKED\n' > "$RUNNER_TEMP/cas-r04/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Targeted actual source contracts and TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/cas-r04"
+          npm ci --no-audit --no-fund 2>&1 | tee "$d/npm.log"
+          node scripts/test-vault-residual-premium-ux360.cjs 2>&1 | tee "$d/premium.log"
+          grep -Fq 'PREMIUM_UX360_CONTRACT_PASS checks=' "$d/premium.log"
+          node scripts/test-vault-stability-r03.cjs 2>&1 | tee "$d/r03.log"
+          grep -Fq 'R03_IDENTITY_PASS=49 FAIL=0' "$d/r03.log"
+          node scripts/test-vault-stb11-cas-transport-r03.cjs 2>&1 | tee "$d/transport.log"
+          grep -Fq 'CAS_TRANSPORT_TOTAL=20' "$d/transport.log"
+          node scripts/test-vault-visual-cas-r04-compat.cjs 2>&1 | tee "$d/legacy-modern.log"
+          grep -Fq 'R04_COMPAT_TOTAL=45' "$d/legacy-modern.log"
+          node "$RUNNER_TEMP/priority.cjs" 2>&1 | tee "$d/priority.log"
+          grep -Fq 'PRIORITY_TOTAL=7' "$d/priority.log"
+          node node_modules/typescript/bin/tsc --noEmit --incremental false 2>&1 | tee "$d/tsc.log"
+      - name: Isolated PG17 actual R03 baseline then additive R04 and concurrency
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = '127.0.0.1' && test "$PGDATABASE" = 'vault_r04_lab'
+          d="$RUNNER_TEMP/cas-r04"; sql="$RUNNER_TEMP/r04-ddl"
+          psql -X -v ON_ERROR_STOP=1 -Atc "SELECT current_database(),current_setting('server_version_num')::int/10000" | grep -Fx 'vault_r04_lab|17'
+          psql -X -v ON_ERROR_STOP=1 -f "$sql/fixture.sql" 2>&1 | tee "$d/fixture.log"
+          psql -X -v ON_ERROR_STOP=1 -f docs/VAULT-STB11-R03-CAS-PRODUCTION-REVIEW.sql 2>&1 | tee "$d/baseline.log"
+          prefix="SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);"
+          psql -X -v ON_ERROR_STOP=1 -Atc "$prefix SELECT public.vault_set_treatment_visual_r03('00000000-0000-4000-8000-000000000101','00000000-0000-4000-8000-000000000011',0,'brain','00000000-0000-4000-8000-000000000301')->>'status';" | tee "$d/pre-migration-ack.log"
+          grep -Fxq ack "$d/pre-migration-ack.log"
+          psql -X -v ON_ERROR_STOP=1 -f "$sql/cas-r04.sql" 2>&1 | tee "$d/migration.log"
+          psql -X -v ON_ERROR_STOP=1 -f "$sql/test-r04.sql" 2>&1 | tee "$d/server.log"
+          grep -Fq 'R04_SERVER_34_PLUS_RESET_RETRY_STALE_PASS=35' "$d/server.log"
+          grep -Fq 'R04_SERVER_LEGACY_CLINICAL_WRITE_RESET_ISOLATION_PASS' "$d/server.log"
+          grep -Fq 'R04_SERVER_ROLE_SCOPE_PASS' "$d/server.log"
+          # Two clients compete at the same revision, with distinct operations.
+          base=$(psql -X -v ON_ERROR_STOP=1 -Atc "SELECT visual_icon_revision FROM public.tratamentos WHERE id='00000000-0000-4000-8000-000000000101'")
+          for n in 1 2; do
+            choice=moon; if [ "$n" = 2 ]; then choice=bone; fi
+            psql -X -v ON_ERROR_STOP=1 -Atc "$prefix SELECT public.vault_set_treatment_visual_r04('00000000-0000-4000-8000-000000000101','00000000-0000-4000-8000-000000000011',$base,'$choice','00000000-0000-4000-8000-00000000040$n')->>'status';" > "$d/concurrent-$n.log" 2>&1 &
+            if [ "$n" = 1 ]; then p1=$!; else p2=$!; fi
+          done
+          wait "$p1"; wait "$p2"
+          test "$(cat "$d/concurrent-1.log" "$d/concurrent-2.log" | grep -Ex 'ack|conflict' | sort | paste -sd, -)" = 'ack,conflict'
+          test "$(psql -X -Atc "SELECT visual_icon_revision FROM public.tratamentos WHERE id='00000000-0000-4000-8000-000000000101'")" = "$((base+1))"
+          echo R04_SERVER_CONCURRENT_CAS_PASS | tee -a "$d/server.log"
+      - name: Evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-cas-r04-${{ github.run_id }}
+          path: ${{ runner.temp }}/cas-r04/
+          if-no-files-found: error
+          retention-days: 7
+
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Isolate QA code and pin exact R5 tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/residual-browser"
+          test "$(git rev-parse HEAD^)" = '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test "$(git rev-parse '03ec3c5014256fa754a7459e39e090f89af1c8f7^{tree}')" = 'ada65b46d73a42d0fbad862107f9b153123870ff'
+          cp .github/residual-qa/qa_browser.py "$RUNNER_TEMP/qa_browser.py"
+          test "$(sha256sum "$RUNNER_TEMP/qa_browser.py" | cut -d' ' -f1)" = '0cb1179292b5c234138dee5804289a7b3b6ba3ab15a355a0a58683d2b85debd0'
+          git checkout --detach '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf 'CANDIDATE=%s\nTREE=%s\nPUBLICATION=LOCKED\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" > "$RUNNER_TEMP/residual-browser/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Build exact Web export with synthetic loopback configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/residual-browser/npm-ci.log"
+          npm run build 2>&1 | tee "$RUNNER_TEMP/residual-browser/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$RUNNER_TEMP/residual-browser/static.log"
+          grep -Fq 'STATIC_EXPORT=WEB_PASS' "$RUNNER_TEMP/residual-browser/static.log"
+      - name: Install pinned Chromium test tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/browser-venv"
+          "$RUNNER_TEMP/browser-venv/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/browser-venv/bin/python" -m playwright install --with-deps chromium
+      - name: Real Chromium on changed paths only
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/browser-venv/bin/python" "$RUNNER_TEMP/qa_browser.py" --out out --sha '03ec3c5014256fa754a7459e39e090f89af1c8f7' --evidence "$RUNNER_TEMP/residual-browser" 2>&1 | tee "$RUNNER_TEMP/residual-browser/chromium.log"
+      - name: Only sanitized synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-browser-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-browser/
+          if-no-files-found: error
+          retention-days: 7
+
