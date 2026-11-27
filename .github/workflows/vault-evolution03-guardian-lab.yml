@@ -1,0 +1,175 @@
+name: VAULT Macro03 R02 — diagnostic Macro02 isolated laboratory
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r02']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  domain-and-host:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r02'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Preserve reanchoring receipt (review only)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r02-reanchor-receipt
+          path: ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Cumulative fixtures, F1 and catalog parser
+        run: |
+          set -euo pipefail
+          cd "$EVO03_LAB"
+          export PATH="$EVO03_LAB/candidate/node_modules/.bin:$PATH"
+          bash tools/validate-fixture.sh
+          bash tools/validate-usda-fixture.sh
+          python3 -m venv "$RUNNER_TEMP/taco-venv"
+          source "$RUNNER_TEMP/taco-venv/bin/activate"
+          python -m pip install --disable-pip-version-check openpyxl==3.1.5
+          bash tools/validate-taco-fixture.sh
+          python3 tests/test_android_prepare.py
+      - name: Full TypeScript and historical release gates (report independently)
+        run: |
+          cd "$EVO03_LAB/candidate"
+          set +e
+          node node_modules/typescript/bin/tsc --noEmit --pretty false; t=$?
+          node scripts/fastlane-aggregate-release-m150-p3.cjs; g=$?
+          echo "FULL_TSC_EXIT=$t AGGREGATE_GATE_EXIT=$g"
+          test "$t" = 0 && test "$g" = 0
+  postgres:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r02'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install only compiler into disposable laboratory
+        run: |
+          npm install --prefix "$RUNNER_TEMP/evo03-tsc" --no-save --no-audit --no-fund --ignore-scripts typescript@5.5.4
+          mkdir -p "$EVO03_LAB/candidate/node_modules/.bin"
+          ln -s "$RUNNER_TEMP/evo03-tsc/node_modules/.bin/tsc" "$EVO03_LAB/candidate/node_modules/.bin/tsc"
+      - name: PostgreSQL 17.6 and PostgREST concurrent laboratory (no ports)
+        run: bash "$EVO03_LAB/tools/ci-pg17-docker.sh"
+  browser:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r02'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact lockfile and pinned browser driver
+        run: |
+          cd "$EVO03_LAB/candidate" && npm ci
+          npm install --prefix "$RUNNER_TEMP/evo03-browser" --no-save --no-audit --no-fund --ignore-scripts playwright@1.55.0
+          "$RUNNER_TEMP/evo03-browser/node_modules/.bin/playwright" install chromium --with-deps
+      - name: Real IndexedDB/Dexie (synthetic identities)
+        run: PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-browser/node_modules/playwright" node "$EVO03_LAB/tools/ci-browser-dexie.cjs"
+  android-build:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r02'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Static export, synthetic configuration only (never publish)
+        id: export
+        continue-on-error: true
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          SENTRY_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://example.invalid'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'synthetic-lab-key-not-a-credential'
+        run: |
+          set -euo pipefail
+          cd "$EVO03_LAB/candidate"
+          node scripts/ci-build-export-resilient.cjs
+          test -f out/index.html
+      - name: Compile native scanner and nutrition read bridge independently
+        run: |
+          set -euo pipefail
+          cd "$EVO03_LAB/candidate"
+          export JAVA_HOME="${JAVA_HOME_17_X64:?missing JDK17}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          sdkmanager 'platforms;android-36'
+          # Always compile against a synthetic HTML page, not a real account/session.
+          test ! -d android
+          if test -d out; then mv out "$RUNNER_TEMP/evo03-app-export"; fi
+          mkdir out
+          printf '<!doctype html><title>VAULT isolated native compile</title>' > out/index.html
+          node node_modules/@capacitor/cli/bin/capacitor add android
+          node scripts/patch-android-edge-to-edge-v28.mjs
+          node scripts/patch-android-health-connect-v113.mjs
+          node scripts/patch-android-exact-alarms-m99.mjs
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+          python3 scripts/prepare-android-nutrition-f2.py --root "$PWD" --isolated-review --health-connect-nutrition-review
+          cd android
+          bash ./gradlew :app:assembleDebug --no-daemon
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          echo 'NATIVE_COMPILE_PASS; SYNTHETIC HTML; NOT PHYSICAL QA OR DISTRIBUTION'
+      - name: Require application export too
+        if: always()
+        env:
+          EXPORT_OUTCOME: ${{ steps.export.outcome }}
+        run: test "$EXPORT_OUTCOME" = success
+  catalog-acquisition:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r02'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Capture official public sources, no approval or publishing
+        run: |
+          python3 -m venv "$RUNNER_TEMP/catalog-venv"
+          source "$RUNNER_TEMP/catalog-venv/bin/activate"
+          python -m pip install --disable-pip-version-check openpyxl==3.1.5
+          bash "$EVO03_LAB/tools/ci-official-catalog-capture.sh"
+      - name: Preserve public-source provenance (no clinical data)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-catalog-provenance-review-only
+          path: ${{ runner.temp }}/evo03-catalog-evidence/
+          if-no-files-found: warn
+          retention-days: 7
