@@ -987,4 +987,39 @@ DO $$ DECLARE f regprocedure; r text; BEGIN
  END LOOP;
  IF has_schema_privilege('vault_macro02_worker','vault_macro02_private','CREATE') OR EXISTS(SELECT 1 FROM pg_roles WHERE rolname='vault_macro02_worker' AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcanlogin)) THEN RAISE EXCEPTION 'M02_R8_WORKER_ESCALATION'; END IF;
 END $$;
+-- CAS R04 / Macro02 interoperability: the visual writer still traverses the
+-- same account fence. No role membership, clinical writer or ledger privileges.
+DO $cas_bridge$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='vault_visual_r03_worker' AND NOT rolcanlogin AND NOT rolbypassrls AND NOT rolsuper AND NOT rolcreaterole)
+ OR pg_has_role('vault_visual_r03_worker','vault_macro02_worker','MEMBER')
+ OR pg_has_role('vault_macro02_worker','vault_visual_r03_worker','MEMBER')
+ OR pg_has_role('authenticated','vault_visual_r03_worker','MEMBER')
+ OR pg_has_role('anon','vault_visual_r03_worker','MEMBER')
+ OR NOT EXISTS(SELECT 1 FROM pg_proc WHERE oid='vault_visual_r03_private.set_treatment_visual_r04(uuid,uuid,integer,text,uuid)'::regprocedure AND prosecdef AND pg_get_userbyid(proowner)='vault_visual_r03_worker' AND proconfig=ARRAY['search_path=""'])
+ OR NOT EXISTS(SELECT 1 FROM pg_proc WHERE oid='vault_macro02_private.cutover_lock_r5(uuid,boolean,boolean)'::regprocedure AND prosecdef AND pg_get_userbyid(proowner)='postgres' AND proconfig=ARRAY['search_path=""'])
+ OR md5(pg_get_functiondef('public.vault_set_treatment_visual_r04(uuid,uuid,integer,text,uuid)'::regprocedure))<>'ade806d8e91e3511c877a22f53158d84'
+ OR md5(pg_get_functiondef('vault_visual_r03_private.set_treatment_visual_r04(uuid,uuid,integer,text,uuid)'::regprocedure))<>'2ef7864482bfc5ec2c4c571af547182f'
+ OR md5(pg_get_functiondef('vault_visual_r03_private.guard_treatment_visual()'::regprocedure))<>'67b946302868c37af669aab4d983e850'
+ OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.tratamentos'::regclass AND tgname='m02_cutover_guard_r3' AND tgenabled='A')
+ THEN RAISE EXCEPTION 'M02_CAS_R04_AUTHORITY_DRIFT'; END IF;
+END $cas_bridge$;
+GRANT USAGE ON SCHEMA vault_macro02_private TO vault_visual_r03_worker;
+GRANT EXECUTE ON FUNCTION vault_macro02_private.cutover_lock_r5(uuid,boolean,boolean) TO vault_visual_r03_worker;
+DO $cas_acl$
+BEGIN
+ IF NOT has_schema_privilege('vault_visual_r03_worker','vault_macro02_private','USAGE')
+ OR has_schema_privilege('vault_visual_r03_worker','vault_macro02_private','CREATE')
+ OR NOT has_function_privilege('vault_visual_r03_worker','vault_macro02_private.cutover_lock_r5(uuid,boolean,boolean)','EXECUTE')
+ OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='vault_macro02_private' AND p.oid<>'vault_macro02_private.cutover_lock_r5(uuid,boolean,boolean)'::regprocedure AND has_function_privilege('vault_visual_r03_worker',p.oid,'EXECUTE'))
+ OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='vault_macro02_private' AND c.relkind IN ('r','p','v','m','f') AND (has_table_privilege('vault_visual_r03_worker',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') OR has_any_column_privilege('vault_visual_r03_worker',c.oid,'SELECT,INSERT,UPDATE,REFERENCES')))
+ OR has_table_privilege('vault_visual_r03_worker','public.tratamentos','UPDATE')
+ OR has_column_privilege('vault_visual_r03_worker','public.tratamentos','nome','UPDATE')
+ OR has_function_privilege('vault_visual_r03_worker','public.vault_macro02_commit_compound_r6(jsonb)','EXECUTE')
+ OR has_function_privilege('vault_visual_r03_worker','public.vault_macro02_commit_atomic_r5(uuid,jsonb)','EXECUTE')
+ OR has_function_privilege('vault_visual_r03_worker','public.vault_macro02_commit_metadata_r5(jsonb)','EXECUTE')
+ OR has_function_privilege('vault_macro02_worker','public.vault_set_treatment_visual_r04(uuid,uuid,integer,text,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'M02_CAS_R04_PRIVILEGE_EXPANSION'; END IF;
+END $cas_acl$;
+
 COMMIT;
