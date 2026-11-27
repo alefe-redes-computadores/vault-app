@@ -21,7 +21,7 @@ def fixtures(day):
 
 def geometry(p):
  nav=p.get_by_role('navigation',name='Áreas do tratamento');expect(nav).to_be_visible(timeout=45000)
- return nav.evaluate('''n=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,cy:r.y+r.height/2,top:r.top,bottom:r.bottom}};const tabs=[...n.querySelectorAll('a')].map(e=>({href:e.getAttribute('href'),rect:rect(e),icon:rect(e.children[0]),title:rect(e.children[1]),badge:rect(e.children[2]),text:e.innerText,active:e.getAttribute('aria-current'),overflow:e.scrollWidth>e.clientWidth+2}));const candidates=[...document.querySelectorAll('main div')].filter(e=>e.children.length===3&&[...e.children].map(x=>x.innerText.split('\\n')[0].trim().toLowerCase()).join('|')==='em uso|documentos|aquisições');document.querySelectorAll('[data-vault-qa-h05-stats]').forEach(e=>e.removeAttribute('data-vault-qa-h05-stats'));const stats=candidates.length===1?candidates[0]:null;if(stats)stats.setAttribute('data-vault-qa-h05-stats','true');return {statsMatches:candidates.length,tabs,scrollWidth:n.scrollWidth,clientWidth:n.clientWidth,scrollLeft:n.scrollLeft,stats:stats?[...stats.children].map(e=>({rect:rect(e),icon:rect(e.children[0]?.children[0]),title:rect(e.children[0]?.children[1]),value:rect(e.children[1]),legend:rect(e.children[2]),text:e.innerText,overflow:e.scrollWidth>e.clientWidth+2})):[],pageOverflow:document.documentElement.scrollWidth>innerWidth+2}}''')
+ return nav.evaluate('''n=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,cy:r.y+r.height/2,top:r.top,bottom:r.bottom}};const tabs=[...n.querySelectorAll('a')].map(e=>({href:e.getAttribute('href'),rect:rect(e),icon:rect(e.children[0]),title:rect(e.children[1]),badge:rect(e.children[2]),text:e.innerText,active:e.getAttribute('aria-current'),overflow:e.scrollWidth>e.clientWidth+2}));const candidates=[...document.querySelectorAll('main div.grid.grid-cols-3')].filter(e=>e.children.length===3&&[...e.children].every(x=>x instanceof HTMLDivElement&&x.children.length===3&&x.children[0] instanceof HTMLDivElement&&x.children[0].children[1] instanceof HTMLSpanElement&&x.children[1] instanceof HTMLParagraphElement&&x.children[2] instanceof HTMLParagraphElement)&&[...e.children].map(x=>x.children[0].children[1].textContent.trim().toLowerCase()).join('|')==='em uso|documentos|aquisições');document.querySelectorAll('[data-vault-qa-h05-stats]').forEach(e=>e.removeAttribute('data-vault-qa-h05-stats'));const stats=candidates.length===1?candidates[0]:null;if(stats)stats.setAttribute('data-vault-qa-h05-stats','true');return {statsMatches:candidates.length,tabs,scrollWidth:n.scrollWidth,clientWidth:n.clientWidth,scrollLeft:n.scrollLeft,stats:stats?[...stats.children].map(e=>({rect:rect(e),icon:rect(e.children[0]?.children[0]),title:rect(e.children[0]?.children[1]),value:rect(e.children[1]),legend:rect(e.children[2]),text:e.innerText,overflow:e.scrollWidth>e.clientWidth+2})):[],pageOverflow:document.documentElement.scrollWidth>innerWidth+2}}''')
 
 def check_geometry(g,after):
  require(len(g['tabs'])==5,'five actual treatment tabs missing');require(g['statsMatches']==1 and len(g['stats'])==3,'unique three actual indicators missing or ambiguous')
@@ -73,7 +73,7 @@ def h06(ctx,p,out):
  expect(edit.get_by_role('button',name='Voltar',exact=True)).to_be_visible(timeout=45000)
  expect(edit.get_by_role('navigation',name='Navegação principal')).to_have_count(0)
  edit.get_by_role('group',name='Cor do tratamento').get_by_role('button',name='Verde',exact=True).click()
- picker.get_by_role('button',name='Escolher na biblioteca',exact=True).click();choice=picker.locator('[data-vault-treatment-choice="moon"]').last;expect(choice).to_be_enabled();choice.click();h.shot(edit,out,'H06-editor-choice',choice)
+ picker.get_by_role('button',name='Escolher na biblioteca',exact=True).click();choice=picker.locator('[data-vault-treatment-choice="moon"]').last;expect(choice).to_be_enabled();h.shot(edit,out,'H06-editor-choice',choice);choice.click();expect(picker.locator('[data-vault-treatment-choice="moon"][aria-pressed="true"]').first).to_be_attached(timeout=30000)
  edit.get_by_role('button',name='Salvar alterações',exact=True).click();q.path_is(edit,'/saude/tratamentos/detalhes')
  # None of the already open consumers is reloaded, nor is the person switched.
  assert_icon(first,'moon','rgb(22, 163, 74)',q.TREAT_A);assert_icon(second,'heart','rgb(220, 38, 38)',SECOND)
@@ -96,11 +96,31 @@ def main():
  try:
   with sync_playwright() as pw:
    browser=pw.chromium.launch(headless=True)
+   failures={}
    for width in WIDTHS:
-    ctx=q.new_context(browser,width);p=ctx.new_page();errors=[];p.on('pageerror',lambda e:errors.append(str(e)[:300]));p.clock.set_fixed_time(datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')));q.login(p);h.seed_fixture(p);report['widths'][str(width)]=h05(p,args.evidence,width,args.phase=='after');require(not errors,'page errors '+str(errors));ctx.close();print(f'H05 {args.phase} {width}px PASS',flush=True)
+    ctx=None
+    try:
+     ctx=q.new_context(browser,width);p=ctx.new_page();errors=[];p.on('pageerror',lambda e:errors.append(str(e)[:300]));p.clock.set_fixed_time(datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')));q.login(p);h.seed_fixture(p);report['widths'][str(width)]=h05(p,args.evidence,width,args.phase=='after');require(not errors,'page errors '+str(errors));print(f'H05 {args.phase} {width}px PASS',flush=True)
+    except Exception as e:
+     failures['H05-'+str(width)]=str(e);traceback.print_exc();print(f'H05 {args.phase} {width}px FAIL',flush=True)
+     if ctx:
+      try:p.screenshot(path=str(args.evidence/f'{width}-H05-failure.png'),timeout=5000)
+      except Exception:pass
+    finally:
+     if ctx:ctx.close()
    if args.phase=='after':
-    ctx=q.new_context(browser,390);p=ctx.new_page();p.clock.set_fixed_time(datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')));q.login(p);h.seed_fixture(p);report['H06']=h06(ctx,p,args.evidence);ctx.close()
-   browser.close();report['status']='PASS'
+    ctx=None
+    try:
+     ctx=q.new_context(browser,390);p=ctx.new_page();p.clock.set_fixed_time(datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')));q.login(p);h.seed_fixture(p);report['H06']=h06(ctx,p,args.evidence);print('H06 after PASS',flush=True)
+    except Exception as e:
+     failures['H06']=str(e);traceback.print_exc();print('H06 after FAIL',flush=True)
+     if ctx:
+      for i,pg in enumerate(ctx.pages):
+       try:pg.screenshot(path=str(args.evidence/f'H06-failure-{i}.png'),timeout=5000)
+       except Exception:pass
+    finally:
+     if ctx:ctx.close()
+   browser.close();report['failures']=failures;report['status']='FAIL' if failures else 'PASS'
  except Exception as e:report['failure']=str(e);traceback.print_exc()
  finally:server.shutdown();(args.evidence/'measurements-h05-h06.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
  return 0 if report['status']=='PASS' else 1

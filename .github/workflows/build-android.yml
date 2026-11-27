@@ -35,9 +35,10 @@ jobs:
           PREVIOUS='b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
           BASELINE='c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf'
           test "$GITHUB_REF_NAME" = 'vault-lab/stability-h01-h07-final-d9dcb9db'
-          test "$(git rev-parse HEAD^)" = 'c9687a1efdcb9c501c15a8e93c766131fd32798a'
-          test "$(git rev-parse HEAD^^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
-          test "$(git rev-parse HEAD^^^)" = "$SOURCE"
+          test "$(git rev-parse HEAD^)" = 'aeb1cc8748f4edf935dcb4369b2320b73794344e'
+          test "$(git rev-parse HEAD^^)" = 'c9687a1efdcb9c501c15a8e93c766131fd32798a'
+          test "$(git rev-parse HEAD^^^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
+          test "$(git rev-parse HEAD^^^^)" = "$SOURCE"
           test "$(git rev-parse "$SOURCE^{tree}")" = '447a64da793c71b210a5e6d8dabb3386cfc0b787'
           test "$(git rev-parse "$SOURCE^")" = 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3'
           test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^')" = "$PREVIOUS"
@@ -390,9 +391,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = 'c9687a1efdcb9c501c15a8e93c766131fd32798a'
-          test "$(git rev-parse HEAD^^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
-          test "$(git rev-parse HEAD^^^)" = '67ea5ef1706d6864e65c51d9cd83905abf393cbe'
+          test "$(git rev-parse HEAD^)" = 'aeb1cc8748f4edf935dcb4369b2320b73794344e'
+          test "$(git rev-parse HEAD^^)" = 'c9687a1efdcb9c501c15a8e93c766131fd32798a'
+          test "$(git rev-parse HEAD^^^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
+          test "$(git rev-parse HEAD^^^^)" = '67ea5ef1706d6864e65c51d9cd83905abf393cbe'
           test "$(git rev-parse '67ea5ef1706d6864e65c51d9cd83905abf393cbe^{tree}')" = '447a64da793c71b210a5e6d8dabb3386cfc0b787'
           test "$(git rev-parse '67ea5ef1706d6864e65c51d9cd83905abf393cbe^')" = 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3'
           test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^')" = 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
@@ -411,30 +413,38 @@ jobs:
           "$RUNNER_TEMP/h01-browser/bin/pip" install --disable-pip-version-check playwright==1.57.0
           "$RUNNER_TEMP/h01-browser/bin/python" -m playwright install --with-deps chromium
       - name: Build and measure baseline before any candidate acceptance
+        id: baseline
         shell: bash
         run: |
           set -euo pipefail
           e="$RUNNER_TEMP/h01-h07-evidence/before"
           cd "$RUNNER_TEMP/vault-before"
+          failures=0
           npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
           npm run build 2>&1 | tee "$e/build.log"
           node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
-          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log"
-          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
       - name: Build and measure candidate, enforce actual improvements
+        if: ${{ !cancelled() && (steps.baseline.outcome == 'success' || steps.baseline.outcome == 'failure') }}
         shell: bash
         run: |
           set -euo pipefail
           e="$RUNNER_TEMP/h01-h07-evidence/after"
           cd "$RUNNER_TEMP/vault-after"
+          failures=0
           npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
-          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$e/directed.log"
-          node scripts/test-vault-stability-h05-h06.cjs 2>&1 | tee -a "$e/directed.log"
-          node scripts/test-vault-stability-h07.cjs 2>&1 | tee -a "$e/directed.log"
+          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h05-h06.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h07.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
           npm run build 2>&1 | tee "$e/build.log"
           node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
-          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase after --out out --evidence "$e" --sha '67ea5ef1706d6864e65c51d9cd83905abf393cbe' --baseline "$RUNNER_TEMP/h01-h07-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log"
-          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase after --out out --evidence "$e" --sha '67ea5ef1706d6864e65c51d9cd83905abf393cbe' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase after --out out --evidence "$e" --sha '67ea5ef1706d6864e65c51d9cd83905abf393cbe' --baseline "$RUNNER_TEMP/h01-h07-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase after --out out --evidence "$e" --sha '67ea5ef1706d6864e65c51d9cd83905abf393cbe' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
       - name: Preserve real evidence including failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
