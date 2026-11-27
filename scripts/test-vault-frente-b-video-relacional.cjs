@@ -71,7 +71,7 @@ ok(treatmentArgB?.id===undefined,'tratamento sem ID mantém fallback neutro da A
 const stableTreatment=medicalIcon({row:{title:'Nome alterado',visualB:{kind:'treatment',name:'Outro',treatmentId:'treatment-real-id'}},fallbackIcon:iconMock.Pill,fallbackTone:'text-muted'});
 const neutralTreatment=medicalIcon({row:{title:'Dor',visualB:{kind:'treatment',name:'Dor'}},fallbackIcon:iconMock.Pill,fallbackTone:'text-muted'});
 ok(treatmentEl.props.children.type===resolveTreatmentA({id:'treatment-real-id'})&&stableTreatment.props.children.type===treatmentEl.props.children.type,'consumidor B usa resolvedor A real e identidade estável ao renomear');
-ok(neutralTreatment.props.children.type===iconMock.CircleHelp,'nome sem ID não produz classificação clínica');
+ok(neutralTreatment.props.children.type===iconMock.FolderHeart&&neutralTreatment.props.children.type===resolveTreatmentA(null),'nome sem ID não produz classificação clínica');
 // Evaluate the actual EventRow consumer with synthetic user-owned records, without a DOM or network.
 const recordsForTest=records.replace('function EventRow({','export function EventRow({');
 ok(recordsForTest!==records,'consumer EventRow exported only inside the test runtime');

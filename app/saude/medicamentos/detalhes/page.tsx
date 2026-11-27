@@ -665,7 +665,7 @@ function MedicamentoDetalhesContent() {
 
   const regulatorySurface =
     getMedicationRegulatorySurface(
-      regulatoryProfile
+      regulatoryCopyUX360(regulatoryProfile,catalogIdentity?.regulatoryNeedsReview===true,undefined,catalogIdentity?.authorityState).review ? undefined : regulatoryProfile
     );
 
   // ==========================================================
@@ -2814,7 +2814,7 @@ function MedicamentoDetalhesContent() {
                     {regulatoryHeaderLabel && (
                       <span
                         className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${regulatorySurface.badgeClass}`}
-                        title={regulatoryProfile?.detail || "Nenhuma classificação regulatória confirmada"}
+                        title={regulatoryHeaderCopy.review ? regulatoryHeaderCopy.label : regulatoryProfile?.detail || "Nenhuma classificação regulatória confirmada"}
                       >
                         {regulatoryHeaderLabel}
 

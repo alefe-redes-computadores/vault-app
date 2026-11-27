@@ -15,5 +15,5 @@ assert(search.includes('role="search"')&&search.includes('enterKeyHint="search"'
 const modalGuard=read('hooks/useModalGuard.ts');
 assert(sheet.includes('useModalGuard({ open: isOpen && portalReady')&&modalGuard.includes('previousFocus?.isConnected')&&modalGuard.includes('previousFocus.focus({ preventScroll: true })')&&sheet.includes('role="dialog"')&&sheet.includes('aria-modal="true"'),'bottom sheet returns keyboard focus via shared modal guard');
 assert(button.includes('aria-busy={loading || undefined}')&&button.includes('disabled={disabled || loading}'),'loading blocks duplicate submissions');
-assert(card.includes('initial={false}')&&card.includes('contentVisibility: "auto"')&&card.includes('interactiveContent'),'large lists avoid per-item entrance animation');
+assert(card.includes('initial={false}')&&card.includes('contentVisibility: medicationFlow ? "visible" : "auto"')&&card.includes('interactiveContent'),'large lists avoid per-item entrance animation');
 console.log('V302 GLOBAL MACRO: seven UI subsystems validated');

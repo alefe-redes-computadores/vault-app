@@ -466,7 +466,7 @@ export default function MedicamentosListPage() {
   const selectedRegulatoryAuthority = selectedRegulatoryMedication
     ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.authorityState || "unvalidated" : "unvalidated";
   const selectedRegulatoryNeedsReview = selectedRegulatoryMedication
-    ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.regulatoryNeedsReview === true : false;
+    ? (catalogIdentities[selectedRegulatoryMedication.id || ""]?.regulatoryNeedsReview === true || selectedRegulatoryAuthority === "possible_divergence" || selectedRegulatory?.label === "Classificação em revisão") : false;
   const selectedRegulatoryIngredient = selectedRegulatoryMedication
     ? medicationIngredientDisplayResidual(
         catalogIdentities[selectedRegulatoryMedication.id || ""],
@@ -1031,19 +1031,15 @@ export default function MedicamentosListPage() {
 
       const regulatorySurface =
         getMedicationRegulatorySurface(
-          regulatoryProfile,
-          receita?.corBorda
+          regulatoryCopy.review ? undefined : regulatoryProfile,
+          regulatoryCopy.review ? undefined : receita?.corBorda
         );
 
       const regulatoryBorderColor =
         regulatorySurface.rail;
       const personalAccent = medicationPersonalAccent(med);
 
-      const regulatoryMeaning =
-        regulatoryProfile
-          ? `${regulatoryProfile.label}: ${regulatoryProfile.detail}${regulatoryProfile.sourceLabel ? ` Fonte: ${regulatoryProfile.sourceLabel}.` : ""}`
-          : receita?.tooltip ||
-            "Sem categoria regulatória especial registrada";
+      const regulatoryMeaning = `${regulatoryCopy.label}${regulatoryCopy.official && regulatoryProfile?.detail ? `: ${regulatoryProfile.detail}` : ""}${regulatoryCopy.source ? ` · Fonte: ${regulatoryCopy.source}.` : ""}${regulatoryCopy.declared ? ` · Tipo informado: ${regulatoryCopy.declared}.` : ""}${regulatoryCopy.declarationConflict ? " · Cadastro diverge da referência." : ""} · ${regulatoryCopy.document}.`;
 
       const rotinaParcial =
         !isSOS &&
@@ -1354,7 +1350,7 @@ export default function MedicamentosListPage() {
         const knowledge = medicationKnowledge360;
         const officialPresentations = knowledge.facts.find(f => f.kind === "presentation")?.value || null;
         const knownClass = (() => {
-          if (!regulatoryProfile?.verified) return null;
+          if (!regulatoryCopy.official) return null;
           const ref = med.catalog_snapshot?.reference;
           if (!ref || typeof ref !== "object" || !("regulatoryRules" in ref)) return null;
           const rules = (ref as {regulatoryRules?: unknown}).regulatoryRules;
@@ -1993,7 +1989,7 @@ export default function MedicamentosListPage() {
                   className="mt-1 h-8 w-1 shrink-0 rounded-full"
                   style={{
                     backgroundColor:
-                      selectedRegulatory.accent,
+                      selectedRegulatoryNeedsReview ? "#64748b" : selectedRegulatory.accent,
                   }}
                 />
 
@@ -2013,7 +2009,7 @@ export default function MedicamentosListPage() {
 
                   <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
                     {
-                      selectedRegulatory.detail
+                      selectedRegulatoryNeedsReview ? "Referência em conferência; classificação não confirmada." : selectedRegulatory.detail
                     }
                   </p>
                 </div>
