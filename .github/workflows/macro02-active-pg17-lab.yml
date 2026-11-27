@@ -1,0 +1,42 @@
+name: VAULT Macro02 - retry exclusivamente PG17 ativo (LAB ONLY)
+on:
+  push:
+    branches: ['vault-lab/macro02-activation-final-pg17-retry-*']
+permissions:
+  contents: read
+jobs:
+  active-pg17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verificar fonte imutavel e envelope exclusivamente CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          source=d54c5d45cf8b53d37cc4c206a94a8f8b1bc7c755
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-activation-final-pg17-retry-* ]]
+          test "$(git rev-parse HEAD^)" = "$source"
+          test "$(git rev-parse "$source^{tree}")" = eada442a9a5b530030d75f45d21f8ec1bf766aeb
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/macro02-qa/run-active-r7-pg.sh .github/workflows/macro02-active-pg17-lab.yml vercel.json | LC_ALL=C sort)"
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          git show HEAD:.github/macro02-qa/run-active-r7-pg.sh > "$RUNNER_TEMP/macro02-active-pg17.sh"
+          printf '%s  %s\n' 88593f7c870dde17fd7fa4b3df97638a6d96a9934ffb8d9cd5dbcb84e663b8fd "$RUNNER_TEMP/macro02-active-pg17.sh" | sha256sum -c -
+          git checkout --detach "$source"
+          git diff --check HEAD^ HEAD
+          test "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" = 703d9c6781e84f4592b5c285e58dc08e7857d0b9
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$source" "$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias exatas para fixtures reais do cliente
+        run: npm ci --no-audit --no-fund
+      - name: Executar Migration 03 e quatro envelopes Premium ativos no PG17 isolado
+        run: bash "$RUNNER_TEMP/macro02-active-pg17.sh"
+      - name: Limites e evidencia reaproveitada
+        if: always()
+        run: echo 'LAB ONLY. Fonte imutavel d54c5d45. TypeScript integral aprovado no run 46016743576; R4 aprovada no run 46006976644. Sem SQL produtivo, sem Vercel, sem APK. Nao certifica UI ativa ou merge Stability.'
