@@ -1,0 +1,50 @@
+{
+  "lib/dose-premium/clinical-backup-evidence.ts": {
+    "base": "4a164f0b759b68b7c1c7864ecc448766ea411a01",
+    "new": "9aed2c2451dd7288ab697765e72caf7e71668eb7"
+  },
+  "lib/dose-premium/cutover-recovery.ts": {
+    "base": "fa315fb1c2be04923cc2a60062eda9743fefe83b",
+    "new": "fbadbe433eb9e7a7fc52e858de9d056eb1ae7d78"
+  },
+  "lib/dose-premium/clinical-backup-tables.ts": {
+    "base": null,
+    "new": "8df23e50eb22aeed60ae1bb3982217939dbdcb52"
+  },
+  "scripts/macro02-activation-lab/active-fixture-r7.sql": {
+    "base": "90352957e09dd679fbcd033ef8d7eb88971c194e",
+    "new": "85d5471fdd53396332a4ed4c772bc90895f60ca2"
+  },
+  "scripts/vault-macro02-test-pure-loader.cjs": {
+    "base": "7a010038cb2911a19bc1431fc380632cd3415510",
+    "new": "95a40aaaac518b16febe7639be96e4139ddb8745"
+  },
+  "scripts/test-vault-m66-sync-reliability.cjs": {
+    "base": "bfadc2a5a1e0afb67786f997bcf92861ebb47aa1",
+    "new": "00f000d39950d9caeba0134bbf5a610efb22de67"
+  },
+  "scripts/test-vault-macro02-ingress.cjs": {
+    "base": "d25de392f248cae6ab2c6010e66f3c88aa3de990",
+    "new": "7c333363079ba8aed89cfedea5e4d9d105a75b96"
+  },
+  "scripts/test-v203-access-reschedule.cjs": {
+    "base": "ddec207e1cf4a1fb2db41162786e59366a57b95b",
+    "new": "99e392d667dd0737dc2d77c4cfda4831d60f0d53"
+  },
+  "scripts/test-v163-stock-integrity.cjs": {
+    "base": "bedbb7522066c1eda240106586ab389e1b106327",
+    "new": "059adfa3909e19e9cbcadddfe9a6c618a4aa624e"
+  },
+  "scripts/test-v142-avatar-brain.cjs": {
+    "base": "de29a0f4a61e65615fa958654f6b26c0c7139fde",
+    "new": "a368e9d3bd11808f86bd2506e8c2560445e7b483"
+  },
+  "scripts/test-vault-macro02-stock-cycle.cjs": {
+    "base": "2f7165caa16a58ffff7c5c84d1b35b5fc1cca275",
+    "new": "3d20dd16ca1f488dee7cc18513bfdaced8462973"
+  },
+  "hooks/useSupabaseRealtime.ts": {
+    "base": "bb94542ad750305a333c3af626923cf0337ec1d1",
+    "new": "a8aaceb52c5498509fbb2aa0bfad21be8faebba3"
+  }
+}
