@@ -33,6 +33,7 @@ import {
 import {
   useRouter,
 } from "next/navigation";
+import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
 
 import {
   AnimatePresence,
@@ -221,6 +222,8 @@ export default function NovoMedicamentoPage() {
 
   const router =
     useRouter();
+  const [showDraftExitR04,setShowDraftExitR04]=useState(false);
+  const returnFromCreateR04=()=>safeClinicalReturnM150(new URLSearchParams(window.location.search).get("return_to"),"/saude/medicamentos/novo","/saude/medicamentos");
 
   const {
     user,
@@ -2636,7 +2639,7 @@ export default function NovoMedicamentoPage() {
            */
           router.replace(linkedConsultationOnSaveD2
             ? `/saude/consultas/detalhes?id=${encodeURIComponent(linkedConsultationOnSaveD2)}`
-            : "/saude/medicamentos");
+            : returnFromCreateR04());
         }
       ).finally(
         () => {
@@ -2686,7 +2689,7 @@ export default function NovoMedicamentoPage() {
        */
       router.replace(linkedConsultationD2
         ? `/saude/consultas/detalhes?id=${encodeURIComponent(linkedConsultationD2)}`
-        : "/saude/medicamentos");
+        : returnFromCreateR04());
     };
 
   // ==========================================================
@@ -2887,11 +2890,11 @@ export default function NovoMedicamentoPage() {
               <button
                 type="button"
                 onClick={
-                  () =>
-                    router.replace("/saude/medicamentos")
+                  () => setShowDraftExitR04(true)
                 }
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
                 aria-label="Voltar"
+                disabled={isSubmitting}
               >
                 <X
                   size={
@@ -5530,6 +5533,16 @@ isAtivo={
           )}
         </AnimatePresence>
 
+        <ConfirmationModal
+          isOpen={showDraftExitR04}
+          onClose={()=>setShowDraftExitR04(false)}
+          onConfirm={()=>{setShowDraftExitR04(false);router.replace(returnFromCreateR04());}}
+          title="Sair do cadastro?"
+          message="As informações ainda não salvas deste cadastro serão descartadas."
+          confirmLabel="Descartar e sair"
+          cancelLabel="Continuar cadastro"
+          type="warning"
+        />
         <ConfirmationModal
           isOpen={showDosageConfirmation}
           onClose={() => setShowDosageConfirmation(false)}

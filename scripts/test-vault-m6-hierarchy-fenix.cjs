@@ -75,7 +75,7 @@ ok(avatar.includes('<span aria-hidden="true">Ver</span></button>:null}') && !ava
 ok(meds.includes('aria-label="Organizar medicamentos"') && meds.includes('aria-label="Exibição dos medicamentos"') && meds.includes('aria-label="Escolher densidade dos cartões"') && meds.includes('medsPrioridade.map(renderCard)') && meds.includes('medsSOS.map(renderCard)'),'lista comunica ordem e categorias');
 ok(meds.includes('<details id="medicamentos-panorama"') && meds.includes('Entender indicadores, doses e estados'),'panorama secundário recolhido inicialmente');
 ok(meds.includes('medsPrioridade.map(renderCard)') && meds.includes('medsSOS.map(renderCard)'),'grupos canônicos não alterados');
-ok(meds.includes('setQuickDoseMedId(med.id!)') && meds.includes('regulatoryProfile?.label'),'dose rápida e receita regulatória intactas');
+ok(meds.includes('setQuickDoseMedId(med.id!)') && (meds.includes('regulatoryCopyUX360(regulatoryProfile')&&meds.includes('data-vault-ux360-regulatory-label')&&meds.includes('regulatoryCopy.label')&&meds.includes('regulatoryCopy.official')&&meds.includes('regulatoryCopy.declared')),'dose rápida e receita regulatória intactas');
 ok(meds.includes('VAULT_V318_COMPACT_IDENTITY') && meds.includes('VAULT_MEDICATION_LIST_HIERARCHY_V98'),'hierarquia clínica anterior preservada');
 ok(overview.includes('text-amber-300') && more.includes('border-rose-400/20 bg-rose-400/10 text-rose-300'),'indicadores do panorama e cartões com paleta semântica');
 ok(gate.includes('"scripts/test-vault-m6-hierarchy-fenix.cjs"')&&gate.includes('"scripts/test-vault-m5-document-form-fenix.cjs"')&&gate.includes('"scripts/test-vault-m4-archive-avatar.cjs"'),'gate cumulativo M4/M5/M6');

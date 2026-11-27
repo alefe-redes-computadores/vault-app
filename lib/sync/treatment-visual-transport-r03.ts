@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import type { SyncQueueItem, Tratamento } from '@/lib/types';
 import type { supabase } from '@/lib/supabase/client';
-import {mergeVisualProjectionR03,readVisualIntentR03,sameVisualScopeR03,visualAcknowledgedR03,visualRevisionR03} from '@/lib/health-profile/treatment-preferences-r03';
+import {canWriteTreatmentChoiceR03,validVisualWireR04,mergeVisualProjectionR03,readVisualIntentR03,sameVisualScopeR03,visualAcknowledgedR03,visualRevisionR03} from '@/lib/health-profile/treatment-preferences-r03';
 import {buildSyncFailureUpdate,SYNC_MAX_RETRIES} from "@/lib/sync/queue-health";
 import {preserveA0Tratamento} from '@/lib/sync/a0-preserve-local-parity';
 type Row=Record<string,unknown>;
@@ -36,11 +36,14 @@ export async function syncTreatmentVisualIntentR03(item:SyncQueueItem,client:typ
   const pending=readVisualIntentR03(local.visual_identity_pending);
   if(pending?.operation!==intent.operation){if(visualAcknowledgedR03(intent,local))return finalizeTreatmentVisualIntentR03(item);throw new TreatmentVisualConflictR03('Escolha visual não corresponde à fila local.');}
   if(pending.state==='conflict')throw new TreatmentVisualConflictR03('Escolha visual em conflito. Revise o ícone do tratamento.');
-  const {data,error}=await client.rpc('vault_set_treatment_visual_r03',{p_id:id,p_person:p.person_id,p_base:intent.base,p_choice:intent.choice,p_operation:intent.operation});
+  if(pending.base!==intent.base||pending.choice!==intent.choice)throw new TreatmentVisualConflictR03('Comando visual não corresponde à escolha local.');
+  if(!canWriteTreatmentChoiceR03(intent.choice))throw Error('Escolha visual inválida; preservada na fila.');
+  // V2 is mandatory for every modern write: a V1 ACK cannot represent expanded identity.
+  const {data,error}=await client.rpc('vault_set_treatment_visual_r04',{p_id:id,p_person:p.person_id,p_base:intent.base,p_choice:intent.choice,p_operation:intent.operation});
   if(error)throw Error(`Sincronização visual: ${error.message}`);
   const result=data as {status?:unknown;row?:Row}|null;
   const row=result?.row;
-  if(!row||!sameVisualScopeR03(p,row)||visualRevisionR03(row)===null)throw Error('Resposta visual inválida ou fora da pessoa.');
+  if(!row||!sameVisualScopeR03(p,row)||!validVisualWireR04(row))throw Error('Resposta visual inválida ou fora da pessoa.');
   const ack=result?.status==='ack'&&visualAcknowledgedR03(intent,row);
   const conflict=result?.status==='conflict'&&(visualRevisionR03(row)??-1)>=intent.base;
   if(!ack&&!conflict)throw Error('Confirmação visual não corresponde à operação.');
@@ -48,9 +51,10 @@ export async function syncTreatmentVisualIntentR03(item:SyncQueueItem,client:typ
     const current=await db.tratamentos.get(id);
     if(!current||!sameVisualScopeR03(p,current)||!item.id)return false;
     const queued=await db.syncQueue.get(item.id);
-    if(!queued||queued.payload.operation!==intent.operation)return false;
+    const queuedIntent=readVisualIntentR03(queued?.payload);
+    if(!queued||!sameVisualScopeR03(p,queued.payload)||queuedIntent?.operation!==intent.operation||queuedIntent.base!==intent.base||queuedIntent.choice!==intent.choice||queuedIntent.state!=='pending')return false;
     const live=readVisualIntentR03(current.visual_identity_pending);
-    if(live?.operation!==intent.operation)return false;
+    if(live?.operation!==intent.operation||live.base!==intent.base||live.choice!==intent.choice||live.state!=='pending')return false;
     const merged=mergeVisualProjectionR03(row,asRow(current));
     await db.tratamentos.put({...merged,visual_identity_pending:ack?null:{...intent,state:'conflict'}} as unknown as Tratamento);
     if(ack){await db.syncQueue.delete(item.id);return true;}
@@ -67,7 +71,8 @@ export async function finalizeTreatmentVisualIntentR03(item:SyncQueueItem):Promi
   const treatmentId=p.id;
   return db.transaction('rw',[db.syncQueue,db.tratamentos],async()=>{
     const current=await db.syncQueue.get(id),local=await db.tratamentos.get(treatmentId);
-    if(!current||current.payload.operation!==intent.operation||!local||!sameVisualScopeR03(p,local)||readVisualIntentR03(local.visual_identity_pending)?.operation===intent.operation||!visualAcknowledgedR03(intent,local))return false;
+    const queuedIntent=readVisualIntentR03(current?.payload);
+    if(!current||!sameVisualScopeR03(p,current.payload)||queuedIntent?.operation!==intent.operation||queuedIntent.base!==intent.base||queuedIntent.choice!==intent.choice||queuedIntent.state!=='pending'||!local||!sameVisualScopeR03(p,local)||readVisualIntentR03(local.visual_identity_pending)?.operation===intent.operation||!visualAcknowledgedR03(intent,local))return false;
     await db.syncQueue.delete(id);return true;
   });
 }
@@ -78,7 +83,7 @@ export async function refreshTreatmentVisualProjectionR03(client:typeof supabase
   if(!userId||!active())return;
   const size=200;let cursor:string|undefined;
   while(active()){
-    let query=client.from('tratamentos').select('id,user_id,person_id,visual_icon,visual_icon_revision,visual_icon_operation_id,visual_icon_updated_at').eq('user_id',userId).gt('visual_icon_revision',0).order('id',{ascending:true}).limit(size);
+    let query=client.from('tratamentos').select('id,user_id,person_id,visual_icon,visual_icon_revision,visual_icon_operation_id,visual_icon_updated_at,visual_icon_expanded').eq('user_id',userId).gt('visual_icon_revision',0).order('id',{ascending:true}).limit(size);
     if(cursor)query=query.gt('id',cursor);
     const {data,error}=await query;
     if(!active())return;
@@ -87,7 +92,7 @@ export async function refreshTreatmentVisualProjectionR03(client:typeof supabase
     let last=cursor;
     for(const raw of data){
       const row=raw as Row;
-      if(typeof row.id!=='string'||!row.id||row.user_id!==userId||typeof row.person_id!=='string'||(last!==undefined&&row.id<=last)||(visualRevisionR03(row)??0)<=0)throw Error('Projeção visual fora do escopo ou inválida.');
+      if(typeof row.id!=='string'||!row.id||row.user_id!==userId||typeof row.person_id!=='string'||(last!==undefined&&row.id<=last)||!validVisualWireR04(row)||(visualRevisionR03(row)??0)<=0)throw Error('Projeção visual fora do escopo ou inválida.');
       last=row.id;
     }
     await db.transaction('rw',[db.tratamentos,db.syncQueue],async()=>{

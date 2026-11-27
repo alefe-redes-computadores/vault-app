@@ -65,5 +65,23 @@ export function humanizeOfficialPresentation(value: string) {
     .replace(/\bAL\b/gi, "alumínio")
     .replace(/\bPLAS\b/gi, "plástico")
     .replace(/\bTRANS\b/gi, "transparente")
-    .replace(/\s+X\s+(\d+)\b/gi, " · $1 unidades");
+    // X expresses multiplication/packaging, not necessarily discrete units.
+    // Keep decimal, explicit volume and nested package counts verbatim.
+    .replace(/\s+X\s+(?=\d)/gi, " × ");
+}
+
+/** Display-only projection of the already scoped catalogue identity. A divergent
+ * reference never becomes a confirmed ingredient. Preserve the hook's verified
+ * offline ingredients; inferred/unknown facts remain in the evidence panel. */
+export function medicationIngredientDisplayResidual(
+  identity: { authorityState?: string; activeIngredients?: readonly string[]; activeIngredient?: string | null } | null | undefined,
+  facts: readonly { kind: string; authority: string; value: string }[] = []
+): string[] {
+  if (!identity || identity.authorityState === "possible_divergence") return [];
+  const known = identity.activeIngredients?.filter(value => value.trim().length > 0) || [];
+  if (known.length) return known;
+  if (identity.activeIngredient?.trim()) return [identity.activeIngredient];
+  if (identity.authorityState !== "confirmed" && identity.authorityState !== "compatible") return [];
+  const exact = facts.find(fact => fact.kind === "active_ingredient" && fact.authority === "official_exact" && fact.value.trim());
+  return exact ? [exact.value] : [];
 }

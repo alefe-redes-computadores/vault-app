@@ -2,8 +2,9 @@
 "use client";
 
 import {useAuth} from "@/hooks/useAuth";
-import {TreatmentIdentityIconR03,TreatmentIdentityEditorR03} from "@/components/saude/TreatmentIdentityR03";
+import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
 import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
+import {distinctClinicalAlertMessages} from "@/lib/ui/distinct-clinical-alerts-ux360";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {useHealthSupply} from "@/hooks/useHealthSupply";
 import {treatmentCareContext} from "@/lib/treatment-care-context";
@@ -833,7 +834,7 @@ function TratamentoContent() {
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] vault-adaptive-tail">
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 header-safe-top backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 px-5 pb-4 header-safe-top before:absolute before:inset-0 before:-z-10 before:pointer-events-none before:bg-void/85 before:backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -984,7 +985,7 @@ function TratamentoContent() {
 
 
         <section className="space-y-4 px-5 pt-5">
-          <ClinicalSectionNav label="Áreas do tratamento" layout="grid" density="compact" priorityCount={3} items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes}]}/>
+          <ClinicalSectionNav label="Áreas do tratamento" layout="grid" density="compact" priorityCount={5} items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes}]}/>
           <span id="tratamento-visao" className="block scroll-mt-24" aria-hidden="true"/>
           <motion.div
             variants={fadeUp}
@@ -1035,7 +1036,6 @@ function TratamentoContent() {
               </div>
             </div>
 
-            <TreatmentIdentityEditorR03 entity={tratamento}/>
             {cidsVinculados.length > 0 && (
               <div className="relative z-10 mt-4 rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
@@ -1099,10 +1099,7 @@ function TratamentoContent() {
                       <span className="font-medium text-amber-400">
                         Contexto do histórico:
                       </span>{" "}
-                      {cidsInsights
-                        .map((cid) => cid.insight?.alertaClinico)
-                        .filter(Boolean)
-                        .join(" • ")}
+                      {distinctClinicalAlertMessages(cidsInsights.map((cid) => cid.insight?.alertaClinico)).join(" • ")}
                     </p>
                   </div>
                 )}

@@ -70,7 +70,7 @@ const hub=load('lib/health-hub/r5.ts');
 ok('Hub preserva IDs e favoritos',()=>assert(hub.HEALTH_MODULES_R5.some(x=>x.id==='fenix'&&x.href==='/saude/fenix')));
 ok('Preferências de outra pessoa não são globalizadas',()=>assert(read('app/saude/mapa/page.tsx').includes('encodeURIComponent(uid)')&&read('app/saude/mapa/page.tsx').includes('encodeURIComponent(pid)')));
 ok('Fonte de retorno preserva pesquisa',()=>assert(read('app/saude/mapa/page.tsx').includes('const sourceHref=')));
-ok('Explorar oferece acesso adicional sob demanda',()=>assert(read('app/saude/mapa/page.tsx').includes('showAdditional')&&read('app/saude/mapa/page.tsx').includes('aria-expanded={showAdditional}')));
+ok('Explorar conserva todos os destinos nas duas densidades',()=>{const page=read('app/saude/mapa/page.tsx');assert(page.includes('aria-pressed={showAdditional}')&&page.includes('data-vault-map-density'));assert.deepEqual(d.clinicalVisibleSectionsSTB(false),d.clinicalVisibleSectionsSTB(true));assert.equal(d.clinicalHiddenCountSTB(),0);});
 const flow=read('app/saude/careflow/page.tsx');
 ok('Card principal corresponde ao real destino Linha Clínica',()=>assert(flow.includes('const primary=areas[0]')&&flow.includes('>Linha Clínica</strong>')&&!flow.includes('>Modo Médico 360</strong>')));
 ok('PDFs têm card visível',()=>assert(flow.includes("cards:[areas[1],areas[3],areas[7]]")));

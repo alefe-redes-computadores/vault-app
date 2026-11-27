@@ -57,6 +57,17 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"modo-medico",title:"Modo Médico",description:"Resumo para consulta",href:"/saude/careflow/modo-medico",group:"intelligence",icon:"stethoscope",keywords:["medico","pdf","dossie"]},
   {id:"episodios",title:"Episódio de atendimento",description:"Fatos de uma consulta",href:"/saude/careflow/episodios",group:"intelligence",icon:"calendar",keywords:["episodio","consulta","retorno"]},
   {id:"linha-do-tempo",title:"Brain longitudinal",description:"Registros rastreáveis",href:"/saude/careflow/linha-do-tempo",group:"intelligence",icon:"chart",keywords:["historico","brain","linha do tempo"]},
+
+  {"id":"linha-clinica","title":"Linha Clínica 360","description":"Leitura longitudinal de fatos clínicos","href":"/saude/linha-clinica","icon":"activity","group":"body","keywords":["a10","linha clínica"]},
+  {"id":"linha-registros","title":"Linha do tempo dos registros","description":"Consulta de eventos registrados","href":"/saude/timeline","icon":"activity","group":"body","keywords":["histórico","linha do tempo"]},
+  {"id":"jornada-clinica","title":"Jornada clínica","description":"Percurso clínico e registros relacionados","href":"/saude/jornada","icon":"activity","group":"body","keywords":["jornada","cuidado"]},
+  {"id":"jornada-cirurgica","title":"Jornada Cirúrgica 360","description":"Acompanhamento de cirurgias","href":"/saude/cirurgias/jornada","icon":"stethoscope","group":"body","keywords":["cirurgia","jornada"]},
+  {"id":"encaminhamentos-cirurgicos","title":"Encaminhamentos cirúrgicos","description":"Consultar encaminhamentos","href":"/saude/cirurgias/encaminhamentos","icon":"files","group":"body","keywords":["encaminhamento","cirurgia"]},
+  {"id":"diario-pessoal","title":"Diário para conversas difíceis","description":"Espaço privado para expressão e notas","href":"/saude/diario","icon":"book","group":"body","keywords":["diário","notas","terapia"]},
+  {"id":"pedidos-exames","title":"Pedidos, sessões e resultados","description":"Consultar pedidos de exames","href":"/saude/exames/pedidos","icon":"flask","group":"body","keywords":["exame","pedido"]},
+  {"id":"cids","title":"CIDs e Diagnósticos","description":"Consultar registros de diagnósticos","href":"/saude/cids","icon":"book","group":"body","keywords":["cid","diagnóstico"]},
+  {"id":"locais","title":"Locais de saúde","description":"Consultar locais cadastrados","href":"/saude/locais","icon":"users","group":"body","keywords":["local","saúde"]},
+  {"id":"evolucao-registros","title":"Evolução de saúde","description":"Consultar séries de registros","href":"/saude/registros/evolucao","icon":"activity","group":"body","keywords":["evolução","registros"]}
 ] as const;
 
 export const NETWORK_SEARCH_R5: readonly Pick<HubModuleR5,"id"|"title"|"description"|"href"|"icon"|"keywords">[] = [

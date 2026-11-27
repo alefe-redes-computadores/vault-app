@@ -55,11 +55,19 @@ export function MedicationKnowledgePanelM153P4({
                 <strong className="mt-1 block break-words text-sm leading-relaxed text-ink-primary">
                   {fact.kind === "presentation" ? humanizeOfficialPresentation(fact.value) : fact.value}
                 </strong>
+                <span className="mt-1 block break-words text-[10px] font-semibold text-ink-secondary" data-vault-knowledge-authority={fact.authority}>
+                  {knowledgeAuthorityLabel(fact.authority)}
+                </span>
+                {fact.kind === "active_ingredient" && fact.limitation ? (
+                  <span className="mt-1 block break-words text-[10px] leading-snug text-ink-muted">{fact.limitation}</span>
+                ) : null}
               </span>
               {fact.authority === "conflict" ? (
-                <TriangleAlert size={17} className="shrink-0 text-amber-300" />
+                <TriangleAlert size={17} className="shrink-0 text-amber-300" aria-hidden="true" />
+              ) : fact.authority === "official_exact" ? (
+                <ShieldCheck size={17} className="shrink-0 text-sky-300" aria-hidden="true" />
               ) : (
-                <ShieldCheck size={17} className="shrink-0 text-sky-300" />
+                <Info size={17} className="shrink-0 text-ink-muted" aria-hidden="true" />
               )}
             </summary>
             <div className="mt-2 border-t border-surface-border/60 pt-2 text-[11px] leading-relaxed text-ink-muted">

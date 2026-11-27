@@ -5,8 +5,9 @@ import {useAuth} from '@/hooks/useAuth';
 import {useActivePersonId} from '@/hooks/useActivePersonId';
 import {db} from '@/lib/db';
 import {getVaultTreatmentIcon} from '@/lib/health-profile/treatment-icon';
-import {TREATMENT_ICON_KEYS_R03,visualRevisionR03,readVisualIntentR03,resolveOwnedTreatmentR03,resolveTreatmentKeyR03,treatmentColorR03,type TreatmentIdentityRecordR03,type TreatmentScopeR03,type TreatmentVisualChoiceR03} from '@/lib/health-profile/treatment-preferences-r03';
+import {canWriteTreatmentChoiceR03,validTreatmentChoiceR03,visualRevisionR03,readVisualIntentR03,resolveOwnedTreatmentR03,resolveTreatmentKeyR03,treatmentColorR03,type TreatmentIdentityRecordR03,type TreatmentScopeR03,type TreatmentVisualChoiceR03} from '@/lib/health-profile/treatment-preferences-r03';
 import type {LucideProps} from 'lucide-react';
+import {TREATMENT_VISUAL_LIBRARY,CATEGORIES,searchTreatmentVisualIcons,suggestTreatmentVisualIcons} from '@/lib/health-profile/treatment-visual-library-ux360';
 import {tratamentosRepository} from '@/lib/repositories/tratamentos';
 const empty:readonly TreatmentIdentityRecordR03[]=[];
 const IdentityContext=createContext<{scope:TreatmentScopeR03|null;records:readonly TreatmentIdentityRecordR03[]}>({scope:null,records:empty});
@@ -29,22 +30,37 @@ function useIdentity(entity:TreatmentIdentityRecordR03|null|undefined){
 export function TreatmentIdentityIconR03({entity,style,...props}:LucideProps&{entity?:TreatmentIdentityRecordR03|null}){
   const {selected,color}=useIdentity(entity);
   const Icon=getVaultTreatmentIcon({visual_icon:selected});
-  return <Icon {...props} style={{...style,color}} aria-hidden="true"/>;
+  return <Icon {...props} data-vault-treatment-icon={selected} style={{...style,color}} aria-hidden="true"/>;
 }
-const LABELS:Record<TreatmentVisualChoiceR03,string>={activity:'Atividade',heart:'Cuidado',clipboard:'Acompanhamento',shield:'Proteção',calendar:'Calendário',brain:'Atenção e mente',stethoscope:'Acompanhamento clínico',target:'Alvo ou região',leaf:'Equilíbrio',waypoints:'Conexões',heartpulse:'Vitalidade',pill:'Medicamentos',unassigned:'Sem ícone específico'};
-export function TreatmentIdentityPickerR03({value,color,onChange,disabled=false}:{value:TreatmentVisualChoiceR03|null;color:string;onChange:(v:TreatmentVisualChoiceR03)=>void;disabled?:boolean}){
- return <div className="mt-3 space-y-2" role="group" aria-label="Identidade visual do tratamento">
-   <p className="text-xs font-semibold text-ink-primary">Ícone do tratamento</p>
-   <p className="text-[11px] leading-relaxed text-ink-muted">{value===null?'Escolha um ícone ou indique que não deseja um específico.':value==='unassigned'?'Sem ícone específico. Você pode escolher um a qualquer momento.':'Escolha visual, sem alterar a informação clínica.'}</p>
-   <div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-3">
-    {[...TREATMENT_ICON_KEYS_R03,'unassigned' as const].map(key=>{const Icon=getVaultTreatmentIcon({visual_icon:key});return <button key={key} type="button" disabled={disabled} aria-pressed={value===key} onClick={()=>onChange(key)} className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg border border-surface-border p-2 text-left text-[11px] text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:opacity-50" style={value===key?{borderColor:color,backgroundColor:`${color}18`}:undefined}><Icon size={17} style={{color}} aria-hidden="true"/><span className="min-w-0 break-words">{LABELS[key]}</span></button>;})}
-   </div>
+/** One form-only picker. Searching never changes a selection or submits CAS. */
+export function TreatmentIdentityPickerR03({value,color,title='',onChange,disabled=false}:{value:TreatmentVisualChoiceR03|null;color:string;title?:string;onChange:(v:TreatmentVisualChoiceR03)=>void;disabled?:boolean}){
+ const [query,setQuery]=useState('');
+ const [category,setCategory]=useState<(typeof CATEGORIES)[number]|undefined>();
+ const [showLibrary,setShowLibrary]=useState(false);
+ const suggestions=suggestTreatmentVisualIcons(title,6);
+ const results=searchTreatmentVisualIcons(query,category);
+ const chosen=TREATMENT_VISUAL_LIBRARY.find(item=>item.key===value);
+ const Preview=getVaultTreatmentIcon({visual_icon:value});
+ const renderChoice=(item:(typeof TREATMENT_VISUAL_LIBRARY)[number],prefix:string)=>{
+   const key=validTreatmentChoiceR03(item.key);
+   const available=!!key&&canWriteTreatmentChoiceR03(key);
+   const Icon=getVaultTreatmentIcon({visual_icon:item.key});
+   return <button key={`${prefix}:${item.key}`} type="button" disabled={disabled||!available} aria-pressed={value===item.key} aria-label={item.label} data-vault-treatment-choice={item.key} onClick={()=>{if(key&&available&&!disabled)onChange(key);}} className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-surface-border bg-surface-raised/55 px-2 py-2 text-center text-xs leading-snug text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:cursor-not-allowed disabled:opacity-60 [overflow-wrap:normal]" style={value===item.key?{borderColor:color,backgroundColor:`${color}18`}:undefined}><Icon size={21} style={{color}} aria-hidden="true"/><span>{item.label}</span></button>;
+ };
+ return <div className="space-y-3 rounded-2xl border border-surface-border/70 bg-surface-raised/35 p-3" role="group" aria-label="Identidade visual do tratamento" data-vault-treatment-picker>
+   <div className="flex items-center gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl border" style={{color,borderColor:`${color}55`,backgroundColor:`${color}15`}}><Preview size={23} aria-hidden="true"/></span><div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">Identidade visual</p><p className="text-xs text-ink-secondary" data-vault-treatment-selected>{chosen?.label??(value==='unassigned'?'Sem ícone específico':'Nenhuma escolha ainda')}</p><p className="text-[11px] text-ink-muted">Apenas aparência, sem alterar dados clínicos.</p></div></div>
+   {suggestions.length>0&&<div data-vault-treatment-suggestions><p className="mb-2 text-xs font-semibold text-ink-secondary">Sugestões pelo nome digitado</p><div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-3">{suggestions.map(item=>renderChoice(item,'suggested'))}</div></div>}
+   <div className="flex flex-wrap items-center gap-2"><button type="button" disabled={disabled} aria-pressed={value==='unassigned'} onClick={()=>onChange('unassigned')} className={`min-h-11 rounded-xl border px-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${value==='unassigned'?'border-ice/50 bg-ice/10 text-ice':'border-surface-border text-ink-secondary'}`}>Sem ícone específico</button><button type="button" aria-expanded={showLibrary} onClick={()=>setShowLibrary(v=>!v)} className="min-h-11 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{showLibrary?'Recolher biblioteca':'Escolher na biblioteca'}</button></div>
+   {showLibrary&&<div className="space-y-3 border-t border-surface-border/60 pt-3"><label className="block text-xs font-semibold text-ink-primary">Pesquisar ícones<input aria-label="Pesquisar ícones" type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Ex.: sono, cérebro, cuidado…" className="mt-1.5 min-h-11 w-full rounded-xl border border-surface-border bg-void px-3 text-sm text-ink-primary placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"/></label>
+   <div className="flex min-w-0 flex-wrap gap-1.5" role="group" aria-label="Categorias de ícones">{[undefined,...CATEGORIES].map(c=><button key={c??'all'} type="button" aria-pressed={category===c} onClick={()=>setCategory(c)} className={`min-h-11 rounded-xl border px-2.5 text-[11px] font-semibold leading-snug focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${category===c?'border-ice/40 bg-ice/10 text-ice':'border-surface-border text-ink-secondary'}`}>{c??'Todas'}</button>)}</div>
+   {results.length===0?<p role="status" className="text-xs text-ink-secondary">Nenhum ícone encontrado. Experimente outro termo.</p>:<div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-3 min-[600px]:grid-cols-4">{results.map(item=>renderChoice(item,'library'))}</div>}
+   <p className="text-[11px] leading-relaxed text-ink-secondary">A escolha é sua e altera apenas a aparência do tratamento. A sincronização conserva a identidade entre dispositivos.</p></div>}
  </div>;
 }
 export function TreatmentIdentityEditorR03({entity}:{entity:TreatmentIdentityRecordR03}){
   const {scope,record,selected,color}=useIdentity(entity);const [error,setError]=useState('');const [busy,setBusy]=useState(false);const lock=useRef(false);
   async function select(value:TreatmentVisualChoiceR03){
-    if(!scope||!record||typeof record.id!=='string'||lock.current||visualRevisionR03(record)===null||readVisualIntentR03(record.visual_identity_pending)?.state==='pending')return;
+    if(!canWriteTreatmentChoiceR03(value)||!scope||!record||typeof record.id!=='string'||lock.current||visualRevisionR03(record)===null||readVisualIntentR03(record.visual_identity_pending)?.state==='pending')return;
     lock.current=true;setBusy(true);setError('');
     try{await tratamentosRepository.updateVisualIdentity(record.id,scope.personId,value,visualRevisionR03(record)!);}catch{setError('Não foi possível salvar a identidade visual. Reabra o tratamento e tente novamente.');}finally{lock.current=false;setBusy(false);}
   }

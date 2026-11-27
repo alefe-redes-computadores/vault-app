@@ -7,9 +7,15 @@ export function safeReturnTarget(value: string | null | undefined, fallback: str
   if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.includes("\\") ||
       /[\u0000-\u001f\u007f<>]/.test(candidate) || candidate.length > 2048) return fallback;
   try {
+    // Validate each raw segment before URL normalization can erase traversal.
+    // Encoded delimiters, residual escapes and controls have no role in a route segment.
+    const rawPath = candidate.split(/[?#]/, 1)[0];
+    const decoded = rawPath.split('/').map(segment => decodeURIComponent(segment));
+    if (decoded.some(segment => /[\u0000-\u001f\u007f<>\\/?#%\ufffd]/.test(segment) || segment === '.' || segment === '..')) return fallback;
+    const decodedPath = decoded.join('/');
     const url = new URL(candidate, INTERNAL_ORIGIN);
     if (url.origin !== INTERNAL_ORIGIN || url.username || url.password ||
-        /^\/api(?:\/|$)/i.test(url.pathname) || url.pathname.startsWith('//')) return fallback;
+        /^\/api(?:\/|$)/i.test(decodedPath) || url.pathname.startsWith('//')) return fallback;
     url.searchParams.delete(RETURN_PARAM);
     return `${url.pathname}${url.search}${url.hash}`;
   } catch { return fallback; }

@@ -922,7 +922,6 @@ export default function NovoTratamentoPage() {
             <div role="group" aria-label="Cor do tratamento" className="mt-3 flex flex-wrap gap-2">
               {[["#8B5CF6","Violeta"],["#2563EB","Azul"],["#0D9488","Turquesa"],["#16A34A","Verde"],["#D97706","Âmbar"],["#DC2626","Vermelho"],["#DB2777","Rosa"]].map(([color,label])=><button key={color} type="button" aria-label={label} aria-pressed={treatmentColor===color} onClick={()=>{setVisualColor(color);trigger("vibrate");}} className="grid size-11 shrink-0 place-items-center rounded-xl border-2 bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice" style={{borderColor:treatmentColor===color?color:"transparent"}}><span aria-hidden="true" className="size-6 rounded-full" style={{backgroundColor:color}}/></button>)}
             </div>
-            <TreatmentIdentityPickerR03 value={visualIcon} color={treatmentColor} onChange={value=>{if(activePersonId)setVisualSelection({personId:activePersonId,value});trigger("vibrate");}}/>
           </motion.div>
 
           {/* ==================================================
@@ -970,6 +969,7 @@ export default function NovoTratamentoPage() {
               required
               autoFocus
             />
+            <TreatmentIdentityPickerR03 title={nome} value={visualIcon} color={treatmentColor} onChange={value=>{if(activePersonId)setVisualSelection({personId:activePersonId,value});trigger("vibrate");}}/>
 
             <CustomDatePicker label="Data de início" value={dataInicio} onChange={setDataInicio}/>
 

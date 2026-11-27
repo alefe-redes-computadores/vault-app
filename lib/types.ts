@@ -1543,6 +1543,7 @@ export interface Tratamento {
   status: "ativo" | "concluido" | "suspenso";
   cor?: string;
   visual_icon?: import("@/lib/health-profile/treatment-preferences-r03").TreatmentVisualChoiceR03 | null;
+  visual_icon_expanded?: import("@/lib/health-profile/treatment-preferences-r03").TreatmentExpandedIconKeyR04 | null;
   visual_icon_updated_at?: string | null;
   visual_icon_revision?: number;
   visual_icon_operation_id?: string | null;

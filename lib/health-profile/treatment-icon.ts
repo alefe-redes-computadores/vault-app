@@ -1,7 +1,7 @@
-import { Activity, HeartHandshake, ClipboardList, ShieldCheck, CalendarDays, Brain, Stethoscope, Target, Leaf, Waypoints, HeartPulse, Pill, CircleHelp } from "lucide-react";
+import { Activity, HeartHandshake, ClipboardList, ShieldCheck, CalendarDays, Brain, Stethoscope, Target, Leaf, Waypoints, HeartPulse, Pill, BrainCircuit, Waves, Moon, MoonStar, BedDouble, CloudMoon, Bone, Accessibility, Hand, ShieldPlus, Eye, Ear, Wind, Droplet, PersonStanding, Footprints, Timer, BookHeart, Smile, Focus, Sparkles, FolderHeart } from "lucide-react";
 import {resolveTreatmentKeyR03,type TreatmentIdentityRecordR03,type TreatmentVisualChoiceR03} from "./treatment-preferences-r03";
-/** Visual identity is explicit metadata, not a clinical classifier. */
-const BY_KEY={activity:Activity,heart:HeartHandshake,clipboard:ClipboardList,shield:ShieldCheck,calendar:CalendarDays,brain:Brain,stethoscope:Stethoscope,target:Target,leaf:Leaf,waypoints:Waypoints,heartpulse:HeartPulse,pill:Pill,unassigned:CircleHelp} satisfies Record<TreatmentVisualChoiceR03,typeof Activity>;
+/** Explicit metadata only. FolderHeart is a neutral absence icon, not a diagnosis or persisted preference. */
+const BY_KEY={"activity":Activity,"heart":HeartHandshake,"clipboard":ClipboardList,"shield":ShieldCheck,"calendar":CalendarDays,"brain":Brain,"stethoscope":Stethoscope,"target":Target,"leaf":Leaf,"waypoints":Waypoints,"heartpulse":HeartPulse,"pill":Pill,"brain-circuit":BrainCircuit,"waves":Waves,"moon":Moon,"moon-star":MoonStar,"bed-double":BedDouble,"cloud-moon":CloudMoon,"bone":Bone,"accessibility":Accessibility,"hand":Hand,"shield-plus":ShieldPlus,"eye":Eye,"ear":Ear,"wind":Wind,"droplet":Droplet,"person-standing":PersonStanding,"footprints":Footprints,"timer":Timer,"book-heart":BookHeart,"smile":Smile,"focus":Focus,"sparkles":Sparkles,"folder-heart":FolderHeart,unassigned:FolderHeart} satisfies Record<TreatmentVisualChoiceR03,typeof Activity>;
 export function getVaultTreatmentIcon(entity:string|TreatmentIdentityRecordR03|null|undefined) {
   return BY_KEY[resolveTreatmentKeyR03(entity && typeof entity==='object'?entity:null)];
 }

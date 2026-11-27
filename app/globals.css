@@ -27,7 +27,7 @@ html.dark {
   --border-surface: 31 38 50;
   --text-ink-primary: 236 240 244;
   --text-ink-muted: 138 148 163;
-  --text-ink-faint: 79 88 102;
+  --text-ink-faint: 150 162 179;
   --shadow-vault: 0 8px 22px -12px rgba(0,0,0,0.24);
   color-scheme: dark;
 }
@@ -40,7 +40,7 @@ html.light {
   --border-surface: 224 229 236;
   --text-ink-primary: 13 20 30;
   --text-ink-muted: 79 92 110;
-  --text-ink-faint: 156 167 181;
+  --text-ink-faint: 83 97 116;
   --shadow-vault: 0 10px 34px -10px rgba(15,23,42,0.08);
   color-scheme: light;
 }
@@ -427,3 +427,12 @@ body:has(nav.vault-bottom-nav [data-vault-home-compose]) .vault-adaptive-tail {
 .vault-app-shell-r03[data-vault-footer-r03="ready"] .vault-adaptive-tail .vault-adaptive-tail.vault-adaptive-tail {
   padding-bottom: 0 !important;
 }
+
+/* UX360: medication-only flowing content below the identity row. Other ListCards unchanged. */
+[data-vault-medication-flow="true"] [data-vault-med-flow-icon="true"] { position:absolute; top:0; inset-inline-start:0; pointer-events:none; }
+[data-vault-medication-flow="true"] [data-vault-med-flow-body="true"] { grid-column:1 / -1; min-width:0; }
+[data-vault-medication-flow="true"] [data-vault-med360-header] { padding-inline-start:42px; }
+[data-vault-medication-flow="true"] [data-vault-r5-operational] { align-items:center; }
+/* Keep the Compose outside the nav's blurred surface; one physical reservation measured by R03. */
+.vault-bottom-nav:has([data-vault-home-compose]) > div { backdrop-filter:none; -webkit-backdrop-filter:none; }
+.vault-bottom-nav:has([data-vault-home-compose]) > div::before { content:""; position:absolute; inset:0; z-index:-1; background:rgb(var(--bg-surface) / .95); backdrop-filter:blur(20px); pointer-events:none; }

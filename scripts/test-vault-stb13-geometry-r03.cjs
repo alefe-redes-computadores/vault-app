@@ -9,13 +9,25 @@ function run(){
  assert(css.includes('VAULT_R4_RESPIRO_GLOBAL')&&css.includes('padding-bottom: calc(8rem + env(safe-area-inset-bottom'),'legacy fallback preserved');
  assert(css.includes('var(--vault-footer-obstruction-r03)')&&css.includes('data-vault-footer-r03="ready"'));
  for(const p of ['app/page.tsx','components/vital/VitalScreen.tsx'])assert(read(p).includes('vault-adaptive-tail'),p);
- let nav=null,fab=null,tail=true,mutation,resize,cleanup,frames=new Map(),id=0,clock=0,props=new Map(),attrs=new Map(),events=new Map(),height=720,width=390,sets=0;
+ let nav=null,fab=null,wrapper=null,ordinary=null,outside=null,tail=true,mutation,resize,cleanup,frames=new Map(),id=0,clock=0,props=new Map(),attrs=new Map(),events=new Map(),height=720,width=390,sets=0;
  class Element {
   constructor(kind,parent=null){this.kind=kind;this.parentElement=parent;this.css={visibility:'visible',display:'block',opacity:'1'};this.r={top:0,bottom:720,left:0,right:390,width:390,height:720};}
   contains(x){while(x){if(x===this)return true;x=x.parentElement;}return false;}
-  querySelector(s){if(s==='nav.vault-bottom-nav')return nav;if(s==='button.absolute')return fab;if(s==='.vault-adaptive-tail')return tail?main:null;return null;}
-  matches(s){return s.includes(this.kind==='nav'?'nav.vault-bottom-nav':this.kind==='fab'?'nav.vault-bottom-nav button':this.kind==='main'?'.vault-adaptive-tail':'!none');}
-  closest(s){return this.kind==='nav'||this.kind==='fab'?nav:null;}
+  // Minimal selector semantics for this fixture, not aliases for production selectors.
+  // A selector list is OR; querySelector respects descendants and document order.
+  querySelector(s){return [nav,wrapper,fab,ordinary,tail?main:null,outside].find(node=>node&&node!==this&&this.contains(node)&&node.matches(s))??null;}
+  matches(s){return s.split(',').some(part=>{
+   const selector=part.trim(),button=['fab','premium-fab','ordinary-button','outside-fab'].includes(this.kind);
+   switch(selector){
+    case 'nav.vault-bottom-nav':return this.kind==='nav';
+    case 'button.absolute':return this.kind==='fab'||this.kind==='outside-fab';
+    case '[data-vault-home-compose] > button':return button&&this.parentElement?.kind==='compose';
+    case 'nav.vault-bottom-nav button':return button&&!!this.parentElement?.closest('nav.vault-bottom-nav');
+    case '.vault-adaptive-tail':return this.kind==='main'&&tail;
+    default:throw Error('Unmodelled selector: '+selector);
+   }
+  });}
+  closest(s){for(let node=this;node;node=node.parentElement)if(node.matches(s))return node;return null;}
   getBoundingClientRect(){return this.r;}
   getAttribute(k){return k==='style'?[...props].map(([a,b])=>`${a}: ${b};`).join(' '):attrs.get(k)??null;}
   setAttribute(k,v){attrs.set(k,v);}
@@ -49,6 +61,26 @@ function run(){
  events.get('transitionend')({target:nav,type:'transitionend',propertyName:'transform'});check('transition end',0);assert.equal(frames.size,0);
  rect(nav,656,720);rect(fab,600,656);mod(nav);check('restored',120);
  const removed=fab;fab=null;child(nav,[],[removed]);check('unmount fab',64);
+ // Ordinary nav controls and absolute buttons elsewhere are not footer FABs.
+ ordinary=new Element('ordinary-button',nav);rect(ordinary,420,464);
+ outside=new Element('outside-fab',main);rect(outside,300,344);
+ child(nav,[ordinary]);check('unrelated buttons excluded',64);
+ assert.equal(nav.querySelector('button.absolute'),null);
+ assert.equal(nav.querySelector('[data-vault-home-compose] > button'),null);
+ // Premium FAB lives inside its real wrapper and is not an absolute button.
+ wrapper=new Element('compose',nav);fab=new Element('premium-fab',wrapper);rect(fab,580,644);
+ assert.equal(nav.querySelector('button.absolute'),null);
+ assert.equal(nav.querySelector('[data-vault-home-compose] > button'),fab);
+ assert.equal(nav.querySelector('button.absolute, [data-vault-home-compose] > button'),fab);
+ child(nav,[wrapper]);check('mount premium wrapped fab',140);
+ wrapper.css.opacity='0';mod(wrapper);check('premium wrapper opacity zero',64);
+ wrapper.css.opacity='1';mod(wrapper);check('premium wrapper restored',140);
+ fab.css.visibility='hidden';mod(fab);check('premium visibility hidden',64);
+ fab.css.visibility='visible';mod(fab);check('premium visibility restored',140);
+ rect(fab,560,624);resize();check('premium ResizeObserver geometry',160);
+ events.get('transitionrun')({target:wrapper,type:'transitionrun',propertyName:'transform'});rect(fab,550,614);check('premium wrapper transition',170);assert(frames.size>0);
+ events.get('transitioncancel')({target:wrapper,type:'transitioncancel',propertyName:'transform'});check('premium transition cancellation',170);assert.equal(frames.size,0);
+ const premiumWrapper=wrapper;wrapper=null;fab=null;child(nav,[],[premiumWrapper]);check('unmount premium wrapper',64);
  height=400;rect(nav,336,400);listeners.get('vv-resize')();check('keyboard layout resize',64);
  const old=nav;nav=null;child(shell,[],[old]);check('unmount nav',0);
  tail=false;mod(main,'vault-adaptive-tail');check('legacy route fallback',0,false);
