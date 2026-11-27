@@ -1,8 +1,8 @@
-import {sendCompoundR6,finalizeCompoundR6} from '@/lib/sync/macro02-compound-r6';
 // hooks/useSyncQueue.ts
 
 "use client";
 
+import {sendCompoundR6,finalizeCompoundR6} from '@/lib/sync/macro02-compound-r6';
 import {syncTreatmentVisualIntentR03,finalizeTreatmentVisualIntentR03,TreatmentVisualConflictR03} from "@/lib/sync/treatment-visual-transport-r03";
 import {allowMacro02QueueR5} from "@/lib/dose-premium/cutover-active-queue-r5";
 import {readMacro02EnrollmentR5} from "@/lib/sync/macro02-enrollment-r5";
