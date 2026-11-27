@@ -570,16 +570,22 @@ const contracts = [
   "scripts/test-vault-macro02-atomic-transport.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-backup-snapshot.cjs", // Macro02: real consistent backup snapshot (Dexie mandatory)
   "scripts/test-vault-macro02-canonical-writer.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-cutover-projection.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
+  "scripts/test-vault-macro02-cutover-recovery.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
   "scripts/test-vault-macro02-dormant-authority.cjs", // Macro02 dormant release and original outbox evidence
   "scripts/test-vault-macro02-dose-premium-p1.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-dose-premium-p2.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-dose-premium-p3.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-enrollment-authority.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
   "scripts/test-vault-macro02-historical-consumers.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-home-review.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-host-integration.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-host-review-p4.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-ingress.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-metadata-intent.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
+  "scripts/test-vault-macro02-operational-recovery.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
   "scripts/test-vault-macro02-premium-closure.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-residual-transaction.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
   "scripts/test-vault-macro02-restore-staging.cjs", // isolated recovery and actual dormant Dexie writer
   "scripts/test-vault-macro02-stability-reconciliation.cjs", // Separate CAS and clinical ACK dispatch
   "scripts/test-vault-macro02-stock-chain-recovery.cjs", // Evolution Macro02: shared stock chain and recovery
