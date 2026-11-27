@@ -1,7 +1,8 @@
 // components/PendingDosesModal.tsx
 "use client";
 import {DormantPendingDosesModal} from "@/components/DormantPendingDosesModal";
-import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
+import {useMacro02ModeR5} from "@/hooks/useMacro02ModeR5";
+import {Macro02AuthorityHoldR5} from "@/components/saude/Macro02AuthorityHoldR5";
 import { nextPendingDose, pendingDoseCustomTime, pendingDoseKey } from "@/lib/pending-dose-review";
 import { summarizePendingTimeGroups } from "@/lib/health-intelligence/pending-dose-brief";
 import { DoseHistoricalUnitField } from "@/components/hoje/DoseHistoricalUnitField";
@@ -1152,7 +1153,9 @@ function PremiumPendingDosesModal({
 }
 
 export function PendingDosesModal(props:PendingDosesModalProps){
- if(MACRO02_PREMIUM_UI_ENABLED)return <PremiumPendingDosesModal {...props}/>;
+ const mode=useMacro02ModeR5(props.isOpen);if(!props.isOpen)return null;
+ if(mode==='hold')return <Macro02AuthorityHoldR5 onClose={props.onClose}/>;
+ if(mode==='premium')return <PremiumPendingDosesModal {...props}/>;
  return <DormantPendingDosesModal {...props} onResolveDose={async(dose,resolution)=>{
   const matches=props.doses.filter(x=>x.data===dose.data&&x.horario===dose.horario&&x.medicamentoId===dose.medicamentoId);
   if(matches.length!==1)throw Error('Ocorrência ambígua; confira novamente.');

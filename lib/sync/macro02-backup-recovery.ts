@@ -1,3 +1,5 @@
+import {activeReceiptRequestR7} from '@/lib/dose-premium/active-receipt-recovery-r7';
+import {readMacro02EnrollmentR5} from '@/lib/sync/macro02-enrollment-r5';
 import {inspectClinicalBackupEvidence} from '@/lib/dose-premium/clinical-backup-evidence';
 import {db} from '@/lib/db';
 import {supabase} from '@/lib/supabase/client';
@@ -8,13 +10,29 @@ import {classifyMacro02RecoveryFile,planMacro02QueueRecovery,readMacro02Recovery
 import {macro02Authority} from '@/lib/sync/macro02-authority';
 import type {PendingItem} from '@/lib/dose-premium/atomic-envelope';
 
+async function readRecoveryLedger(uid:string,pending:readonly PendingItem[]){
+ let invalid=false;const {data:{subscription}}=supabase.auth.onAuthStateChange(e=>{if(e!=='INITIAL_SESSION')invalid=true;});
+ const guard=()=>{if(invalid)throw Error('M02_R7_LEDGER_SESSION');};
+ try{
+  const bound=pending.some(q=>q.payload.macro02_epoch!==undefined||q.payload.macro02_compound!==undefined||q.payload.macro02_metadata!==undefined);
+  // Before migration only historical, unbound evidence may use the old read-only endpoint.
+  // Never downgrade an epoch-bound envelope when the active RPC is unavailable.
+  let e:Awaited<ReturnType<typeof readMacro02EnrollmentR5>>;
+  try{e=await readMacro02EnrollmentR5(uid);}catch(err){guard();if(bound)throw err;const old=await macro02Authority().readLedger(uid,pending);guard();return old;}
+  guard();if(e.state!=='premium'||!e.epoch){if(bound)throw Error('M02_R7_LEDGER_EPOCH');const old=await macro02Authority().readLedger(uid,pending);guard();return old;}
+  const ids=activeReceiptRequestR7(pending,uid,e.epoch);
+  const {data,error}=await supabase.rpc('vault_macro02_read_active_receipts_r7',{p_epoch:e.epoch,p_ids:ids});guard();
+  const after=await readMacro02EnrollmentR5(uid);guard();if(error||!data||after.state!=='premium'||after.epoch!==e.epoch||after.generation!==e.generation)throw Error('M02_R7_LEDGER_SESSION');
+  return data;
+ }finally{invalid=true;subscription.unsubscribe();}
+}
 export async function inspectMacro02Backup(file:File,uid:string){
  if(file.size>25*1024*1024)throw Error('Backup maior que 25 MB; preserve o arquivo para revisão assistida.');
  const auth=await getLocalFirstAuthUser();if(auth.error||auth.data.user?.id!==uid)throw Error('Conta não confirmada.');
  const value:unknown=JSON.parse(await file.text());
  const result=readMacro02RecoveryFile(value,uid);
  const outbox=inspectClinicalBackupEvidence(value,uid,result.pending);
- const ledger=await macro02Authority().readLedger(uid,result.pending);
+ const ledger=await readRecoveryLedger(uid,result.pending);
  const verified=classifyMacro02RecoveryFile(value,uid,ledger,ledger.fence_id);
  return {userId:uid,pendingCount:result.pendingCount,confirmed:verified.confirmed.length,needsReview:verified.pendingNeedsRemoteState.length,outbox,allowsMutation:false as const};
 }
@@ -56,7 +74,7 @@ export async function stageMacro02Backup(file:File,uid:string){
   const bytes=await file.arrayBuffer();const sourceSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
   const value:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
   const parsed=readMacro02RecoveryFile(value,uid);assertSession();
-  const ledger=await macro02Authority().readLedger(uid,parsed.pending);assertSession();
+  const ledger=await readRecoveryLedger(uid,parsed.pending);assertSession();
   const stageDB=new Macro02RecoveryStageDB();try{return await restoreMacro02StageEmpty(stageDB,{value,uid,ledger,fence:ledger.fence_id,sourceSha256,assertSession});}finally{stageDB.close();}
  });
 }

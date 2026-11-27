@@ -1,3 +1,4 @@
+import {classifyActiveBackupR7} from './active-receipt-recovery-r7';
 /** Receipt verification contract: classify the original operation IDs against a complete,
  * authenticated server ledger snapshot. No Dexie mutation or network replay.
  * An explicit absence is NOT an ACK and is NOT permission to overwrite local or
@@ -19,6 +20,9 @@ function canonical(v:unknown):string {
 }
 export function classifyMacro02RestoreIntents(backup:BackupState,remote:unknown,expectedFence:string){
  if(!expectedFence||!record(remote)||remote.account_id!==backup.userId||remote.fence_id!==expectedFence||remote.complete!==true||!Array.isArray(remote.rows))throw Error('MACRO02_LEDGER_UNVERIFIED');
+ const prefix=`m02-active-receipts-r7:${backup.userId}:`;
+ if(expectedFence.startsWith(prefix)){validateMacro02Backup(backup);return classifyActiveBackupR7(backup.userId,expectedFence.slice(prefix.length),backup.queue,remote);}
+ if(backup.queue.some(q=>q.payload.macro02_compound!==undefined||q.payload.macro02_metadata!==undefined))throw Error('MACRO02_COMPOUND_RECEIPT_REQUIRED');
  const exact=backup.queue.map(q=>{const intent=intentFromQueue(q);if(!intent||intent.stockBefore.user_id!==backup.userId)throw Error('MACRO02_RESTORE_QUEUE_SCOPE');return {q,intent};});
  const verified=validateMacro02Backup(backup);if(verified.pendingCount!==exact.length)throw Error('MACRO02_RESTORE_QUEUE_INCOMPLETE');
  const ids=new Map(exact.map(x=>[x.intent.operationId,x]));if(ids.size!==exact.length)throw Error('MACRO02_RESTORE_DUPLICATE');

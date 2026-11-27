@@ -1,7 +1,8 @@
 // components/saude/QuickDoseModal.tsx
 "use client";
 import {DormantQuickDoseModal} from "@/components/saude/DormantQuickDoseModal";
-import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
+import {useMacro02ModeR5} from "@/hooks/useMacro02ModeR5";
+import {Macro02AuthorityHoldR5} from "@/components/saude/Macro02AuthorityHoldR5";
 import {useRouter} from "next/navigation";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
@@ -2733,4 +2734,4 @@ export function PremiumQuickDoseModal({
   );
 }
 
-export function QuickDoseModal(props:QuickDoseModalProps){return MACRO02_PREMIUM_UI_ENABLED ? <PremiumQuickDoseModal {...props}/> : <DormantQuickDoseModal {...props}/>;}
+export function QuickDoseModal(props:QuickDoseModalProps){const mode=useMacro02ModeR5(props.isOpen);if(!props.isOpen)return null;return mode==='premium'?<PremiumQuickDoseModal {...props}/>:mode==='legacy'?<DormantQuickDoseModal {...props}/>:<Macro02AuthorityHoldR5 onClose={props.onClose}/>;}

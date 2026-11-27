@@ -10,7 +10,7 @@ import type {Macro02Writer} from './account-authority';
 export const MACRO02_RELEASE_AUTHORITY = 'dormant-legacy-r2-20261126212304' as const;
 // Deliberately not a mutable feature flag or user preference.
 export const MACRO02_PREMIUM_UI_ENABLED: boolean = false;
-export type ClinicalWriteAuthority={writer:Macro02Writer;epoch?:string;assertCurrent:()=>Promise<void>};
+export type ClinicalWriteAuthority={writer:Macro02Writer;epoch?:string;assertCurrent:()=>Promise<void>;assertFinalQueue?:()=>Promise<void>};
 export function createDormantReleaseAuthority(host:{
  localAccount:()=>Promise<string|null>;
  queue:()=>Promise<readonly PendingItem[]>;

@@ -15,7 +15,7 @@ export async function runMacro02ResidualTransaction<T>(host:{
  newId():string;
  now():string;
 },authority:ClinicalWriteAuthority,uid:string,run:()=>Promise<T>,preferred?:MetadataKind):Promise<T>{
- if(authority.writer==='legacy')return host.transaction(run);
+ if(authority.writer==='legacy')return host.transaction(async()=>{await authority.assertCurrent();const result=await run();await authority.assertCurrent();await authority.assertFinalQueue?.();return result;});
  const epoch=authority.epoch;
  if(!epoch||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(epoch))throw Error('M02_RESIDUAL_EPOCH_REQUIRED');
  return host.transaction(async()=>{
@@ -29,6 +29,6 @@ export async function runMacro02ResidualTransaction<T>(host:{
    const t=host.now();
    await host.addQueue({id:host.newId(),chave:residualMetadataQueueKey(batch.intent),table:anchor.table,operation:'update',payload:{id:row.id,user_id:uid,person_id:row.person_id,macro02_metadata:batch.intent},created_at:t,updated_at:t,retry_count:0,failed:false});
   }
-  await authority.assertCurrent();return result;
+  await authority.assertCurrent();await authority.assertFinalQueue?.();return result;
  });
 }

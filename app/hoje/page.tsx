@@ -1,7 +1,8 @@
 // app/hoje/page.tsx
 "use client";
 import DormantHojePage from "@/components/hoje/DormantHojePage";
-import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
+import {useMacro02ModeR5} from "@/hooks/useMacro02ModeR5";
+import {Macro02AuthorityHoldR5} from "@/components/saude/Macro02AuthorityHoldR5";
 import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
 import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
@@ -2249,4 +2250,4 @@ function PremiumHojePage() {
 }
 
 // The dormant release retains the certified legacy UX. Premium remains preserved for the gated cutover.
-export default function HojePage(){return MACRO02_PREMIUM_UI_ENABLED ? <PremiumHojePage/> : <DormantHojePage/>;}
+export default function HojePage(){const mode=useMacro02ModeR5();return mode==='premium'?<PremiumHojePage/>:mode==='legacy'?<DormantHojePage/>:<Macro02AuthorityHoldR5/>;}

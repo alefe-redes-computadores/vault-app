@@ -1,4 +1,5 @@
-import {intentFromQueue,type PendingItem} from './atomic-envelope';
+import {type PendingItem} from './atomic-envelope';
+import {recoveryOperationR7} from './active-receipt-recovery-r7';
 import {countMacro02Pending} from './authority-session';
 const record=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==='object'&&!Array.isArray(x);
 export const MACRO02_CLINICAL_BACKUP_TABLES=['doseLogs','medicamentos','renovacoes','retiradas','persons','documents','medicos','farmacias','hospitais','locais','tratamentos','cids','fornecimentos','fornecimento_ciclos','fornecimento_itens','fornecimento_documentos','a1_treatment_phases','a1_prescription_links','a1_supply_locations'] as const;
@@ -16,9 +17,10 @@ export function inspectClinicalBackupEvidence(value:unknown,uid:string,expected:
   if(!record(row)||typeof row.table!=='string'||!(MACRO02_CLINICAL_BACKUP_TABLES as readonly string[]).includes(row.table)||typeof row.chave!=='string'||!row.chave||seen.has(row.chave)||typeof row.id!=='string'||!row.id||ids.has(row.id)||!['add','update','delete'].includes(String(row.operation))||!record(row.payload)||row.payload.user_id!==uid)throw Error('MACRO02_BACKUP_OUTBOX_SCOPE');
   seen.add(row.chave);ids.add(row.id);rows.push({table:row.table,chave:row.chave,operation:String(row.operation),payload:row.payload});
  }
- const premium=rows.filter(q=>q.payload.macro02_atomic!==undefined);
+ const premium=rows.filter(q=>q.payload.macro02_atomic!==undefined||q.payload.macro02_metadata!==undefined||q.payload.macro02_compound!==undefined);
  // Exact payload (including operation IDs) must be the same as the already validated section.
- if(premium.length!==expected.length||expected.some(q=>!premium.some(r=>r.chave===q.chave&&r.table===q.table&&r.operation===q.operation&&JSON.stringify(r.payload)===JSON.stringify(q.payload)&&!!intentFromQueue(r))))throw Error('MACRO02_BACKUP_OUTBOX_DIVERGENCE');
- const c=countMacro02Pending(rows,uid);
+ if(premium.length!==expected.length||expected.some(q=>!premium.some(r=>r.chave===q.chave&&r.table===q.table&&r.operation===q.operation&&JSON.stringify(r.payload)===JSON.stringify(q.payload)&&!!recoveryOperationR7(r,uid))))throw Error('MACRO02_BACKUP_OUTBOX_DIVERGENCE');
+ const ordinary=rows.filter(q=>!premium.includes(q));
+ const c=premium.some(q=>q.payload.macro02_compound!==undefined||q.payload.macro02_metadata!==undefined)?{...countMacro02Pending(ordinary,uid),premium:premium.length}:countMacro02Pending(rows,uid);
  return {complete:true,scopeComplete:omitted===0,omittedUnowned:omitted===undefined?null:omitted,...c,dependency:rows.length-c.legacy-c.premium-c.unclassified,allowsMutation:false as const};
 }

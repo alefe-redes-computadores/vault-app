@@ -81,12 +81,18 @@ function canonicalInstant(value:unknown){
 function normalizeRow(table:CutoverTable,row:Row,origin:'local'|'remote'){
  if(!plain(row))return fail('ROW');
  const out={...row};const optional=new Set(nullable[table].split(',').filter(Boolean));
+ // Stability CAS R04 adds precisely one nullable text column. Accept both
+ // catalog versions while preserving non-null values; any other drift fails.
+ if(table==='tratamentos'){optional.add('visual_icon_expanded');if(out.visual_icon_expanded!==undefined&&out.visual_icon_expanded!==null&&typeof out.visual_icon_expanded!=='string')return fail('VISUAL_ICON_EXPANDED_TYPE');}
  // Only an explicitly nullable column can be serialized as absent locally.
  // Null on a scope dependency still fails in the existing dependency gate.
  if(origin==='remote'){
-  if(Object.keys(out).sort().join(',')!==MACRO02_R3_REMOTE_COLUMNS[table].split(',').sort().join(','))return fail('REMOTE_COLUMNS_'+table);
+  const expected=MACRO02_R3_REMOTE_COLUMNS[table].split(',');
+  if(table==='tratamentos'&&Object.prototype.hasOwnProperty.call(out,'visual_icon_expanded'))expected.push('visual_icon_expanded');
+  if(Object.keys(out).sort().join(',')!==expected.sort().join(','))return fail('REMOTE_COLUMNS_'+table);
   for(const field of Object.keys(out))if(out[field]===undefined||out[field]===null&&!optional.has(field)&&!(table==='persons'&&field==='is_default'))return fail('REMOTE_FIELD_'+table);
  }else for(const field of optional)if(out[field]===undefined)out[field]=null;
+ if(table==='tratamentos'&&out.visual_icon_expanded===undefined)out.visual_icon_expanded=null;
  if(table==='persons'&&origin==='remote'&&out.is_default===null)out.is_default=false; // exact ordinary pull semantics
  // No inference of a historical unit, quantity, stock cycle or receipt.
  // A missing non-null macro02 flag on a legacy local row means false only

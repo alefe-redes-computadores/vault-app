@@ -1,3 +1,7 @@
+import {captureCompoundLocalR6,stageCompoundR6} from '@/lib/sync/macro02-compound-r6';
+import {makeMacro02CompoundR6} from '@/lib/dose-premium/cutover-compound-r6';
+import {metadataPendingProtection} from '@/lib/dose-premium/cutover-metadata-pending';
+import {requireMacro02AtomicEpoch} from '@/lib/dose-premium/cutover-active-queue-r5';
 import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {atomicQueueKey,nextAtomicPosition,parseStockAtomicIntent} from '@/lib/dose-premium/atomic-envelope';
@@ -909,7 +913,7 @@ export const renovacoesRepository = {
             "Quantidade"
           );
 
-    if (somenteAquisicao && (typeof quantidade !== "number" || quantidade <= 0)) {
+    if (somenteAquisicao && quantidade != null && quantidade <= 0) {
       throw new Error("Informe a quantidade recebida, maior que zero, para registrar a aquisição.");
     }
 
@@ -1215,6 +1219,7 @@ export const renovacoesRepository = {
         db.retiradas,
         db.a1_prescription_links,
         db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
+        db.farmacias, db.locais,
         db.medicamentos,
         db.syncQueue,
       ],
@@ -1242,6 +1247,14 @@ export const renovacoesRepository = {
         const beforeStock=observedStockContext(currentMedication,scope),pendingQueue=await db.syncQueue.toArray();
         if(authority.writer==='legacy'&&(currentMedication.estoque_ciclo_id!=null||('macro02_stock_managed' in currentMedication&&currentMedication.macro02_stock_managed===true)))throw Error('Ciclo Premium existente; revisão necessária.');
         const premiumStock=movesStock&&authority.writer==='premium';
+        const isPremium=authority.writer==='premium';
+        if(!isPremium&&somenteAquisicao&&quantidade==null)throw Error('Informe a quantidade recebida, maior que zero, para registrar a aquisição.');
+        if(isPremium&&metadataPendingProtection(pendingQueue,userId).has('medicamentos',medicamentoId))throw Error('Aguarde a confirmação da intenção anterior deste medicamento.');
+        const unquantified=!somenteReceita&&!movesStock;
+        if(isPremium&&unquantified&&(quantidade!=null||!dataAquisicao||receiptWithdrawal||options.countedCurrentStock!==undefined||options.initialStockQuantity!==undefined))throw Error('Aquisição sem quantidade não pode confirmar retirada nem modificar estoque.');
+        const compoundBefore=isPremium?await captureCompoundLocalR6():null;
+        let linkedId:string|undefined;
+        let stockIntent:ReturnType<typeof parseStockAtomicIntent>|undefined;
         const position=premiumStock?nextAtomicPosition(pendingQueue,beforeStock,currentMedication.updated_at??null):null;
         if(premiumStock&&receiptWithdrawal&&pendingQueue.some(q=>q.table==='retiradas'&&q.payload.id===receiptWithdrawal.id))throw Error('A retirada anterior aguarda sincronização. Preserve a fila antes de confirmar recebimento.');
         if(premiumStock&&pendingQueue.some(q=>q.payload.user_id===userId&&q.payload.person_id===personId&&q.payload.macro02_atomic===undefined&&(q.table==='medicamentos'&&q.payload.id===medicamentoId||q.table==='doseLogs'&&q.payload.medicamento_id===medicamentoId)))throw Error('Alteração anterior de estoque aguarda sincronização.');
@@ -1279,7 +1292,7 @@ export const renovacoesRepository = {
         if (somenteReceita && options.previousPrescriptionId) {
           // Reuse the ONE A1 relation authority in the same Dexie transaction.
           // No new prescription ledger, no extra stock movement.
-          await clinicalA1Repository.linkPrescriptions({
+          linkedId=await clinicalA1Repository.linkPrescriptions({
             userId,personId,medicationId:medicamentoId,
             previousId:options.previousPrescriptionId,currentId:id,
             tipo:options.prescriptionLinkType||"renovacao",
@@ -1291,7 +1304,7 @@ export const renovacoesRepository = {
         const cycleChanges=premiumStock&&typeof quantidade==='number'&&quantidade>0&&dataAquisicao
           ? {estoque_ciclo_id:cycleAfterAcquisition(currentMedication,{added:quantidade,countedCurrentStock:options.countedCurrentStock,initialStockQuantity:options.initialStockQuantity,countProof:options.expectedStockCycleSnapshot},()=>crypto.randomUUID())}
           : {};
-        await db.medicamentos.put({...currentMedication,...medicationChanges,...cycleChanges});
+        await db.medicamentos.put({...currentMedication,...medicationChanges,...cycleChanges,...(premiumStock?{macro02_stock_managed:true}:{})});
 
         const medicamentoPersistido =
           await db.medicamentos.get(
@@ -1310,11 +1323,8 @@ export const renovacoesRepository = {
 
         const completed=receiptWithdrawal?{...receiptWithdrawal,status:"realizada" as const,renovacao_realizada_id:id,quantidade_retirada:quantidade,realizada_em:receiptWithdrawal.realizada_em || timestamp,updated_at:timestamp,synced:false}:null;
         if(premiumStock&&position){
-          const atomic=parseStockAtomicIntent({version:2,mode:'acquisition',operationId:crypto.randomUUID(),previous:null,after:null,stockBefore:beforeStock,stockAfter:observedStockContext(medicamentoPersistido,scope),stockRevisionBefore:currentMedication.updated_at??null,stockRevisionAfter:medicamentoPersistido.updated_at??null,stockReferenceAfter:medicamentoPersistido.estoque_data_referencia??null,beforeCount:captureStockCount(currentMedication),afterCount:captureStockCount(medicamentoPersistido),acquisition:acquisitionWire(cleanRenovacao),medicationPatch:acquisitionMedicationPatch(currentMedication,medicamentoPersistido),withdrawalId:options.retiradaId??null,withdrawalBefore:receiptWithdrawal?withdrawalReceiptWire(receiptWithdrawal):null,withdrawalAfter:completed?withdrawalReceiptWire(completed):null,countedCurrentStock:options.countedCurrentStock??null,initialStockQuantity:options.initialStockQuantity??null,...position});
-          await enfileirarOperacao('renovacoes','update',{...cleanRenovacao,macro02_atomic:atomic},{dispatchSync:false});
-          const queued=await db.syncQueue.where('chave').equals(atomicQueueKey(atomic)).first();
-          if(!queued||JSON.stringify(queued.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Aquisição sem confirmação integral na fila; operação cancelada.');
-        }else{
+          stockIntent=parseStockAtomicIntent({version:2,mode:'acquisition',operationId:crypto.randomUUID(),previous:null,after:null,stockBefore:beforeStock,stockAfter:observedStockContext(medicamentoPersistido,scope),stockRevisionBefore:currentMedication.updated_at??null,stockRevisionAfter:medicamentoPersistido.updated_at??null,stockReferenceAfter:medicamentoPersistido.estoque_data_referencia??null,beforeCount:captureStockCount(currentMedication),afterCount:captureStockCount(medicamentoPersistido),acquisition:acquisitionWire(cleanRenovacao),medicationPatch:acquisitionMedicationPatch(currentMedication,medicamentoPersistido),withdrawalId:options.retiradaId??null,withdrawalBefore:receiptWithdrawal?withdrawalReceiptWire(receiptWithdrawal):null,withdrawalAfter:completed?withdrawalReceiptWire(completed):null,countedCurrentStock:options.countedCurrentStock??null,initialStockQuantity:options.initialStockQuantity??null,...position});
+        }else if(!isPremium){
           await enfileirarOperacao("renovacoes","add",cleanRenovacao,{dispatchSync:false});
           await enfileirarOperacao("medicamentos","update",medicamentoPersistido,{dispatchSync:false});
         }
@@ -1332,8 +1342,22 @@ export const renovacoesRepository = {
             {preserveAtomicMedication:premiumStock}
           );
         }
+        if(isPremium){
+          if(!compoundBefore)throw Error('M02_COMPOUND_LOCAL_PREIMAGE');
+          const afterMedication=await db.medicamentos.get(medicamentoId);if(!afterMedication)throw Error('M02_COMPOUND_MEDICATION');
+          const after=await captureCompoundLocalR6();
+          const priorPlans=compoundBefore.rows.retiradas.filter(r=>r.renovacao_origem_id===id);
+          const nextPlans=after.rows.retiradas.filter(r=>r.renovacao_origem_id===id);
+          if(priorPlans.length>1||nextPlans.length>1)throw Error('M02_COMPOUND_PLAN_DUPLICATE');
+          const plannedBefore=priorPlans[0]??null,plannedAfter=nextPlans[0]??null;
+          const changedPlan=(plannedBefore||plannedAfter)&&JSON.stringify(plannedBefore)!==JSON.stringify(plannedAfter)?{before:plannedBefore,after:plannedAfter}:undefined;
+          const link=linkedId?await db.a1_prescription_links.get(linkedId):undefined;
+          if(linkedId&&!link)throw Error('M02_COMPOUND_LINK_MISSING');
+          const compound=makeMacro02CompoundR6({kind:premiumStock?'acquisition':unquantified?'acquisition-unquantified':'prescription',uid:userId,epoch:requireMacro02AtomicEpoch(authority.epoch),before:{...currentMedication},after:{...afterMedication},stock:stockIntent,rx:somenteReceita||unquantified?{...cleanRenovacao}:undefined,withdrawal:changedPlan,link:link?{...link}:undefined,newId:()=>crypto.randomUUID()});
+          await stageCompoundR6(compound,compoundBefore,authority);
+        }
         };
-        await write();await authority.assertCurrent();
+        await write();await authority.assertCurrent();await authority.assertFinalQueue?.();
       }
     );
 

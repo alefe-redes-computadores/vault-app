@@ -1578,6 +1578,8 @@ class VaultDB extends Dexie {
       });
     });
     this.version(59).stores({...VITAL_STORES, vital_drafts:DRAFT_STORE, vital_sync_ack:VITAL_ACK_STORE});
+    // Local-only proof of a recovered/verified device; never part of a cloud push.
+    this.version(60).stores({macro02_device_enrollment:'account_id'});
 
   }
 }

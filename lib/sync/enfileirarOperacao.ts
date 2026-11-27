@@ -258,6 +258,7 @@ export async function enfileirarOperacao(
     );
   }
 
+  if(payloadNovo.macro02_compound!==undefined)throw Error('Envelope composto exige staging transacional R6.');
   const atomic=payloadNovo.macro02_atomic===undefined?null:parseMedicationIntent(payloadNovo.macro02_atomic);
   const chave=atomic?atomicQueueKey(atomic):`${tabela}:${id}`;
   if(atomic)intentFromQueue({table:tabela,operation:operacao,chave,payload:payloadNovo});
@@ -318,6 +319,7 @@ export async function enfileirarOperacao(
     const owner=payloadNovo.user_id;
     if(typeof owner!=='string'||!owner||existente.payload?.user_id!==owner)throw Error('Fila clínica com identidade conflitante; nenhuma intenção foi mesclada.');
   }
+  if(existente.payload.macro02_compound!==undefined)throw Error('Envelope composto existente não pode ser mesclado.');
   if(atomic)throw Error("Intenção acoplada imutável já existe; não será mesclada.");
   const operacaoAnterior =
     existente.operation as

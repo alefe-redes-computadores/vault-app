@@ -570,6 +570,7 @@ const contracts = [
   "scripts/test-vault-macro02-atomic-transport.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
   "scripts/test-vault-macro02-backup-snapshot.cjs", // Macro02: real consistent backup snapshot (Dexie mandatory)
   "scripts/test-vault-macro02-canonical-writer.cjs", // Evolution Macro02: cumulative clinical and UX vaccine
+  "scripts/test-vault-macro02-compound-r6.cjs", // Macro02 compound clinical intents
   "scripts/test-vault-macro02-cutover-projection.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
   "scripts/test-vault-macro02-cutover-recovery.cjs", // Macro02 R3: certified recovery / authority / clinical metadata contracts
   "scripts/test-vault-macro02-dormant-authority.cjs", // Macro02 dormant release and original outbox evidence

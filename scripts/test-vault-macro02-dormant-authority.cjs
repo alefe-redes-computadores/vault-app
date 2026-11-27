@@ -19,9 +19,9 @@ try{
  const ts=require('typescript');
  for(const [rel,exported,legacy] of [['app/hoje/page.tsx','HojePage','DormantHojePage'],['components/saude/QuickDoseModal.tsx','QuickDoseModal','DormantQuickDoseModal'],['components/saude/SOSDoseModal.tsx','SOSDoseModal','DormantSOSDoseModal'],['components/PendingDosesModal.tsx','PendingDosesModal','DormantPendingDosesModal'],['app/saude/medicamentos/revisao-retroativa/page.tsx','RetroBatchReviewPage','DormantRetroBatchReviewPage']]){
   const text=fs.readFileSync(path.join(root,rel),'utf8');const ast=ts.createSourceFile(rel,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);assert.equal(ast.parseDiagnostics.length,0,rel);
-  assert(text.includes('MACRO02_PREMIUM_UI_ENABLED'),rel);assert(text.includes('<'+legacy),rel);assert(text.includes('Premium'),rel);
+  assert(text.includes('useMacro02ModeR5'),rel);assert(text.includes('<'+legacy),rel);assert(text.includes('Premium'),rel);assert(text.includes("mode==='premium'"),rel);assert(text.includes('Macro02AuthorityHoldR5'),rel);
  }
  assert.equal(require(path.join(out,'dormant-release-authority.js')).MACRO02_PREMIUM_UI_ENABLED,false);
- console.log('MACRO02_DORMANT_UI_SELECTOR_STATIC=5 PASS (not browser QA)');
+ console.log('MACRO02_ACCOUNT_UI_SELECTOR_STATIC=5 PASS (not browser QA)');
  console.log('MACRO02_DORMANT_AUTHORITY_GATE_OK');
 }finally{fs.rmSync(out,{recursive:true,force:true});}

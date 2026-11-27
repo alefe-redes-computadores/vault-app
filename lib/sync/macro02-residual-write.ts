@@ -11,7 +11,7 @@ import type {MetadataKind} from '@/lib/dose-premium/cutover-metadata-intent';
  * clinical stores and their ordinary enqueues are captured together. Only
  * validated immutable metadata may replace those new queue entries. */
 export function runMacro02ResidualWrite<T>(authority:ClinicalWriteAuthority,uid:string,tables:Table[],run:()=>Promise<T>,preferred?:MetadataKind):Promise<T>{
- if(authority.writer==='legacy')return db.transaction('rw',tables,run);
+ if(authority.writer==='legacy')return db.transaction('rw',tables,async()=>{await authority.assertCurrent();const result=await run();await authority.assertCurrent();await authority.assertFinalQueue?.();return result;});
  const protectedNames=new Set<string>([...RESIDUAL_TABLES,'syncQueue']);
  const dependencies=tables.filter(t=>!protectedNames.has(t.name));
  const all=[...new Map([...tables,...RESIDUAL_TABLES.map(t=>db.table(t)),db.syncQueue].map(t=>[t.name,t])).values()];

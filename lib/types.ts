@@ -868,6 +868,8 @@ export interface Medicamento {
 
   /** Macro02: only a confirmed stock count may establish a new cycle. */
   estoque_ciclo_id?: string | null;
+  /** Server marks clinical stock as managed; never a user-editable field. */
+  macro02_stock_managed?: boolean;
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
@@ -916,6 +918,7 @@ export type CreateMedicamentoInput = Omit<
   | "user_id"
   | "person_id"
   | "estoque_ciclo_id"
+  | "macro02_stock_managed"
   | "data_receita"
   | "proxima_renovacao"
   | "created_at"
@@ -986,6 +989,7 @@ type UpdateMedicamentoBase = Partial<
     | "person_id"
     | "created_at"
     | "estoque_ciclo_id"
+    | "macro02_stock_managed"
     | keyof NullableMedicamentoFields
   >
 >;

@@ -5,7 +5,7 @@ import {explicitStockUnit} from './stock-cycle';
 
 type Row=Record<string,unknown>;
 export type MetadataTable='doseLogs'|'medicamentos'|'renovacoes'|'retiradas';
-export type MetadataKind='planned-dose'|'medication-create'|'medication-discontinue'|'medication-metadata'|'prescription-create'|'prescription-edit'|'prescription-delete'|'withdrawal-plan'|'withdrawal-annotate'|'withdrawal-link-receipt';
+export type MetadataKind='planned-dose'|'medication-create'|'medication-discontinue'|'medication-metadata'|'acquisition-unquantified'|'prescription-create'|'prescription-edit'|'prescription-delete'|'withdrawal-plan'|'withdrawal-annotate'|'withdrawal-link-receipt';
 export type MetadataChange=Readonly<{table:MetadataTable;kind:MetadataKind;before:Row|null;after:Row|null;receipt?:Row}>;
 export type MetadataIntent=Readonly<{format:'macro02-metadata-r3';account_id:string;epoch:string;operation_id:string;changes:readonly MetadataChange[]}>;
 const uuid=(x:unknown):x is string=>typeof x==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(x);
@@ -56,6 +56,8 @@ export function validateMacro02MetadataChange(change:MetadataChange,uid:string):
    if(table!=='medicamentos'||!a||!b||b.status!=='descontinuado'||!validDay(b.data_descontinuacao)||typeof b.motivo_descontinuacao!=='string'||!b.motivo_descontinuacao.trim())fail('DISCONTINUE');only(a,b,discontinuation);return;
   case 'medication-metadata':
    if(table!=='medicamentos'||!a||!b)fail('MED_METADATA');only(a,b,medicationFields);return;
+  case 'acquisition-unquantified':
+   if(table!=='renovacoes'||a||!b||b.quantidade!==null||!validDay(b.data)||!validDay(b.data_aquisicao)||!['comprado','sus','gratuito'].includes(String(b.tipo_aquisicao))||b.preco!==null&&(typeof b.preco!=='number'||!Number.isFinite(b.preco)||b.preco<0))fail('ACQUISITION_UNKNOWN_QUANTITY');return;
   case 'prescription-create':
    if(table!=='renovacoes'||a||!b||!purePrescription(b)||!validDay(b.data))fail('PRESCRIPTION_CREATE');return;
   case 'prescription-edit':

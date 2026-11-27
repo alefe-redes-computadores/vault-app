@@ -47,7 +47,7 @@ function assertRouteScope(changes:readonly MetadataChange[],preferred:MetadataKi
   'prescription-edit':['prescription-edit','withdrawal-plan','medication-metadata'],
   'prescription-delete':['prescription-delete','withdrawal-plan'],
   'withdrawal-plan':['withdrawal-plan','withdrawal-annotate','medication-metadata'],
-  'withdrawal-annotate':['withdrawal-annotate'],'withdrawal-link-receipt':['withdrawal-link-receipt'],
+  'withdrawal-annotate':['withdrawal-annotate'],'withdrawal-link-receipt':['withdrawal-link-receipt'],'acquisition-unquantified':['acquisition-unquantified'],
  };
  if(changes.some(c=>!allowed[preferred].includes(c.kind)))fail('ROUTE_SCOPE');
  const primary=changes.filter(c=>c.kind===preferred||preferred==='withdrawal-plan'&&c.kind==='withdrawal-annotate');

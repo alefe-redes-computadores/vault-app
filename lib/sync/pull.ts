@@ -353,7 +353,7 @@ async function performPullAllData(userId: string): Promise<void> {
           const freshMedicationPending=remoteTable==='medicamentos'?new Set((await db.syncQueue.filter(item=>item.payload.user_id===userId&&(item.table==='medicamentos'||item.payload.macro02_atomic!==undefined)).toArray()).map(item=>item.table==='medicamentos'?item.payload.id:item.payload.medicamento_id).filter((id):id is string=>typeof id==='string')):null;
 
           const freshWithdrawalPending=remoteTable==='retiradas'?new Set((await db.syncQueue.filter(item=>item.payload.user_id===userId&&item.payload.macro02_atomic!==undefined).toArray()).map(item=>(item.payload.macro02_atomic as {withdrawalId?:string})?.withdrawalId).filter((id):id is string=>typeof id==='string')):null;
-          const residualTable=RESIDUAL_TABLES.includes(queueTable as MetadataTable)?queueTable as MetadataTable:null;
+          const residualTable=queueTable==='a1_prescription_links'?queueTable:RESIDUAL_TABLES.includes(queueTable as MetadataTable)?queueTable as MetadataTable:null;
           const metadataPending=residualTable?metadataPendingProtection(await db.syncQueue.toArray(),userId):null;
           if(metadataPending?.ambiguous){tableOk=false;criticalPullErrors.push('Intenção clínica R3 não classificada; revisão necessária.');}
           const rowIds = rows.map(
@@ -450,6 +450,7 @@ async function performPullAllData(userId: string): Promise<void> {
           else if(remoteTable==='medicamentos')await db.transaction("rw",[db.medicamentos,db.syncQueue],mergeRows);
           else if(remoteTable==='retiradas')await db.transaction('rw',[db.retiradas,db.syncQueue],mergeRows);
           else if(remoteTable==='renovacoes')await db.transaction('rw',[db.renovacoes,db.syncQueue],mergeRows);
+          else if(remoteTable==='a1_prescription_links')await db.transaction('rw',[db.a1_prescription_links,db.syncQueue],mergeRows);
           else await mergeRows();
         } catch (
           error: unknown
