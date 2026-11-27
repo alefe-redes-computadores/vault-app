@@ -1,0 +1,117 @@
+name: VAULT Macro03 R12 — cumulative integration, global gate and canonical recovery
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r12']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  global-gate:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r12'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        id: deps
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Full TypeScript and real consumer projection
+        run: |
+          cd "$EVO03_LAB/candidate"
+          node_modules/.bin/tsc --noEmit
+          node "$EVO03_LAB/tools/test-consumer-host.cjs"
+      - name: Cumulative fixtures
+        if: always() && steps.deps.outcome == 'success'
+        run: |
+          export PATH="$EVO03_LAB/candidate/node_modules/.bin:$PATH"
+          bash "$EVO03_LAB/tools/validate-fixture.sh"
+      - name: Resolver controls and historical tests via global preload
+        if: always() && steps.deps.outcome == 'success'
+        run: |
+          NODE_PATH="$EVO03_LAB/candidate/node_modules" python3 "$EVO03_LAB/tests/test_historical_alias_resolver.py"
+          python3 "$EVO03_LAB/tools/ci-r12-historical.py"
+      - name: Entire canonical release gate, collect all failures
+        if: always() && steps.deps.outcome == 'success'
+        run: bash "$EVO03_LAB/tools/ci-r12-global-gate.sh"
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r12-global-gate
+          path: |
+            ${{ runner.temp }}/evo03-r12-host/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+  canonical-recovery:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r12'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        id: deps
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Isolated visual driver
+        run: |
+          npm install --prefix "$RUNNER_TEMP/evo03-ui" --no-save --no-audit --no-fund --ignore-scripts playwright@1.55.0 esbuild@0.25.5
+          "$RUNNER_TEMP/evo03-ui/node_modules/.bin/playwright" install chromium --with-deps
+      - name: Canonical V60 F2 journeys and encrypted restore in second browser context
+        run: PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/playwright" ESBUILD_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/esbuild" node "$EVO03_LAB/tools/ci-r12-canonical-ui.cjs"
+      - name: Real contextual consumers at four mobile widths
+        if: always() && steps.deps.outcome == 'success'
+        run: PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/playwright" ESBUILD_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/esbuild" node "$EVO03_LAB/tools/ci-r12-consumer-ui.cjs"
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r12-canonical-recovery
+          path: |
+            ${{ runner.temp }}/evo03-premium-f2-evidence/
+            ${{ runner.temp }}/evo03-r12-consumer-evidence/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+  catalog-triage:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r12'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        id: deps
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Reproduce technical triage from pinned official candidates
+        run: bash "$EVO03_LAB/tools/ci-r12-catalog.sh"
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r12-catalog-triage
+          path: |
+            ${{ runner.temp }}/evo03-r12-catalog/
+          if-no-files-found: warn
+          retention-days: 30
