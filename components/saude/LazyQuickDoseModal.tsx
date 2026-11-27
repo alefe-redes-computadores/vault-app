@@ -1,20 +1,11 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useState, type ComponentProps } from "react";
+import { QuickDoseModal as DoseDialog } from "./QuickDoseModal";
 
-const DoseDialog = dynamic(
-  () => import("./QuickDoseModal").then(module => module.QuickDoseModal),
-  {
-    loading: () => (
-      <p role="status" className="fixed inset-x-4 top-16 z-50 mx-auto max-w-sm rounded-xl border border-surface-border bg-surface p-3 text-sm text-ink-primary shadow-lg">
-        Abrindo registro de dose…
-      </p>
-    ),
-  },
-);
-
-type Props = ComponentProps<typeof import("./QuickDoseModal").QuickDoseModal>;
+// Clinical offline contract: ship the dose dialog with the route's initial JS.
+// Keep deferred mounting so closed dialogs do not start clinical hooks.
+type Props = ComponentProps<typeof DoseDialog>;
 
 export function LazyQuickDoseModal(props: Props) {
   const [opened, setOpened] = useState(false);
