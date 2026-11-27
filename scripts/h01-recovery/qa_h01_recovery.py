@@ -58,7 +58,7 @@ def top_geometry(p):
 
 def inspect(c):
     g=h.geometry(c)
-    g.update(c.evaluate('''e=>{const rect=n=>{if(!n)return null;const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height,cx:x.x+x.width/2,cy:x.y+x.height/2}};const card=rect(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]'),title=e.querySelector('[data-vault-med360-entry="name"] > span:first-child > span:first-child'),meta=e.querySelector('[data-vault-h01-identity-meta]'),man=e.querySelector('[data-vault-h01-manufacturer]'),chip=e.querySelector('[data-vault-h01-chips]'),strip=e.querySelector('[data-vault-h01-operational-strip]'),panel=e.querySelector('[data-vault-r5-operational]'),base=e.querySelector('[data-vault-h01-final-base]'),action=e.querySelector('[data-vault-r4-main-action]'),done=e.querySelector('[data-vault-h01-completed]'),icon=e.querySelector('[data-vault-med-flow-icon]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-h01-manufacturer],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {rail:rail?.innerText||'',railRect:rect(rail),railTextRect:rect(rail?.querySelector('span[aria-hidden] > span')),regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',manufacturer:man?.innerText||'',factsAria:strip?.getAttribute('aria-label')||'',factsText:strip?.innerText||'',completed:done?.innerText||'',completedInteractive:!!done?.closest('button,a,[role="button"]'),axis:{title:rect(title),meta:rect(meta),chips:rect(chip),recipe:rect(rx),recipeIcon:rect(rx?.querySelector('svg')),panel:rect(panel),base:rect(base),action:rect(action),icon:rect(icon),facts:rect(strip)},outside:visible.filter(n=>{const a=rect(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
+    g.update(c.evaluate('''e=>{const rect=n=>{if(!n)return null;const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height,cx:x.x+x.width/2,cy:x.y+x.height/2}};const card=rect(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]'),title=e.querySelector('[data-vault-med360-entry="name"] > span:first-child > span:first-child'),meta=e.querySelector('[data-vault-h01-identity-meta]'),man=e.querySelector('[data-vault-h01-manufacturer]'),chip=e.querySelector('[data-vault-h01-chips]'),strip=e.querySelector('[data-vault-h01-operational-strip]'),panel=e.querySelector('[data-vault-r5-operational]'),base=e.querySelector('[data-vault-h01-final-base]'),action=e.querySelector('[data-vault-r4-main-action],[data-vault-h01-status-slot]'),done=e.querySelector('[data-vault-h01-completed]'),icon=e.querySelector('[data-vault-med-flow-icon]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-h01-manufacturer],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {viewportWidth:innerWidth,rail:rail?.innerText||'',railRect:rect(rail),railTextRect:rect(rail?.querySelector('span[aria-hidden] > span')),regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',manufacturer:man?.innerText||'',factsAria:strip?.getAttribute('aria-label')||'',factsText:strip?.innerText||'',completed:done?.innerText||'',completedInteractive:!!done?.closest('button,a,[role="button"],[data-vault-r4-main-action]'),axis:{title:rect(title),meta:rect(meta),chips:rect(chip),recipe:rect(rx),recipeIcon:rect(rx?.querySelector('svg')),panel:rect(panel),base:rect(base),action:rect(action),icon:rect(icon),facts:rect(strip)},outside:visible.filter(n=>{const a=rect(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
     return g
 
 def check(kind,g,mode,after):
@@ -103,13 +103,18 @@ def check(kind,g,mode,after):
     if g['cta']:
         require(g['cta']['height']>=43 and g['cta']['width']>=43,'CTA target below 44 '+kind)
         if mode=='compact':
-            require(abs(g['cta']['cy']-a['base']['cy'])<=3,'CTA misaligned compact '+kind)
+            require(abs(g['cta']['cy']-(a['facts']['cy'] if g['viewportWidth']<=375 else a['base']['cy']))<=3,'CTA misaligned compact '+kind)
             require(g['cta']['x']>=a['facts']['right']-1,'CTA overlap '+kind)
         elif g['cta']['x']>=a['facts']['right']-1:
             require(abs(g['cta']['cy']-a['facts']['cy'])<=3,'CTA misaligned comfort '+kind)
         else:require(g['cta']['y']>=a['facts']['bottom']-1,'CTA stacked overlap '+kind)
     if kind=='taken' and not g['cta']:require(g['completed']=='Tomada' and not g['completedInteractive'],'completed badge missing or fake action')
-    if g['completed']:require(kind=='taken' and not g['completedInteractive'],'unfactual or interactive completed badge '+kind)
+    if g['completed']:
+        require(kind=='taken' and not g['completedInteractive'],'unfactual or interactive completed badge '+kind)
+        require(a['action'] and a['action']['h']>=43 and a['action']['w']>=43,'completion geometry '+kind)
+        if mode=='compact':
+            require(abs(a['action']['cy']-(a['facts']['cy'] if g['viewportWidth']<=375 else a['base']['cy']))<=3,'completion misaligned '+kind)
+            require(a['action']['x']>=a['facts']['right']-1,'completion overlap '+kind)
     require(g['dose'] and g['stock'],'missing factual strip '+kind)
     require(g['stock']['x']>=g['dose']['right']-1 or g['stock']['y']>=g['dose']['bottom']-1,'dose/stock overlap '+kind)
 
@@ -152,8 +157,9 @@ def main():
                                     try:check(kind,g,mode,after)
                                     except AssertionError as exc:report['failures'][f'{key}-{scale}-{mode}-{kind}']=str(exc);print('H01_CARD_FAIL',key,scale,mode,kind,str(exc),flush=True)
                                 if after and baseline['status']=='PASS':
-                                    b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());require(data['delta_first_y']<=0,'header grew versus original productive baseline')
-                                    if mode=='compact':require(data['delta_median']<0,'compact card median did not improve')
+                                    b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());
+                                    for ok,msg in [(data['delta_first_y']<=0,'header grew versus original productive baseline'),(mode!='compact' or data['delta_median']<0,'compact card median did not improve')]:
+                                        if not ok:report['failures'][f'{key}-{scale}-{mode}-{msg}']=msg;print('H01_GEOMETRY_FAIL',key,scale,mode,msg,flush=True)
                             if after:
                                 for kind in ('normal','ignored','review','long'):
                                     require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)

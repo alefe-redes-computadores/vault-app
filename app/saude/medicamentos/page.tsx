@@ -1453,7 +1453,7 @@ export default function MedicamentosListPage() {
           compactTight={compactCards}
           medicationFlow
           interactiveContent
-          className="min-h-0 vault-h01-final-card"
+          className="min-h-0"
           contentClassName="vault-h01-final-grid"
           showChevron={false}
           navigationLabel={`Ver detalhes de ${med.nome}`}
@@ -1595,11 +1595,13 @@ export default function MedicamentosListPage() {
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
                 </div>
-                {(actionLayoutM150P3.primary || completedBadgeH01) && <div aria-label="Ações do medicamento" data-vault-r4-main-action data-vault-h01-action-kind={actionLayoutM150P3.primary || "completed"} className={`relative flex min-h-11 min-w-0 items-center justify-end ${compactCards?"w-[72px]":"w-[88px]"} [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:px-1 [&>button]:text-center [&>button]:text-[11px]`}>
+                {actionLayoutM150P3.primary && <div aria-label="Ações do medicamento" data-vault-r4-main-action className={`relative flex min-h-11 min-w-0 items-center justify-end ${compactCards?"w-[72px]":"w-[88px]"} [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:px-1 [&>button]:text-center [&>button]:text-[11px]`} data-vault-h01-action-kind={actionLayoutM150P3.primary}>
                   {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
-                  {!actionLayoutM150P3.primary && <span data-vault-h01-completed role="status" className="flex min-h-11 w-full min-w-0 items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold text-emerald-300"><CheckCircle2 size={13} className="shrink-0" aria-hidden="true"/>Tomada</span>}
+                </div>}
+                {completedBadgeH01 && <div data-vault-h01-status-slot className="relative flex min-h-11 min-w-0 items-center justify-end">
+                  <span data-vault-h01-completed role="status" className="flex min-h-11 w-full min-w-0 items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold text-emerald-300"><CheckCircle2 size={13} className="shrink-0" aria-hidden="true"/>Tomada</span>
                 </div>}
               </div>
               </div>

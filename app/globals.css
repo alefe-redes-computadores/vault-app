@@ -582,64 +582,86 @@ html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header)
 
 /* H01-FINAL-AXIS: single fixed icon column, same textual origin in both densities.
  * Scope strictly to the medications route. No changes to ListCard elsewhere. */
-.vault-h01-medications-route .vault-h01-final-card > div:nth-child(2) {
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) > div:nth-child(2) {
   padding-inline-start: 14px; padding-inline-end: 10px;
 }
-.vault-h01-medications-route .vault-h01-final-card:has(> div:first-child > button) > div:nth-child(2) {
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))):has(> div:first-child > button) > div:nth-child(2) {
   padding-inline-start: 40px;
 }
-.vault-h01-medications-route .vault-h01-final-card:has([data-vault-executive-density="compact"]) > div:nth-child(2) { padding-block: 6px; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))):has([data-vault-executive-density="compact"]) > div:nth-child(2) { padding-block: 6px; }
 .vault-h01-medications-route .vault-h01-final-grid { grid-template-columns: 36px minmax(0,1fr); gap: 0 8px; }
 .vault-h01-medications-route .vault-h01-final-grid:has([data-vault-executive-density="comfort"]) { grid-template-columns: 40px minmax(0,1fr); }
 .vault-h01-medications-route .vault-h01-final-grid > [data-vault-med-flow-icon="true"] { position: relative; grid-column: 1; grid-row: 1; inset: auto; }
 .vault-h01-medications-route .vault-h01-final-grid > [data-vault-med-flow-body="true"] { grid-column: 2; grid-row: 1; min-width: 0; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-med360-header] { padding-inline-start: 0; gap: 0; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-v34x-title-hitbox] > button { padding-inline: 0; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-identity-meta] { overflow-wrap: anywhere; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-final-base] { display: flex; flex-direction: column; gap: 5px; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-context-stack] { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-regulatory] { display: flex; flex-wrap: wrap; gap: 2px 5px; align-items: center; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-chips],
-.vault-h01-medications-route .vault-h01-final-card [data-vault-med360-treatment-tags] { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 3px 4px; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-chips] button { max-width: 100%; overflow-wrap: anywhere; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-regulatory] > [data-vault-v34x-receita-cadastro] { flex-basis: 100%; align-items: center; gap: 4px; margin: 0; padding: 0; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-v34x-receita-cadastro] svg { margin-top: 0; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-med360-header] { padding-inline-start: 0; gap: 0; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-v34x-title-hitbox] > button { padding-inline: 0; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-identity-meta] { overflow-wrap: anywhere; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-final-base] { display: flex; flex-direction: column; gap: 5px; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-context-stack] { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-regulatory] { display: flex; flex-wrap: wrap; gap: 2px 5px; align-items: center; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-chips],
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-med360-treatment-tags] { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 3px 4px; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-chips] button { max-width: 100%; overflow-wrap: anywhere; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-regulatory] > [data-vault-v34x-receita-cadastro] { flex-basis: 100%; align-items: center; gap: 4px; margin: 0; padding: 0; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-v34x-receita-cadastro] svg { margin-top: 0; }
 /* COMPACT: a single integrated base, CTA spanning metadata and factual summary. */
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-final-base] { display: grid; grid-template-columns: minmax(0,1fr); gap: 2px 6px; align-items: center; }
-.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-final-base]:has([data-vault-r4-main-action]) { grid-template-columns: minmax(0,1fr) minmax(66px,auto); }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-final-base]:has(:is([data-vault-r4-main-action],[data-vault-h01-status-slot])) { grid-template-columns: minmax(0,1fr) minmax(66px,auto); }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-context-stack] { grid-column: 1; grid-row: 1; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips] button { min-height: 24px; padding: 2px 5px; border: 1px solid rgb(var(--border-surface) / .55); border-radius: 6px; background: rgb(var(--bg-surface) / .8); font-size: 11px; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips] button[data-vault-r5-context="tratamento"] { background: color-mix(in srgb, currentColor 9%, transparent); border-color: color-mix(in srgb, currentColor 25%, transparent); }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-regulatory]:not(:has(> :not(.sr-only))) { display: none; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r5-operational] { display: contents; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-facts] { grid-column: 1; grid-row: 2; min-width: 0; }
-.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r4-main-action] { grid-column: 2; grid-row: 1 / span 2; width: clamp(66px,18vw,76px); align-self: center; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] :is([data-vault-r4-main-action],[data-vault-h01-status-slot]) { grid-column: 2; grid-row: 1 / span 2; width: clamp(66px,18vw,76px); align-self: center; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-aligned-strip] { display: flex; flex-wrap: wrap; gap: 2px 4px; align-items: center; font-size: 11px; line-height: 1.2; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-aligned-strip] > span { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 3px; overflow-wrap: anywhere; }
 /* COMFORT: every container starts at the title axis, including recipe icon and panel. */
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-h01-context-stack],
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r5-operational] { margin-inline: 0; }
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r5-operational] { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: 6px; padding: 6px; border: 1px solid rgb(var(--border-surface) / .7); border-radius: 12px; background: rgb(var(--bg-void) / .55); }
-.vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r5-operational]:has([data-vault-r4-main-action]) { grid-template-columns: minmax(0,1fr) 72px; }
+.vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r5-operational]:has(:is([data-vault-r4-main-action],[data-vault-h01-status-slot])) { grid-template-columns: minmax(0,1fr) 72px; }
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-h01-aligned-strip] { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 5px; align-items: center; }
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-h01-aligned-strip] > span { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; gap: 2px; overflow-wrap: anywhere; }
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-h01-stock] { border-inline-start: 1px solid rgb(var(--border-surface) / .7); padding-inline-start: 4px; }
 .vault-h01-medications-route [data-vault-h01-fact-label], .vault-h01-medications-route [data-vault-h01-fact-unit] { font-size: 11px; line-height: 1.2; font-weight: 400; color: rgb(var(--text-muted, 156 163 175)); }
 .vault-h01-medications-route [data-vault-h01-fact-value] { font-size: 15px; line-height: 1.18; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r4-main-action] { width: 72px; }
+.vault-h01-medications-route [data-vault-executive-density="comfort"] :is([data-vault-r4-main-action],[data-vault-h01-status-slot]) { width: 72px; }
 /* At very small available widths the real content wraps instead of shrinking or clipping. */
 @media (max-width: 360px) {
-  .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r5-operational]:has([data-vault-r4-main-action]) { grid-template-columns: minmax(0,1fr); }
-  .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r4-main-action] { width: 100%; }
+  .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-r5-operational]:has(:is([data-vault-r4-main-action],[data-vault-h01-status-slot])) { grid-template-columns: minmax(0,1fr); }
+  .vault-h01-medications-route [data-vault-executive-density="comfort"] :is([data-vault-r4-main-action],[data-vault-h01-status-slot]) { width: 100%; }
 }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-action-kind="dose"] > button[data-vault-h01-dose-cta="scheduled"] { background: #74deb8; color: #10271f; border-color: #74deb8; font-weight: 700; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-action-kind="dose"] > button[data-vault-h01-dose-cta="sos"],
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-action-kind="stock"] > button,
-.vault-h01-medications-route .vault-h01-final-card [data-vault-r4-main-action] > button[data-vault-h01-restock] { background: #edc579; color: #292014; border-color: #edc579; font-weight: 700; }
-.vault-h01-medications-route .vault-h01-final-card [data-vault-h01-completed] { background: rgb(16 185 129 / .12); border: 1px solid rgb(52 211 153 / .28); }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-action-kind="dose"] > button[data-vault-h01-dose-cta="scheduled"] { background: #74deb8; color: #10271f; border-color: #74deb8; font-weight: 700; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-action-kind="dose"] > button[data-vault-h01-dose-cta="sos"],
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-action-kind="stock"] > button,
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-r4-main-action] > button[data-vault-h01-restock] { background: #edc579; color: #292014; border-color: #edc579; font-weight: 700; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) [data-vault-h01-completed] { background: rgb(16 185 129 / .12); border: 1px solid rgb(52 211 153 / .28); }
 
-.vault-h01-medications-route .vault-h01-final-card > div:first-child > button { padding-block: 3px; }
-.vault-h01-medications-route .vault-h01-final-card > div:first-child > button > span:first-child { max-height: none; }
-.vault-h01-medications-route .vault-h01-final-card > div:first-child > button > span:first-child > span { letter-spacing: .07em; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) > div:first-child > button { padding-block: 3px; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) > div:first-child > button > span:first-child { max-height: none; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))) > div:first-child > button > span:first-child > span { letter-spacing: .07em; }
 
-.vault-h01-medications-route .vault-h01-final-card:has([data-vault-executive-density="compact"]) [data-vault-med360-microbanner] { border-top: 0; }
+.vault-h01-medications-route :is(.vault-h01-final-card,:where(article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid))):has([data-vault-executive-density="compact"]) [data-vault-med360-microbanner] { border-top: 0; }
+
+/* H01-FINAL-R2: reclaim the compact context lane on narrow phones.
+ * Preserve the common text axis, the rail and the 44px interactive CTA. */
+.vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid) [data-vault-executive-density="compact"] [data-vault-med360-treatment-tags] { display: contents; }
+@media (max-width: 375px) {
+  .vault-h01-medications-route [data-vault-h01-list-content]:has([data-vault-executive-density="compact"]) { padding-inline: 6px; }
+  .vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid):has([data-vault-executive-density="compact"]) > div:nth-child(2) { padding-inline-end: 8px; padding-block: 5px; }
+  .vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid):has(> div:first-child > button):has([data-vault-executive-density="compact"]) > div:nth-child(2) { padding-inline-start: 38px; }
+  .vault-h01-medications-route .vault-h01-final-grid:has([data-vault-executive-density="compact"]) { grid-template-columns: 32px minmax(0,1fr); column-gap: 7px; }
+  .vault-h01-medications-route .vault-h01-final-grid:has([data-vault-executive-density="compact"]) > [data-vault-med-flow-icon="true"] { width: 32px; height: 32px; }
+  .vault-h01-medications-route .vault-h01-final-grid:has([data-vault-executive-density="compact"]) > [data-vault-med-flow-icon="true"] > span { width: 28px; height: 28px; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-final-base] { row-gap: 1px; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-context-stack] { grid-column: 1 / -1; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] :is([data-vault-r4-main-action],[data-vault-h01-status-slot]) { grid-row: 2; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips] { gap: 2px 4px; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips] button { padding: 2px 4px; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-aligned-strip] { column-gap: 3px; }
+}
+/* A little less vertical chrome in compact mode, without shrinking text or touch targets. */
+.vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid):has([data-vault-executive-density="compact"]) > div:nth-child(2) { padding-block: 5px; }
+.vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid) [data-vault-executive-density="compact"] [data-vault-h01-chips] { gap: 2px 4px; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r5-context="tratamento"] { text-align: start; letter-spacing: normal; }
