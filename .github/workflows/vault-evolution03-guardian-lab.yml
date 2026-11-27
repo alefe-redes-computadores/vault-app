@@ -1,0 +1,105 @@
+name: VAULT Macro03 R05 — Vital Premium and frozen catalogs
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r05']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  catalog-review:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r05'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: bash .vault-evo03-lab/prepare.sh
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - name: Review frozen R04 sources, no refetch or approval
+        run: |
+          python3 -m venv "$RUNNER_TEMP/catalog-venv"
+          source "$RUNNER_TEMP/catalog-venv/bin/activate"
+          python -m pip install --disable-pip-version-check openpyxl==3.1.5
+          npm install --prefix "$RUNNER_TEMP/evo03-catalog-tsc" --no-save --no-audit --no-fund --ignore-scripts typescript@5.5.4
+          export PATH="$RUNNER_TEMP/evo03-catalog-tsc/node_modules/.bin:$PATH"
+          bash "$EVO03_LAB/tools/ci-frozen-catalog-review.sh"
+      - name: Preserve public-source provenance (no clinical data)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-catalog-provenance-review-only
+          path: ${{ runner.temp }}/evo03-catalog-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  premium-visual:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r05'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Exact application dependencies and isolated visual driver
+        run: |
+          cd "$EVO03_LAB/candidate" && npm ci
+          npm install --prefix "$RUNNER_TEMP/evo03-ui" --no-save --no-audit --no-fund --ignore-scripts playwright@1.55.0 esbuild@0.25.5
+          "$RUNNER_TEMP/evo03-ui/node_modules/.bin/playwright" install chromium --with-deps
+      - name: Real components, synthetic read data, mobile widths
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/playwright" ESBUILD_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/esbuild" node "$EVO03_LAB/tools/ci-premium-ui.cjs"
+      - name: Preserve real component captures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r05-premium-visual
+          path: ${{ runner.temp }}/evo03-premium-ui-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  host-differential:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r05'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Current candidate full TypeScript and nutritional projection
+        run: |
+          cd "$EVO03_LAB/candidate"
+          node_modules/.bin/tsc --noEmit
+          node "$EVO03_LAB/tools/test-consumer-host.cjs"
+      - name: Cumulative nutrition fixtures (three timezones)
+        run: |
+          export PATH="$EVO03_LAB/candidate/node_modules/.bin:$PATH"
+          bash "$EVO03_LAB/tools/validate-fixture.sh"
+      - name: Original 15 failed contracts, paired parent and candidate
+        if: always()
+        run: python3 "$EVO03_LAB/tools/ci-host-differential.py"
+      - name: Preserve original failure signatures and differential evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r05-host-differential
+          path: |
+            ${{ runner.temp }}/evo03-host-differential/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
