@@ -1,0 +1,41 @@
+name: Macro02 ativacao — laboratorio direcionado (SEM PUBLICACAO)
+on:
+  push:
+    branches: ['vault-lab/macro02-activation-*']
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Isolar arvore de codigo e confirmar identidade
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^^)" = bd8c23bf16e76ea7f362f80c50e8bdeb0ae9a14b
+          git checkout --detach HEAD^
+          test "$(git rev-parse HEAD^{tree})" = 45c7024d06f195d5edcc1b886619826b93f803c9
+          test -z "$(git status --porcelain)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias exatas
+        id: deps
+        run: npm ci --no-audit --no-fund
+      - name: Contratos de recuperacao e Dexie real com IndexedDB sintetico
+        if: ${{ steps.deps.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          node scripts/test-vault-macro02-cutover-recovery.cjs
+          node scripts/macro02-activation-lab/dexie-schema.cjs
+      - name: PG17 isolado — fence autenticado, concorrencia e wire
+        if: ${{ always() && steps.deps.outcome == 'success' }}
+        run: bash scripts/macro02-activation-lab/run-pg.sh
+      - name: TypeScript integral do delta
+        if: ${{ always() && steps.deps.outcome == 'success' }}
+        run: node node_modules/typescript/bin/tsc --noEmit
