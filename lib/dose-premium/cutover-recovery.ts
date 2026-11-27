@@ -68,6 +68,13 @@ function queueIndex(local:CutoverLocal){
   cutoverCanonical(q);seen.add(q.id);keys.add(q.chave);pending.push({table:q.table,chave:q.chave,operation:String(q.operation),payload:q.payload});
  }return {pending,counts:countMacro02Pending(pending,local.account_id)};
 }
+/** Read-only local readiness; no remote evidence or authority is inferred. */
+export function assertMacro02LocalPreparation(local:CutoverLocal):void {
+ const {index,missing}=indexRows(local.account_id,local.rows);const q=queueIndex(local);
+ if(local.omitted_unowned_count||local.unscoped_rows_count||local.external_dependency_queue_count||q.pending.length)fail('PREPARATION_PENDING');
+ if(missing)fail('PREPARATION_MISSING_DEPENDENCY');
+ for(const rows of index.values())for(const row of rows.values())if(row.synced===false)fail('PREPARATION_UNSYNCED');
+}
 function orderedRows(index:Indexed):CutoverRows {
  return Object.fromEntries(CUTOVER_TABLES.map(table=>[table,[...index.get(table)!.entries()].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([,r])=>r)])) as unknown as CutoverRows;
 }
