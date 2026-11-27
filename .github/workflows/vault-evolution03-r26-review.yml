@@ -1,0 +1,70 @@
+name: VAULT Macro03 R26 — integrated proposal LAB ONLY
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r26']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: vault-evo03-r20-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  cumulative-review:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r26'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [host, fixtures, server16, server17, server24, browser, dexie-upgrade, macro02-host, android-lab, stability-browser]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - name: Materialize exact certified host in disposable laboratory
+        env:
+          R20_READ_TOKEN: ${{ github.token }}
+        run: bash .vault-evo03-r20/prepare.sh
+      - name: Java for isolated Android compilation
+        if: matrix.lane == 'android-lab'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Exact lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci --no-audit --no-fund
+      - name: Fixture Python dependencies
+        if: matrix.lane == 'fixtures'
+        run: python3 -m venv "$RUNNER_TEMP/r20-python" && "$RUNNER_TEMP/r20-python/bin/pip" install openpyxl==3.1.5 && printf '%s\n' "$RUNNER_TEMP/r20-python/bin" >> "$GITHUB_PATH"
+      - name: Mandatory cumulative lane
+        run: bash "$R20_STAGE/r20/run-lane.sh" '${{ matrix.lane }}'
+      - name: Preserve results even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r26-${{ matrix.lane }}
+          path: |
+            ${{ runner.temp }}/evo03-r20-evidence/
+            ${{ runner.temp }}/evo03-r16-server/
+            ${{ runner.temp }}/evo03-r17-server/
+            ${{ runner.temp }}/evo03-r24-server/
+            ${{ runner.temp }}/evo03-r19-functional/
+            ${{ runner.temp }}/evo03-r19-*-evidence/
+            ${{ runner.temp }}/macro02-ui/*.log
+            ${{ runner.temp }}/macro02-ui/*.png
+            ${{ runner.temp }}/macro02-ui/failure.html
+            ${{ runner.temp }}/macro02-ui/r20-vital-real-host.json
+          if-no-files-found: warn
+          retention-days: 30
+  review-result:
+    if: always() && github.ref == 'refs/heads/vault/lab/evolution03-20261126-r26'
+    needs: cumulative-review
+    runs-on: ubuntu-24.04
+    steps:
+      - run: |
+          test '${{ needs.cumulative-review.result }}' = success
+          echo 'R26_CUMULATIVE_LAB_PASS; NOT FOR RELEASE; GUARDIAN AND PHYSICAL GATES PENDING'
