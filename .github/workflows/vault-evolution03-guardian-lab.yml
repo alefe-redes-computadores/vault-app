@@ -1,0 +1,46 @@
+name: VAULT Macro03 R15 — integrated plan transport diagnostic and catalog review
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r15']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  server-review:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r15'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Unix socket transport negative control
+        run: node --test "$EVO03_LAB/tests/r15-unix-http.cjs"
+      - name: Catalog review integrity (offline, no activation)
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 "$EVO03_LAB/tests/test_r15_catalog_review.py"
+          python3 "$EVO03_LAB/tools/catalog-review-ledger.py" verify "$EVO03_LAB/evidence/rodada-R12/catalog-triage" "$EVO03_LAB/evidence/r15/catalog-review-ledger.jsonl"
+      - name: Real PostgreSQL and PostgREST client adapters, isolated Unix sockets
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/evo03-r15-server"
+          bash "$EVO03_LAB/tools/ci-r15-pg17-docker.sh" 2>&1 | tee "$RUNNER_TEMP/evo03-r15-server/server.log"
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r15-server
+          path: |
+            ${{ runner.temp }}/evo03-r15-server/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
