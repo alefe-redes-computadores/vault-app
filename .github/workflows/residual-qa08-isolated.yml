@@ -1,0 +1,219 @@
+name: VAULT Residual QA08 isolated diagnostics - NO RELEASE
+on:
+  push:
+    branches: ['vault-lab/residual-qa08-4bbb3165b033']
+permissions:
+  contents: read
+concurrency:
+  group: vault-residual-qa08-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  residual-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      VAULT_V63_COLLECT_ALL: '1'
+      RESIDUAL_MODE: 'cumulative'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin exact tested candidate, outside CI envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '53f7b6262465a1dfc1df417c65a4af22f09dc96e'
+          test "$(git rev-parse '53f7b6262465a1dfc1df417c65a4af22f09dc96e^')" = 'bd8c23bf16e76ea7f362f80c50e8bdeb0ae9a14b'
+          test "$(git rev-parse '53f7b6262465a1dfc1df417c65a4af22f09dc96e^{tree}')" = '553c4b49fdd86f581745a0b0de5c526471184b3b'
+          git -c advice.detachedHead=false checkout --detach '53f7b6262465a1dfc1df417c65a4af22f09dc96e'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "CANDIDATE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/residual-qa08"
+          printf 'CANDIDATE=%s\nTREE=%s\nPUBLICATION=LOCKED\nMODE=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" "$RESIDUAL_MODE" > "$RUNNER_TEMP/residual-qa08/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Locked dependencies (no real credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/residual-qa08/npm-ci.log"
+      - name: Selective residual contracts and existing Macro02 A10 vaccine
+        shell: bash
+        run: |
+          set -uo pipefail
+          d="$RUNNER_TEMP/residual-qa08"; rc=0
+          run() {
+            local name="$1"; shift
+            "$@" 2>&1 | tee "$d/$name.log"
+            local statuses=("${PIPESTATUS[@]}")
+            local s=${statuses[0]}
+            printf '%s_EXIT=%s TEE_EXIT=%s\n' "$name" "$s" "${statuses[1]}" >> "$d/status.txt" || exit 2
+            if [ "$s" -ne 0 ] || [ "${statuses[1]}" -ne 0 ]; then rc=1; fi
+          }
+          run residual-m146 node scripts/test-vault-m146-premium-ux.cjs
+          run residual-r4 node scripts/test-vault-ux360-r4-video.cjs
+          run residual-v34x node scripts/test-vault-v34x-substituta.cjs
+          run residual-v34y node scripts/test-vault-v34y-integrity.cjs
+          run residual-front-b node scripts/test-vault-frente-b-video-relacional.cjs
+          for zone in UTC America/Sao_Paulo America/New_York; do
+            run "residual-consumers-${zone//\//_}" env TZ="$zone" node scripts/test-vault-residual-consumers.cjs
+            run "macro02-a10-${zone//\//_}" env TZ="$zone" node scripts/test-vault-macro02-a10-dose-origin.cjs
+            run "macro02-v252-${zone//\//_}" env TZ="$zone" node scripts/test-v252-brain-associations-supply-routes.cjs
+            grep -Fq 'MACRO02_V252_EXPLICIT_TIME_GATE_OK' "$d/macro02-v252-${zone//\//_}.log" || rc=1
+            grep -Fq 'MACRO02_A10_DOSE_ORIGIN_GATE_OK | assertions=57' "$d/macro02-a10-${zone//\//_}.log" || rc=1
+            grep -Fq 'RESIDUAL_CONSUMERS_PASS=82 ' "$d/residual-consumers-${zone//\//_}.log" || rc=1
+          done
+          if [ "$RESIDUAL_MODE" = cumulative ]; then
+            run v63 node scripts/test-v63-release-gate.mjs
+            if ! grep -Fq 'V63_COLETA_INTEGRAL_APROVADA | executadas=581 | falhas=0' "$d/v63.log"; then rc=1; printf 'V63_EXPECTED_RECEIPT=FAIL\n' >> "$d/status.txt"; fi
+            for marker in 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'V63_R06_STATIC_OFFLINE_EXTENSION=PASS' 'MACRO02_A10_DOSE_ORIGIN_GATE_OK | assertions=57' 'MACRO02_PLANNED_WRITER_PROJECTION_OK' 'MACRO02_V252_EXPLICIT_TIME_GATE_OK' 'MACRO02_BACKUP_SNAPSHOT_GATE_OK' 'MACRO02_DORMANT_AUTHORITY_GATE_OK' 'MACRO02_RESTORE_STAGE_GATE_OK' 'RESIDUAL_CONSUMERS_PASS=82'; do
+              grep -Fq "$marker" "$d/v63.log" || rc=1
+            done
+            run v70-super node scripts/test-v70-super-integrity-ux-contract.mjs
+            run v70-final node scripts/test-v70-final-completeness-contract.mjs
+            run tsc node node_modules/typescript/bin/tsc --noEmit --incremental false
+          else
+            printf 'V63_V70_TSC=NOT_RUN_DIRECTED_MODE\n' >> "$d/status.txt"
+          fi
+          cat "$d/status.txt" || exit 2
+          exit "$rc"
+      - name: Web build isolado (sem credenciais reais)
+        if: always() && env.CANDIDATE_SHA != ''
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+          VAULT_WEB_STATIC_BUILD: '1'
+        run: |
+          set -euo pipefail
+          node scripts/ci-build-web-resilient.cjs 2>&1 | tee "$RUNNER_TEMP/residual-qa08/web.log"
+          test -f out/index.html
+      - name: Configurar Java JDK 17
+        if: always() && env.CANDIDATE_SHA != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Export Android isolado (sem credenciais reais)
+        if: always() && env.CANDIDATE_SHA != ''
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+        run: |
+          set -euo pipefail
+          rm -rf .next out
+          node scripts/ci-build-export-resilient.cjs 2>&1 | tee "$RUNNER_TEMP/residual-qa08/android-export.log"
+          test -f out/index.html
+          echo "LAB_ANDROID_EXPORT_OK=1" >> "$GITHUB_ENV"
+      - name: Criar plataforma Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          if test -d android; then
+            npx cap sync android
+          else
+            npx cap add android
+          fi
+
+      - name: Configurar deep link de autenticação
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          android = "http://schemas.android.com/apk/res/android"
+          ET.register_namespace("android", android)
+          tree = ET.parse(path)
+          root = tree.getroot()
+          activity = next(
+              item for item in root.findall("./application/activity")
+              if item.get(f"{{{android}}}name", "").endswith("MainActivity")
+          )
+          exists = any(
+              data.get(f"{{{android}}}scheme") == "vault"
+              and data.get(f"{{{android}}}host") == "callback"
+              for data in activity.findall("./intent-filter/data")
+          )
+          if not exists:
+              intent = ET.SubElement(activity, "intent-filter", {
+                  f"{{{android}}}label": "vault_auth",
+              })
+              ET.SubElement(intent, "action", {
+                  f"{{{android}}}name": "android.intent.action.VIEW",
+              })
+              ET.SubElement(intent, "category", {
+                  f"{{{android}}}name": "android.intent.category.DEFAULT",
+              })
+              ET.SubElement(intent, "category", {
+                  f"{{{android}}}name": "android.intent.category.BROWSABLE",
+              })
+              ET.SubElement(intent, "data", {
+                  f"{{{android}}}scheme": "vault",
+                  f"{{{android}}}host": "callback",
+              })
+              tree.write(path, encoding="utf-8", xml_declaration=True)
+          PY
+
+      - name: Gerar identidade visual Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          test -f assets/icon.png
+          test -f assets/splash.png
+          npx @capacitor/assets generate --android
+
+      - name: Sincronizar Capacitor
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: npx cap sync android
+
+      - name: Validar bridge e plugins nativos V29
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/validate-android-bridge-v29.mjs
+
+      - name: Aplicar edge-to-edge nativo
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/patch-android-edge-to-edge-v28.mjs
+      - name: Configurar Health Connect e validar ferramentas Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/patch-android-health-connect-v113.mjs
+
+      - name: Configurar alarmes exatos M99 com autorização especial
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: node scripts/patch-android-exact-alarms-m99.mjs
+
+      - name: Integrar atualização nativa segura M111
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+
+      - name: Instalar ícone de notificações Android
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          test -f assets/android/ic_stat_vault.xml
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+
+      - name: Gradle debug apenas diagnóstico (não distribuir)
+        if: always() && env.LAB_ANDROID_EXPORT_OK == '1' && !cancelled()
+        run: |
+          set -euo pipefail
+          cd android
+          bash gradlew assembleDebug --no-daemon 2>&1 | tee "$RUNNER_TEMP/residual-qa08/gradle-debug.log"
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > "$RUNNER_TEMP/residual-qa08/gradle-debug-sha256.txt"
+      - name: Logs only (not release or APK)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-qa08-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-qa08/
+          if-no-files-found: error
+          retention-days: 7
