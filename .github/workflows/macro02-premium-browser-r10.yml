@@ -1,0 +1,131 @@
+name: Macro02 R10 - Premium ativo e dialogo offline (isolado)
+on:
+  push:
+    branches: ['vault-lab/macro02-premium-browser-r10-*']
+permissions:
+  contents: read
+jobs:
+  active-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4173
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      TZ: America/Sao_Paulo
+    steps:
+      - name: Inicializar caminhos do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          ui="$RUNNER_TEMP/macro02-ui"
+          mkdir -p "$ui"
+          {
+            printf 'UI_GATE_DIR=%s\n' "$ui"
+            printf 'ESBUILD_MODULE=%s\n' "$ui/tools/node_modules/esbuild"
+            printf 'PLAYWRIGHT_MODULE=%s\n' "$ui/tools/node_modules/playwright"
+            printf 'BOOTSTRAP_BUNDLE=%s\n' "$ui/bootstrap.js"
+          } >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fixar R10 e verificar delta exclusivo do dialogo offline
+        run: |
+          set -euo pipefail
+          trap 'echo "INTEGRITY_ERROR_LINE=$LINENO COMMAND=$BASH_COMMAND" >&2' ERR
+          check_eq() {
+            local label="$1" actual="$2" expected="$3"
+            if [[ "$actual" != "$expected" ]]; then
+              printf 'FAIL %s\nactual: %s\nexpected: %s\n' "$label" "$actual" "$expected" >&2
+              return 1
+            fi
+            printf 'PASS %s\n' "$label"
+          }
+          base=d2d79ba19992dcffb0005914f613f070c0584fcc
+          fixed=054ddac624cccbf9a0fd413196e839b038714bd0
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-premium-browser-r10-* ]]
+          candidate=$(git rev-parse HEAD^1)
+          check_eq candidate_parent "$(git rev-parse "$candidate^1")" "$fixed"
+          check_eq candidate_delta "$(git diff --name-only "$fixed" "$candidate")" components/saude/LazyQuickDoseModal.tsx
+          check_eq dialog_blob "$(git rev-parse "$candidate:components/saude/LazyQuickDoseModal.tsx")" ae911d12188d038a934cbc09366cb2763fc2dc0d
+          check_eq corrected_parent "$(git rev-parse "$fixed^1")" "$base"
+          check_eq certified_tree "$(git rev-parse "$base^{tree}")" ccb4cd7dd57d4e78f9c311034e64cd38e0c6a322
+          check_eq corrected_tree "$(git rev-parse "$fixed^{tree}")" 3ee6e5b062511ef8889a20b047eb82d38d497df2
+          check_eq source_delta "$(git diff --name-only "$base" "$fixed")" hooks/useSyncQueue.ts
+          check_eq corrected_hook "$(git rev-parse "$fixed:hooks/useSyncQueue.ts")" b82f91de84f16cd34bc58c5bed87ce6c95fdb0b5
+          check_eq envelope_delta "$(git diff --name-only "$candidate" HEAD | LC_ALL=C sort)" "$(printf '%s\n' .github/macro02-ui/bootstrap.cjs .github/macro02-ui/browser.cjs .github/macro02-ui/run.sh .github/workflows/macro02-premium-browser-r10.yml vercel.json | LC_ALL=C sort)"
+          check_eq bootstrap_blob "$(git hash-object .github/macro02-ui/bootstrap.cjs)" 863accf395ebdff4c49cf4ae8609ff1240bf354a
+          check_eq browser_blob "$(git hash-object .github/macro02-ui/browser.cjs)" 59e2731b651ea9cdc4511db1eb80f25fdaf53396
+          check_eq runner_blob "$(git hash-object .github/macro02-ui/run.sh)" c99b6611679ef4d175b0723a5e3bfb92c07a9550
+          check_eq vercel_no_deploy "$(cat vercel.json)" '{"ignoreCommand":"exit 0"}'
+          mkdir -p "$UI_GATE_DIR"
+          cp .github/macro02-ui/* "$UI_GATE_DIR/"
+          git checkout --detach "$candidate"
+          check_eq checked_out_source "$(git rev-parse HEAD)" "$candidate"
+          git diff --check "$base" "$candidate"
+          check_eq migration03_blob "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" 62a25e385e602ae70451e8e3de7c320d5fce6e90
+          check_eq clean_source "$(git status --porcelain)" ''
+          echo R10_SOURCE_DELTA_OFFLINE_DIALOG_PASS
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Exportacao Web real da R10
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node <<'NODE' | tee "$UI_GATE_DIR/directives.log"
+          const ts=require('typescript'),fs=require('fs'),cp=require('child_process');
+          const assert=require('node:assert/strict');
+          const file='hooks/useSyncQueue.ts';
+          const parse=(f,s)=>ts.createSourceFile(f,s,ts.ScriptTarget.Latest,true);
+          const old=parse(file,cp.execFileSync('git',['show','d2d79ba19992dcffb0005914f613f070c0584fcc:'+file],{encoding:'utf8'}));
+          const now=parse(file,fs.readFileSync(file,'utf8'));
+          const isClient=s=>ts.isExpressionStatement(s)&&ts.isStringLiteral(s.expression)&&s.expression.text==='use client';
+          const other=p=>p.statements.filter(s=>!isClient(s)).map(s=>s.getText(p));
+          assert.deepEqual(other(now),other(old),'runtime statements changed');
+          assert(isClient(now.statements[0]),'client directive not first');
+          const files=cp.execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(f=>/^(app|components|hooks|lib|src|contexts)\//.test(f)&&/\.[cm]?[jt]sx?$/.test(f));
+          let failures=[];for(const f of files){const p=parse(f,fs.readFileSync(f,'utf8'));let seen=false;for(const s of p.statements){const directive=ts.isExpressionStatement(s)&&ts.isStringLiteral(s.expression);if(isClient(s)&&seen)failures.push(f+':'+(p.getLineAndCharacterOfPosition(s.getStart()).line+1));if(!directive)seen=true;}}
+          assert.deepEqual(failures,[],'misplaced client directives');
+          console.log('R10_DIRECTIVE_ONLY_SEMANTIC_PASS; TRACKED_SOURCE_SCAN='+files.length);
+          const dialog='components/saude/LazyQuickDoseModal.tsx';
+          const d=parse(dialog,fs.readFileSync(dialog,'utf8'));
+          const previous=parse(dialog,cp.execFileSync('git',['show','054ddac624cccbf9a0fd413196e839b038714bd0:components/saude/LazyQuickDoseModal.tsx'],{encoding:'utf8'}));
+          const exported=p=>p.statements.find(s=>ts.isFunctionDeclaration(s)&&s.name?.text==='LazyQuickDoseModal');
+          assert.equal(exported(d).getText(d),exported(previous).getText(previous),'dialog mount semantics changed');
+          assert(d.statements.some(s=>ts.isImportDeclaration(s)&&s.moduleSpecifier.text==='./QuickDoseModal'&&s.importClause?.namedBindings?.elements?.some(e=>e.propertyName?.text==='QuickDoseModal'&&e.name.text==='DoseDialog')),'missing static dialog import');
+          assert(!fs.readFileSync(dialog,'utf8').includes('next/dynamic'),'lazy transport still present');
+          console.log('R10_OFFLINE_DIALOG_STATIC_IMPORT_AND_DEFERRED_MOUNT_PASS');
+          NODE
+          node scripts/test-vault-static-offline-guard.cjs | tee "$UI_GATE_DIR/offline-contract.log"
+          node scripts/test-vault-macro02-dose-premium-p1.cjs | tee "$UI_GATE_DIR/dose-p1.log"
+          node scripts/test-vault-macro02-dose-premium-p2.cjs | tee "$UI_GATE_DIR/dose-p2.log"
+          node scripts/test-vault-macro02-dose-premium-p3.cjs | tee "$UI_GATE_DIR/dose-p3.log"
+          node scripts/ci-build-web-resilient.cjs 2>&1 | tee "$UI_GATE_DIR/build.log"
+          node scripts/verify-static-release-stability.cjs web | tee "$UI_GATE_DIR/static.log"
+      - name: Chromium e escritor real com PG17, offline e reconexao
+        run: |
+          set -euo pipefail
+          npm install --prefix "$UI_GATE_DIR/tools" --no-audit --no-fund --save-exact playwright@1.56.1 esbuild@0.25.12
+          "$UI_GATE_DIR/tools/node_modules/.bin/playwright" install --with-deps chromium
+          node "$UI_GATE_DIR/bootstrap.cjs"
+          bash "$UI_GATE_DIR/run.sh" 2>&1 | tee "$UI_GATE_DIR/browser.log"
+          grep -Fxq MACRO02_ACTIVE_PREMIUM_BROWSER_PG17_GATE_PASS "$UI_GATE_DIR/browser.log"
+      - name: Evidencias sinteticas do navegador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro02-r10-active-ui-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/macro02-ui/*.log
+            ${{ runner.temp }}/macro02-ui/*.png
+            ${{ runner.temp }}/macro02-ui/failure.html
+          if-no-files-found: warn
+      - name: Limites
+        if: always()
+        run: echo 'LAB ONLY. PG17 real isolado; autenticacao e transporte REST sinteticos; navegador e IndexedDB reais; nao prova Android fisico ou gateway Supabase produtivo. Sem deploy, sem SQL produtivo. V63/V70 e PG17 certificados na R10; delta da diretiva e import estatico do dialogo, montagem preservada e contratos dirigidos. Gate de navegador e exportacao ainda exigido.'
