@@ -1,0 +1,83 @@
+name: VAULT Macro03 R06 — Vital Premium internal experience
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r06']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  premium-visual:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r06'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Exact application dependencies and isolated visual driver
+        id: visual-deps
+        run: |
+          cd "$EVO03_LAB/candidate" && npm ci
+          npm install --prefix "$RUNNER_TEMP/evo03-ui" --no-save --no-audit --no-fund --ignore-scripts playwright@1.55.0 esbuild@0.25.5
+          "$RUNNER_TEMP/evo03-ui/node_modules/.bin/playwright" install chromium --with-deps
+      - name: Real components, synthetic read data, mobile widths
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/playwright" ESBUILD_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/esbuild" node "$EVO03_LAB/tools/ci-premium-ui.cjs"
+      - name: Real VaultDB F1 panel navigation and local draft recovery
+        if: always() && steps.visual-deps.outcome == 'success'
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/playwright" ESBUILD_MODULE="$RUNNER_TEMP/evo03-ui/node_modules/esbuild" node "$EVO03_LAB/tools/ci-premium-full-ui.cjs"
+      - name: Preserve real component captures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r06-premium-visual
+          path: |
+            ${{ runner.temp }}/evo03-premium-ui-evidence/
+            ${{ runner.temp }}/evo03-premium-full-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  host-differential:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r06'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Current candidate full TypeScript and nutritional projection
+        run: |
+          cd "$EVO03_LAB/candidate"
+          node_modules/.bin/tsc --noEmit
+          node "$EVO03_LAB/tools/test-consumer-host.cjs"
+      - name: Cumulative nutrition fixtures (three timezones)
+        run: |
+          export PATH="$EVO03_LAB/candidate/node_modules/.bin:$PATH"
+          bash "$EVO03_LAB/tools/validate-fixture.sh"
+      - name: Original 15 failed contracts, paired parent and candidate
+        if: always()
+        run: python3 "$EVO03_LAB/tools/ci-host-differential.py"
+      - name: Preserve original failure signatures and differential evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r06-host-differential
+          path: |
+            ${{ runner.temp }}/evo03-host-differential/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
