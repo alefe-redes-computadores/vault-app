@@ -1,0 +1,42 @@
+name: VAULT Macro02 - ACL fix PG17 ativo (LAB ONLY)
+on:
+  push:
+    branches: ['vault-lab/macro02-activation-final-pg17-acl-*']
+permissions:
+  contents: read
+jobs:
+  active-pg17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verificar fonte reconciliada e delta SQL exclusivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-activation-final-pg17-acl-* ]]
+          test "$(git rev-parse HEAD^^)" = 0962dbc033355e1db7a11374f7871ac9997c10af
+          test "$(git rev-parse HEAD~2^{tree})" = a7c75de352c61c193536e071d8e9de3403ab75ee
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/macro02-qa/run-active-r7-pg.sh .github/workflows/macro02-active-pg17-lab.yml vercel.json | LC_ALL=C sort)"
+          test "$(git diff --name-only HEAD^^ HEAD^ | LC_ALL=C sort)" = "$(printf '%s\n' scripts/macro02-activation-lab/activation-install-r5.sql scripts/macro02-activation-lab/compound-writer-r6.sql scripts/macro02-activation-lab/compound-receipts-r7.sql scripts/macro02-activation-lab/migration-03-r6-candidate.sql | LC_ALL=C sort)"
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          git show HEAD:.github/macro02-qa/run-active-r7-pg.sh > "$RUNNER_TEMP/macro02-active-pg17.sh"
+          test "$(git hash-object "$RUNNER_TEMP/macro02-active-pg17.sh")" = e73e56fd60ddc102f3705f382a9e4fe8539e14fd
+          git checkout --detach HEAD^
+          git diff --check HEAD^ HEAD
+          test "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" = 35cf3d9f7ec2f549ba1cf115f5325d23b127c15f
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas para fixtures do cliente
+        run: npm ci --no-audit --no-fund
+      - name: Migration 03 com ACL real e quatro envelopes Premium
+        run: bash "$RUNNER_TEMP/macro02-active-pg17.sh"
+      - name: Limites
+        if: always()
+        run: echo 'LAB ONLY. Delta SQL exclusivo sobre fonte reconciliada. Gates da reconciliacao no run 46022072861, sem substitui-los. Sem deploy ou SQL produtivo.'
