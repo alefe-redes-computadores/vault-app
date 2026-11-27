@@ -1,0 +1,102 @@
+name: VAULT Macro02 - gates finais integrados (LAB ONLY)
+on:
+  push:
+    branches: ['vault-lab/macro02-final-integrated-r10-*']
+permissions:
+  contents: read
+jobs:
+  active-pg17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fonte imutavel e delta exclusivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-final-integrated-r10-* ]]
+          test "$(git rev-parse HEAD^^)" = d834a9aed75800948755b5154f817271150a8531
+          test "$(git rev-parse HEAD~2^{tree})" = 72604519c0c5a890aa59a7a627354d5c17c254d7
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/macro02-qa/final-r10-manifest.json .github/macro02-qa/run-active-r7-pg.sh .github/workflows/macro02-final-integrated-r10.yml vercel.json | LC_ALL=C sort)"
+          git show HEAD:.github/macro02-qa/final-r10-manifest.json > "$RUNNER_TEMP/manifest.json"
+          git show HEAD:.github/macro02-qa/run-active-r7-pg.sh > "$RUNNER_TEMP/macro02-active-pg17.sh"
+          test "$(git hash-object "$RUNNER_TEMP/macro02-active-pg17.sh")" = f2482720a5e32525be5fd173ffcbb26a00e0e1c7
+          git checkout --detach HEAD^
+          python3 - "$RUNNER_TEMP/manifest.json" <<'PY_VERIFY'
+          import json,subprocess,sys
+          manifest=json.load(open(sys.argv[1]))
+          changed=subprocess.check_output(['git','diff','--name-only','HEAD^','HEAD'],text=True).splitlines()
+          assert sorted(changed)==sorted(manifest),(changed,manifest.keys())
+          for p,item in manifest.items():
+              assert subprocess.check_output(['git','hash-object',p],text=True).strip()==item['new'],p
+          PY_VERIFY
+          git diff --check HEAD^ HEAD
+          test "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" = 62a25e385e602ae70451e8e3de7c320d5fce6e90
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: PostgreSQL 17 - Migration 03 e Premium ativo
+        run: bash "$RUNNER_TEMP/macro02-active-pg17.sh"
+      - name: Limites
+        if: always()
+        run: echo 'PG17 isolado; sem producao; nao certifica UI nem dispositivo fisico.'
+  release-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fonte imutavel e delta exclusivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-final-integrated-r10-* ]]
+          test "$(git rev-parse HEAD^^)" = d834a9aed75800948755b5154f817271150a8531
+          test "$(git rev-parse HEAD~2^{tree})" = 72604519c0c5a890aa59a7a627354d5c17c254d7
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/macro02-qa/final-r10-manifest.json .github/macro02-qa/run-active-r7-pg.sh .github/workflows/macro02-final-integrated-r10.yml vercel.json | LC_ALL=C sort)"
+          git show HEAD:.github/macro02-qa/final-r10-manifest.json > "$RUNNER_TEMP/manifest.json"
+          git show HEAD:.github/macro02-qa/run-active-r7-pg.sh > "$RUNNER_TEMP/macro02-active-pg17.sh"
+          test "$(git hash-object "$RUNNER_TEMP/macro02-active-pg17.sh")" = f2482720a5e32525be5fd173ffcbb26a00e0e1c7
+          git checkout --detach HEAD^
+          python3 - "$RUNNER_TEMP/manifest.json" <<'PY_VERIFY'
+          import json,subprocess,sys
+          manifest=json.load(open(sys.argv[1]))
+          changed=subprocess.check_output(['git','diff','--name-only','HEAD^','HEAD'],text=True).splitlines()
+          assert sorted(changed)==sorted(manifest),(changed,manifest.keys())
+          for p,item in manifest.items():
+              assert subprocess.check_output(['git','hash-object',p],text=True).strip()==item['new'],p
+          PY_VERIFY
+          git diff --check HEAD^ HEAD
+          test "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" = 62a25e385e602ae70451e8e3de7c320d5fce6e90
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript integral
+        run: npx --no-install tsc --noEmit
+      - name: Teste residual de recuperacao com Dexie real
+        run: node --require ./scripts/vault-m2-test-alias-preload.cjs scripts/test-vault-macro02-restore-staging.cjs
+      - name: V63 integral e V70 - sem excluir contratos
+        if: success()
+        env:
+          VAULT_V63_COLLECT_ALL: '1'
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Limites
+        if: always()
+        run: echo 'Gates sobre nova arvore. Nao substitui certificacao UI Premium real. Sem deploy, sem APK e sem SQL produtivo.'

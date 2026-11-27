@@ -1,0 +1,22 @@
+{
+  "scripts/macro02-activation-lab/compound-writer-r6.sql": {
+    "base": "cb431bb5065895ed4fe992a53b72777af7173e8a",
+    "new": "ba2a35ce0f8a7a2723ebafc6f117ca3c71839a9e"
+  },
+  "scripts/macro02-activation-lab/migration-03-r6-candidate.sql": {
+    "base": "35cf3d9f7ec2f549ba1cf115f5325d23b127c15f",
+    "new": "62a25e385e602ae70451e8e3de7c320d5fce6e90"
+  },
+  "scripts/macro02-tests/dormant-dexie.cjs": {
+    "base": "ef42bbc7bdb4a1f2794ba596004f07e9585198be",
+    "new": "016f5257af9700dbe22d040f5419c2a169199a6e"
+  },
+  "scripts/macro02-activation-lab/active-fixtures-r7.cjs": {
+    "base": "7d57a4f3dd7205eb77646f16fcb8595bcb2fffd4",
+    "new": "ba77613ed05a210eb559277f1c4cb86f24f4daa0"
+  },
+  "scripts/macro02-activation-lab/run-active-r7-pg.sh": {
+    "base": "31e5d3f995b09e415b867ace7fdb23972e3ad1f8",
+    "new": "f2482720a5e32525be5fd173ffcbb26a00e0e1c7"
+  }
+}
