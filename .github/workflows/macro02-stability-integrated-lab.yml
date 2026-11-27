@@ -1,0 +1,58 @@
+name: VAULT Macro02 e Stability - reconciliacao isolada (LAB ONLY)
+on:
+  push:
+    branches: ['vault-lab/macro02-stability-integrated-*']
+permissions:
+  contents: read
+jobs:
+  reconciled:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validar uniao exata das duas arvores e remover envelope CI
+        run: |
+          set -euo pipefail
+          base=bd8c23bf16e76ea7f362f80c50e8bdeb0ae9a14b
+          macro=d54c5d45cf8b53d37cc4c206a94a8f8b1bc7c755
+          stability=c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf
+          merged=$(git rev-parse HEAD^)
+          test "$(git rev-parse "$merged^1")" = "$macro"
+          test "$(git rev-parse "$merged^2")" = "$stability"
+          test "$(git rev-parse "$macro^{tree}")" = eada442a9a5b530030d75f45d21f8ec1bf766aeb
+          test "$(git rev-parse "$stability^{tree}")" = 7118bf620afe2107e3faf9736e7a741a4a3c345d
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/macro02-reconcile/verify-merge.py .github/workflows/macro02-stability-integrated-lab.yml vercel.json | LC_ALL=C sort)"
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          python3 .github/macro02-reconcile/verify-merge.py "$base" "$macro" "$stability" "$merged"
+          git checkout --detach "$merged"
+          git diff --check "$macro" HEAD
+          test "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" = 703d9c6781e84f4592b5c285e58dc08e7857d0b9
+          printf 'MERGED_SOURCE_SHA=%s\nMERGED_SOURCE_TREE=%s\n' "$merged" "$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript integral sobre a arvore reconciliada
+        run: npx --no-install tsc --noEmit
+      - name: V63 e V70 sobre a NOVA arvore, sem perder falhas
+        if: always()
+        env:
+          VAULT_V63_COLLECT_ALL: '1'
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Contratos adicionais Stability e autoridade ativa
+        if: always()
+        run: |
+          set -euo pipefail
+          failures=0
+          for f in scripts/test-vault-residual-consumers.cjs scripts/test-vault-residual-premium-ux360.cjs scripts/test-vault-visual-cas-r04-compat.cjs scripts/macro02-activation-lab/device-authority-r5.cjs scripts/macro02-activation-lab/metadata-transport-r5.cjs; do
+            node --require ./scripts/vault-m2-test-alias-preload.cjs "$f" || failures=$((failures+1))
+          done
+          test "$failures" = 0
+      - name: Limites do gate
+        if: always()
+        run: echo 'LAB ONLY. Reconciliacao de fonte, TSC, V63/V70 e contratos direcionados. Nao e certificacao real de interface Android/Premium E2E, nao aplica migrations, nao ativa contas, nao publica APK.'
