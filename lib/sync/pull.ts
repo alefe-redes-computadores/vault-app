@@ -8,6 +8,9 @@ import {
 
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
+import {metadataPendingProtection} from "@/lib/dose-premium/cutover-metadata-pending";
+import {RESIDUAL_TABLES} from "@/lib/dose-premium/cutover-metadata-batch";
+import type {MetadataTable} from "@/lib/dose-premium/cutover-metadata-intent";
 import {readMacro02DoseReceipts} from "@/lib/sync/macro02-dose-receipts";
 import { checkDoseIngress, acceptDosePage, verifyRemoteDoseReceipt } from "@/lib/dose-premium/ingress-guard";
 import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
@@ -350,6 +353,9 @@ async function performPullAllData(userId: string): Promise<void> {
           const freshMedicationPending=remoteTable==='medicamentos'?new Set((await db.syncQueue.filter(item=>item.payload.user_id===userId&&(item.table==='medicamentos'||item.payload.macro02_atomic!==undefined)).toArray()).map(item=>item.table==='medicamentos'?item.payload.id:item.payload.medicamento_id).filter((id):id is string=>typeof id==='string')):null;
 
           const freshWithdrawalPending=remoteTable==='retiradas'?new Set((await db.syncQueue.filter(item=>item.payload.user_id===userId&&item.payload.macro02_atomic!==undefined).toArray()).map(item=>(item.payload.macro02_atomic as {withdrawalId?:string})?.withdrawalId).filter((id):id is string=>typeof id==='string')):null;
+          const residualTable=queueTable==='a1_prescription_links'?queueTable:RESIDUAL_TABLES.includes(queueTable as MetadataTable)?queueTable as MetadataTable:null;
+          const metadataPending=residualTable?metadataPendingProtection(await db.syncQueue.toArray(),userId):null;
+          if(metadataPending?.ambiguous){tableOk=false;criticalPullErrors.push('Intenção clínica R3 não classificada; revisão necessária.');}
           const rowIds = rows.map(
             (row) => row.id as string
           );
@@ -367,7 +373,7 @@ async function performPullAllData(userId: string): Promise<void> {
             const remoteItem = rows[index];
             const remoteId = remoteItem.id as string;
 
-            if (hasPendingOperation(queueTable, remoteId) || freshDosePending?.has(remoteId) || freshMedicationPending?.has(remoteId) || freshWithdrawalPending?.has(remoteId)) {
+            if (hasPendingOperation(queueTable, remoteId) || freshDosePending?.has(remoteId) || freshMedicationPending?.has(remoteId) || freshWithdrawalPending?.has(remoteId) || (residualTable&&metadataPending?.has(residualTable,remoteId))) {
               ignoredPending += 1;
               continue;
             }
@@ -443,6 +449,8 @@ async function performPullAllData(userId: string): Promise<void> {
           if (remoteTable === "dose_logs") await db.transaction("rw", [db.doseLogs, db.syncQueue], mergeRows);
           else if(remoteTable==='medicamentos')await db.transaction("rw",[db.medicamentos,db.syncQueue],mergeRows);
           else if(remoteTable==='retiradas')await db.transaction('rw',[db.retiradas,db.syncQueue],mergeRows);
+          else if(remoteTable==='renovacoes')await db.transaction('rw',[db.renovacoes,db.syncQueue],mergeRows);
+          else if(remoteTable==='a1_prescription_links')await db.transaction('rw',[db.a1_prescription_links,db.syncQueue],mergeRows);
           else await mergeRows();
         } catch (
           error: unknown
@@ -1459,12 +1467,14 @@ async function performPullAllData(userId: string): Promise<void> {
       // local feita enquanto o pull aguardava rede nunca sera sobrescrita.
       await db.transaction("rw", [db.medicamentos, db.syncQueue], async () => {
         const queued = await db.syncQueue.toArray();
+        const pendingMetadata=metadataPendingProtection(queued,userId);
+        if(pendingMetadata.ambiguous)throw Error("Intenção clínica R3 não classificada; relações preservadas.");
         const latestPendingIds = new Set(queued.filter(item => item.table === "medicamentos")
           .map(getPayloadId).filter((id): id is string => Boolean(id)));
         for (const update of plan.updates) {
           const current = await db.medicamentos.get(update.id);
           if (!current || current.user_id !== userId || current.person_id !== update.personId ||
-              current.synced === false || pendingIds.has(update.id) || latestPendingIds.has(update.id)) continue;
+              current.synced === false || pendingIds.has(update.id) || latestPendingIds.has(update.id) || pendingMetadata.has("medicamentos",update.id)) continue;
           const oldIds = [...new Set(current.tratamento_ids ?? [])].sort();
           if (JSON.stringify(oldIds) === JSON.stringify(update.tratamentoIds)) continue;
           await db.medicamentos.update(update.id, { tratamento_ids: update.tratamentoIds });

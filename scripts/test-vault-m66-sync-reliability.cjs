@@ -31,7 +31,7 @@ status.noteRecentDoseRefreshError('u2');check(status.useRecentDoseRefreshStatus(
  const local=new Map([['same',{...med('same'),synced:true}],['unsent',{...med('unsent',{quantidade:8}),synced:false}],['newer',{...med('newer',{updated_at:'2026-11-04T13:00:00.000Z',quantidade:9}),synced:true}]]);
  const cloud=[med('same'),med('unsent'),med('queued'),med('newer'),med('added')],queue=[{table:'doseLogs',payload:{id:'queued'}}];
  let bulkWrites=0,dbCalls=0,queryMode='ok';
- const db={doseLogs:{bulkGet:async ids=>ids.map(id=>local.get(id)),bulkPut:async rows=>{bulkWrites++;rows.forEach(row=>local.set(row.id,row));}},syncQueue:{filter:()=>({toArray:async()=>queue})},transaction:async(_mode,_dose,_queue,fn)=>fn()};
+ const db={doseLogs:{bulkGet:async ids=>ids.map(id=>local.get(id)),bulkPut:async rows=>{bulkWrites++;rows.forEach(row=>local.set(row.id,row));}},syncQueue:{toArray:async()=>queue,filter:()=>({toArray:async()=>queue})},transaction:async(_mode,_dose,_queue,fn)=>fn()};
  const request={select(){return this},eq(){return this},gte(){return this},order(){return this},range(){dbCalls++;return Promise.resolve(queryMode==='null'?{data:null,error:null}:queryMode==='failure'?{data:null,error:{message:'timeout'}}:{data:cloud,error:null});}};
  let receiptCalls=0;const receiptClient={rpc:async(name,args)=>{assert.equal(name,'vault_macro02_read_dose_receipts');assert(Array.isArray(args.p_ids));receiptCalls++;return {data:[],error:null};}};
  const readReceipts=load('lib/sync/macro02-dose-receipts.ts',{'@/lib/supabase/client':{supabase:receiptClient}});

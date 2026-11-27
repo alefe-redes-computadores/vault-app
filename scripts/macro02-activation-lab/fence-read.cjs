@@ -1,0 +1,23 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');const root=path.resolve(__dirname,'../..'),cache=new Map();
+function load(rel){const f=path.resolve(root,rel);if(cache.has(f))return cache.get(f).exports;const m={exports:{}};cache.set(f,m);const src=fs.readFileSync(f,'utf8');assert.equal(ts.createSourceFile(f,src,ts.ScriptTarget.Latest,true).parseDiagnostics.length,0);new Function('module','exports','require',ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(m,m.exports,n=>n.startsWith('.')?load(path.resolve(path.dirname(f),n)+'.ts'):require(n));return m.exports;}
+const {CUTOVER_TABLES}=load('lib/dose-premium/cutover-recovery.ts');const {validateRawCutoverEvidence:validate,readAuthenticatedRawCutoverLab:read}=load('lib/dose-premium/cutover-fence-read.ts');
+const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,uid=id(1),epoch=id(99),pid=id(11),mid=id(31),tid=id(41);
+const wire=()=>({format:'macro02-raw-pg-lab-v1',account_id:uid,epoch,fence_id:`m02-cutover-lab:${uid}:${epoch}`,complete:true,allows_activation:false,allows_replay:false,rows:{...Object.fromEntries(CUTOVER_TABLES.map(t=>[t,[]])),persons:[{id:pid,user_id:uid}],medicamentos:[{id:mid,user_id:uid,person_id:pid,synced:false}],tratamentos:[{id:tid,user_id:uid,person_id:pid}],medicamento_tratamentos:[{id:id(51),medicamento_id:mid,tratamento_id:tid}]}});
+let count=0;const check=(label,fn)=>{fn();count++;console.log('PASS '+label);};
+(async()=>{
+ check('raw remote format and no grant',()=>{const x=wire(),r=validate(x,uid,epoch);assert.deepEqual(r,x);assert.notEqual(r,x);assert.equal(r.version,undefined);assert.equal(r.allows_activation,false);assert.equal(r.rows.medicamentos[0].synced,false);});
+ check('reject wrong scope/epoch/format',()=>{for(const p of [{account_id:id(2)},{epoch:id(98)},{format:'local'},{fence_id:'fake'},{complete:false},{allows_activation:true},{allows_replay:true}])assert.throws(()=>validate({...wire(),...p},uid,epoch));});
+ check('all 20 tables required, no arbitrary additions',()=>{const x=wire();delete x.rows.doseLogs;x.rows.extra=[];assert.throws(()=>validate(x,uid,epoch));assert.throws(()=>validate({...wire(),extra:true},uid,epoch));});
+ check('foreign, duplicate, invalid identity blocked',()=>{for(const alter of [x=>x.rows.medicamentos[0].user_id=id(2),x=>x.rows.persons.push(x.rows.persons[0]),x=>x.rows.persons[0].id='not-uuid']){const x=wire();alter(x);assert.throws(()=>validate(x,uid,epoch));}});
+ check('join scope and duplicate links blocked',()=>{for(const alter of [x=>x.rows.tratamentos[0].person_id=id(12),x=>x.rows.medicamento_tratamentos[0].medicamento_id=id(32),x=>x.rows.medicamento_tratamentos.push({...x.rows.medicamento_tratamentos[0],id:id(52)})]){const x=wire();alter(x);assert.throws(()=>validate(x,uid,epoch));}});
+ check('do not silently drop undefined or nonfinite evidence',()=>{for(const value of [undefined,NaN,Infinity]){const x=wire();x.rows.medicamentos[0].evidence=value;assert.throws(()=>validate(x,uid,epoch));}});
+ const host=(auth=async()=>uid,readSnapshot=async()=>wire(),assertSession=()=>{})=>({authenticatedAccount:auth,readSnapshot,assertSession});
+ assert.deepEqual(await read(host(),uid,epoch),wire());count++;console.log('PASS authenticated read current account');
+ let calls=0;await assert.rejects(read(host(async()=>null,async()=>{calls++;return wire();}),uid,epoch));assert.equal(calls,0);count++;console.log('PASS no RPC when unauthenticated');
+ let a=0;await assert.rejects(read(host(async()=>++a===1?uid:id(2)),uid,epoch),/AUTH_CHANGED/);count++;console.log('PASS account change invalidates remote evidence');
+ for(let stop=1;stop<=5;stop++){let n=0;await assert.rejects(read(host(undefined,undefined,()=>{if(++n===stop)throw Error('session-lost');}),uid,epoch),/session-lost/);}count++;console.log('PASS session generation invalidation at every gate');
+ await assert.rejects(read(host(undefined,async()=>{throw Error('offline');}),uid,epoch),/offline/);count++;console.log('PASS network failure never grants fallback');
+ console.log('MACRO02_FENCE_READ_LAB_PASS='+count);
+ const flag=process.argv.indexOf('--pg-snapshot');if(flag!==-1){const pg=JSON.parse(fs.readFileSync(process.argv[flag+1],'utf8'));const actual=validate(pg,uid,id(96));assert.equal(actual.rows.medicamentos.length,1);assert.equal(actual.rows.doseLogs.length,1);assert.equal(actual.rows.medicamento_tratamentos.length,1);assert.equal(actual.allows_activation,false);console.log('MACRO02_PG_WIRE_TO_CLIENT_LAB_PASS');}
+})().catch(e=>{console.error(e.name,e.message);process.exitCode=1;});

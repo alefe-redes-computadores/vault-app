@@ -1,14 +1,16 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript');
 require('fake-indexeddb/auto'); const Dexie=require('dexie').default;
-// Browser lifecycle double only; execute the real dormant authority and Dexie.
+// Real R5 enrollment authority and Dexie; authenticated RPC and browser lifecycle doubles.
+const account="00000000-0000-4000-8000-000000000203";
+Object.defineProperty(global,"navigator",{value:{onLine:true},configurable:true});
 global.window=new EventTarget();global.document=Object.assign(new EventTarget(),{visibilityState:'visible'});
-const authEvents=[];const supabase={auth:{onAuthStateChange:fn=>{authEvents.push(fn);return {data:{subscription:{unsubscribe(){}}}};}}};
-const db=new Dexie('v203-access');db.version(1).stores({medicamentos:'id,person_id,user_id',retiradas:'id,person_id,medicamento_id,renovacao_origem_id',syncQueue:'id,chave',renovacoes:'id,user_id,person_id',farmacias:'id',locais:'id'});
+const authEvents=[];const supabase={rpc:async name=>{assert.equal(name,'vault_macro02_read_enrollment_r5');return {data:{format:'macro02-enrollment-r3',account_id:account,state:'legacy',epoch:null,minimum_protocol:3,generation:0},error:null};},auth:{getUser:async()=>({data:{user:{id:account}},error:null}),onAuthStateChange:fn=>{authEvents.push(fn);return {data:{subscription:{unsubscribe(){}}}};}}};
+const db=new Dexie('v203-access');db.version(1).stores({medicamentos:'id,person_id,user_id',retiradas:'id,person_id,medicamento_id,renovacao_origem_id',syncQueue:'id,chave',renovacoes:'id,user_id,person_id',farmacias:'id',locais:'id',macro02_device_enrollment:'account_id'});
 let fail=false;const cache=new Map();
 function load(file){const f=path.resolve(file);if(cache.has(f))return cache.get(f).exports;const m=new Module(f,module);m.paths=Module._nodeModulePaths(path.dirname(f));cache.set(f,m);m.require=n=>{
 if(n==='@/lib/db')return {db};
 if(n==='@/lib/health-supply/resolve-withdrawal')return {loadSupplyWithdrawal:async()=>({})};
-if(n==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:'u'}}})};
+if(n==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:account}}})};
 if(n==='@/lib/supabase/client')return {supabase};
 if(n==='@/lib/sync/enfileirarOperacao')return {solicitarProcessamentoSync:()=>{},enfileirarOperacao:async(table,action,row)=>{if(fail)throw Error('queue failed');await db.syncQueue.add({id:crypto.randomUUID(),chave:table+':'+row.id,table,operation:action,payload:row})}};
 return n.startsWith('@/')?load(n.slice(2)+'.ts'):n.startsWith('.')?load(path.resolve(path.dirname(f),n)+'.ts'):require(n)};
@@ -32,19 +34,19 @@ assert(action({deveRenovar:true,motivo:'receita'},'m','/saude/medicamentos').hre
 assert.equal(action({deveRenovar:false},'m','/'),null);
 const {retiradasRepository:repo,reconcileScheduledRetiradaFromRenovacao:reconcile}=load('lib/repositories/retiradas.ts');
 assert(repo);
-const med={id:'m',person_id:'p',user_id:'u',nome:'Teste',estoque_quantidade:61,data_retorno_sus:'2026-10-20'};
-const row={id:'r',person_id:'p',user_id:'u',medicamento_id:'m',renovacao_origem_id:'orig',tipo:'sus',status:'agendada',data:'2026-10-20',updated_at:'initial'};
+const med={id:'m',person_id:'p',user_id:account,nome:'Teste',estoque_quantidade:61,data_retorno_sus:'2026-10-20'};
+const row={id:'r',person_id:'p',user_id:account,medicamento_id:'m',renovacao_origem_id:'orig',tipo:'sus',status:'agendada',data:'2026-10-20',updated_at:'initial'};
 await db.medicamentos.put(med);await db.retiradas.put(row);
 await repo.update('r','p',{data:'2026-11-01'});
 let current=await db.retiradas.get('r');assert.equal(current.reagendamentos.length,1);assert.equal(current.reagendamentos[0].data_anterior,row.data);
 assert.equal((await db.medicamentos.get('m')).data_retorno_sus,'2026-11-01');assert.equal((await db.medicamentos.get('m')).estoque_quantidade,61);
 await repo.update('r','p',{data:'2026-11-01',reagendamentos:[]});assert.equal((await db.retiradas.get('r')).reagendamentos.length,1);
-await reconcile({id:'orig',person_id:'p',user_id:'u',tipo_aquisicao:'sus',data_proxima_retirada:'2026-10-20'},med);
+await reconcile({id:'orig',person_id:'p',user_id:account,tipo_aquisicao:'sus',data_proxima_retirada:'2026-10-20'},med);
 assert.equal((await db.retiradas.get('r')).data,'2026-11-01','reconciliation must respect reschedule');
 fail=true;await assert.rejects(repo.update('r','p',{data:'2026-11-02'}),/queue failed/);fail=false;
 assert.equal((await db.retiradas.get('r')).data,'2026-11-01');assert.equal((await db.medicamentos.get('m')).data_retorno_sus,'2026-11-01');
 await assert.rejects(repo.update('r','other',{data:'2026-11-03'}));
-await db.retiradas.put({...row,status:'cancelada'});await reconcile({id:'orig',person_id:'p',user_id:'u',tipo_aquisicao:'sus',data_proxima_retirada:'2026-11-01'},med);assert.equal((await db.retiradas.get('r')).status,'cancelada');
+await db.retiradas.put({...row,status:'cancelada'});await reconcile({id:'orig',person_id:'p',user_id:account,tipo_aquisicao:'sus',data_proxima_retirada:'2026-11-01'},med);assert.equal((await db.retiradas.get('r')).status,'cancelada');
 await db.retiradas.put({...row,id:'r',status:'agendada'});
 await db.retiradas.put({...row,id:'r2',medicamento_id:'m2',status:'agendada'});
 await db.medicamentos.put({...med,id:'m2'});await db.medicamentos.put(med);

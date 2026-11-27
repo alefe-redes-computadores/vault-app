@@ -1,3 +1,4 @@
+import {macro02DeviceAuthorityR5} from '@/lib/sync/macro02-device-r5';
 import {db} from '@/lib/db';
 import {supabase} from '@/lib/supabase/client';
 import {getLocalFirstAuthUser} from '@/lib/supabase/local-auth';
@@ -42,4 +43,4 @@ export function macro02DormantAuthority(){
  window.addEventListener('pageshow',()=>host.invalidate());
  return host;
 }
-export async function prepareMacro02ClinicalWrite(uid:string){return macro02DormantAuthority().prepareWrite(uid);}
+export async function prepareMacro02ClinicalWrite(uid:string){return macro02DeviceAuthorityR5().prepareWrite(uid);}

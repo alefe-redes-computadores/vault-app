@@ -1,3 +1,6 @@
+import {metadataPendingProtection} from '@/lib/dose-premium/cutover-metadata-pending';
+import {requireMacro02AtomicEpoch} from '@/lib/dose-premium/cutover-active-queue-r5';
+import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {capturePharmaceuticalSnapshot} from '@/lib/dose-premium/pharmaceutical-snapshot';
 import { atomicQueueKey, nextAtomicPosition, parseAtomicIntent, type AtomicIntent } from "@/lib/dose-premium/atomic-envelope";
@@ -698,13 +701,15 @@ async function commitDormantLegacyDose(request:Omit<ClinicalWriteRequest,'expect
 
 async function verifyPendingPremiumQueue(medicationId:string,scope:{user_id:string;person_id:string}){
   const rows=await db.syncQueue.toArray();
+  if(metadataPendingProtection(rows,scope.user_id).has('medicamentos',medicationId))throw Error('Intenção clínica anterior aguarda confirmação.');
   if(rows.some(q=>q.payload.user_id===scope.user_id&&q.payload.person_id===scope.person_id&&(
     q.table==='medicamentos'&&q.payload.id===medicationId&&q.payload.macro02_atomic===undefined ||
     q.table==='doseLogs'&&q.payload.medicamento_id===medicationId&&q.payload.macro02_atomic===undefined
   )))throw Error('Há uma alteração antiga de dose ou estoque aguardando sincronização. Preserve a fila antes de alterar novamente.');
   return rows;
 }
-async function commitPremiumDose(request:Omit<ClinicalWriteRequest,'identity'|'expected'> & {identity:ClinicalWriteRequest['identity'];expected?:DoseSnapshot|null},existing:DoseLog|undefined,medication:Medicamento):Promise<string>{
+async function commitPremiumDose(request:Omit<ClinicalWriteRequest,'identity'|'expected'> & {identity:ClinicalWriteRequest['identity'];expected?:DoseSnapshot|null},existing:DoseLog|undefined,medication:Medicamento,authorityEpoch:unknown):Promise<string>{
+  const epoch=requireMacro02AtomicEpoch(authorityEpoch);
   const id=request.identity;
   const previous=premiumSnapshot(existing);
   const stock=observedStockContext(medication,{user_id:id.user_id,person_id:id.person_id,medicationId:id.medicamento_id});
@@ -727,7 +732,9 @@ async function commitPremiumDose(request:Omit<ClinicalWriteRequest,'identity'|'e
   // generic cadastral stock writer, which correctly invalidates ordinary edits.
   if(prepared.delta!==0){
     if(prepared.stockAfter===null||!stock.basis)throw Error('Movimentação sem ciclo de estoque.');
-    await db.medicamentos.update(id.medicamento_id,{estoque_quantidade:prepared.stockAfter,estoque_data_referencia:getLocalTodayISO(),updated_at:timestamp,synced:false});
+    await db.medicamentos.update(id.medicamento_id,{estoque_quantidade:prepared.stockAfter,estoque_data_referencia:getLocalTodayISO(),updated_at:timestamp,macro02_stock_managed:true,synced:false});
+  }else if(saved?.tomado_em||saved?.ignorado_em||existing?.tomado_em||existing?.ignorado_em){
+    await db.medicamentos.update(id.medicamento_id,{macro02_stock_managed:true,synced:false});
   }
   const stockRow=await db.medicamentos.get(id.medicamento_id);
   if(!stockRow)throw Error('Estoque não recuperado após a transação.');
@@ -738,11 +745,11 @@ async function commitPremiumDose(request:Omit<ClinicalWriteRequest,'identity'|'e
   // Existing transport must refuse this until the atomic RPC/ACK contract is integrated.
   const atomic:AtomicIntent=parseAtomicIntent({version:1,operationId:crypto.randomUUID(),previous,after,stockBefore:stock,stockAfter:observed,
     stockRevisionBefore:medication.updated_at??null,stockRevisionAfter:stockRow.updated_at??null,stockReferenceAfter:stockRow.estoque_data_referencia??null,delta:prepared.delta,...position});
-  const payload={...(saved??id),macro02_atomic:atomic};
+  const payload={...(saved??id),macro02_atomic:atomic,macro02_epoch:epoch};
   const operation='update'; // immutable intention, including a deletion; do not sort it as a legacy row DELETE
   await enfileirarOperacao('doseLogs',operation,payload,{dispatchSync:false});
   const queued=await db.syncQueue.where('chave').equals(atomicQueueKey(atomic)).first();
-  if(!queued||queued.table!=='doseLogs'||queued.operation!==operation||queued.payload.user_id!==id.user_id||queued.payload.person_id!==id.person_id||JSON.stringify(queued.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Fila não confirmou a intenção transacional; gravação cancelada.');
+  if(!queued||queued.table!=='doseLogs'||queued.operation!==operation||queued.payload.user_id!==id.user_id||queued.payload.person_id!==id.person_id||queued.payload.macro02_epoch!==epoch||JSON.stringify(queued.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Fila não confirmou a intenção transacional; gravação cancelada.');
   if(after&&!verifyDoseSnapshotAck(after,queued.payload as unknown as DoseSnapshot))throw Error('Fila diverge da dose persistida; gravação cancelada.');
   return id.id;
 }
@@ -1051,9 +1058,9 @@ export const doseLogsRepository = {
         const quantity=quantidade!==undefined?normalizePositiveQuantity(quantidade):existing?.tomado_em?getExistingDoseQuantity(existing):status==='taken'?null:existing?.quantidade??undefined;
         return commitPremiumDose({identity:{id:existing?.id??crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:existing?.horario??safeHorario},
           expected,status,actualAt:status==='taken'?(safeTakenAt??existing?.tomado_em??timestamp):undefined,
-          ignoredReason:motivo?.trim()||existing?.motivo||'nao_realizada',quantity,unit,asOf:timestamp,adjustStock,historicalReview:!adjustStock,requireRegisteredStock,origin:existing?.dose_kind??'scheduled'},existing,medicamento);
+          ignoredReason:motivo?.trim()||existing?.motivo||'nao_realizada',quantity,unit,asOf:timestamp,adjustStock,historicalReview:!adjustStock,requireRegisteredStock,origin:existing?.dose_kind??'scheduled'},existing,medicamento,authority.epoch);
         };
-        const saved=await write();await authority.assertCurrent();return saved;
+        const saved=await write();await authority.assertCurrent();await authority.assertFinalQueue?.();return saved;
       }
     );
     solicitarProcessamentoSync();
@@ -1078,16 +1085,15 @@ export const doseLogsRepository = {
     const desired = course ? temporaryCourseSlots(course) : [];
     const reason = course ? temporaryCourseNote(course) : "";
     const authority=await prepareMacro02ClinicalWrite(user.id);
-    const result=await db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+    const result=await runMacro02ResidualWrite(authority,user.id,[db.doseLogs, db.medicamentos, db.syncQueue], async () => {
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_PLANNING_CUTOVER_NOT_CERTIFIED');
       const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
       if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso temporário para um tratamento de duração definida.");
       const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
         .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id && row.dose_kind !== "sos" && row.dose_kind !== "extra");
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
         !row.tomado_em && !row.ignorado_em);
-      if((medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true))||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
+      if((authority.writer==='legacy'&&(medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true)))||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
       const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
       if (oldBySlot.size !== oldPending.length) throw new Error("Há agendamentos duplicados no período. Revise-os antes de continuar.");
       // Não converter tomadas/ignoradas históricas em slots novos nem reaplicar consumo.
@@ -1128,7 +1134,7 @@ export const doseLogsRepository = {
         scheduled++;
       }
       await authority.assertCurrent();return { scheduled, cancelled };
-    });
+    },'planned-dose');
     solicitarProcessamentoSync();return result;
   },
 
@@ -1153,15 +1159,14 @@ export const doseLogsRepository = {
     const user = await requireAuthenticatedUser();
 
     const authority=await prepareMacro02ClinicalWrite(user.id);
-    const result=await db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+    const result=await runMacro02ResidualWrite(authority,user.id,[db.doseLogs, db.medicamentos, db.syncQueue], async () => {
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_PLANNING_CUTOVER_NOT_CERTIFIED');
       const medicamento = await getMedicamentoForPerson(
         safeMedicamentoId,
         safePersonId,
         user.id
       );
-      if((medicamento.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamento&&medicamento.macro02_stock_managed===true)))throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
+      if((authority.writer==='legacy'&&(medicamento.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamento&&medicamento.macro02_stock_managed===true))))throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
       const existing = await getDoseLogForSlot(
         safeMedicamentoId,
         safePersonId,
@@ -1203,7 +1208,7 @@ export const doseLogsRepository = {
       // Agendar nunca altera o estoque. O consumo acontece somente
       // quando a pessoa confirma a tomada.
       await authority.assertCurrent();return id;
-    });
+    },'planned-dose');
     solicitarProcessamentoSync();return result;
   },
 
@@ -1263,9 +1268,9 @@ export const doseLogsRepository = {
         if(adjustStock&&readDoseUnit(unit??{}).state!=='known')throw Error('Confira a unidade administrada antes de movimentar o estoque.');
         const timestamp=new Date().toISOString();
         if(targetDate!==getLocalTodayISO()&&!tomadoEm)throw Error('Informe o instante real da tomada avulsa histórica.');
-        return commitPremiumDose({identity:{id:crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:safeHorario},expected:null,status:'taken',actualAt:normalizeTakenAt(tomadoEm)??timestamp,quantity:doseQuantity,unit,note:motivo,asOf:timestamp,adjustStock,historicalReview:!adjustStock,origin:doseKind},undefined,medicamento);
+        return commitPremiumDose({identity:{id:crypto.randomUUID(),user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:targetDate,horario:safeHorario},expected:null,status:'taken',actualAt:normalizeTakenAt(tomadoEm)??timestamp,quantity:doseQuantity,unit,note:motivo,asOf:timestamp,adjustStock,historicalReview:!adjustStock,origin:doseKind},undefined,medicamento,authority.epoch);
         };
-        const saved=await write();await authority.assertCurrent();return saved;
+        const saved=await write();await authority.assertCurrent();await authority.assertFinalQueue?.();return saved;
       }
     );
     solicitarProcessamentoSync();
@@ -1363,14 +1368,14 @@ export const doseLogsRepository = {
 
         if(authority.writer==='legacy')return commitDormantLegacyDose({identity:{id:safeId,user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:existing.data,horario:existing.horario},expected,status:'clear',asOf:new Date().toISOString(),adjustStock,origin:existing.dose_kind},existing,medicamento);
         if(hasPremiumEvidence(existing)||Boolean(existing.tomado_em)||Boolean(existing.ignorado_em)||expected!==undefined){
-          return commitPremiumDose({identity:{id:safeId,user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:existing.data,horario:existing.horario},expected,status:'clear',asOf:new Date().toISOString(),adjustStock,historicalReview:!adjustStock,origin:existing.dose_kind},existing,medicamento);
+          return commitPremiumDose({identity:{id:safeId,user_id:user.id,person_id:safePersonId,medicamento_id:safeMedicamentoId,data:existing.data,horario:existing.horario},expected,status:'clear',asOf:new Date().toISOString(),adjustStock,historicalReview:!adjustStock,origin:existing.dose_kind},existing,medicamento,authority.epoch);
         }
         // Unresolved planning record only: no factual dose or stock movement.
         await db.doseLogs.delete(safeId);
         await enfileirarOperacao('doseLogs','delete',{id:safeId,person_id:safePersonId,user_id:user.id},{dispatchSync:false});
         return safeId;
         };
-        const saved=await write();await authority.assertCurrent();return saved;
+        const saved=await write();await authority.assertCurrent();await authority.assertFinalQueue?.();return saved;
       }
     );
     solicitarProcessamentoSync();

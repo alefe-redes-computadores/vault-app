@@ -1,3 +1,4 @@
+import {recoveryOperationR7} from './active-receipt-recovery-r7';
 import {intentFromQueue,sameAcquisition,type PendingItem} from './atomic-envelope';
 import {validateMacro02Backup} from './backup-contract';
 import type {ScopedStockRow} from './stock-context';
@@ -23,8 +24,8 @@ function ownedUniqueRows(value:unknown,userId:string,label:string):Row[]{
 function parseMacro02RecoveryFile(value:unknown,userId:string){
  if(!isRow(value)||value.user_id!==userId||value.version!=='3.0'||!isRow(value.macro02_recovery))throw Error('Backup incompatível ou de outra conta.');
  const r=value.macro02_recovery;if(r.user_id!==userId||r.version!==1||r.mode!=='evidence_only_no_replay')throw Error('Recibo de exportação incompatível.');
- const pending=rows(r.pending).map(x=>{if(!isRow(x.payload)||typeof x.table!=='string'||typeof x.operation!=='string'||typeof x.chave!=='string'||x.payload.user_id!==userId)throw Error('Intenção fora do escopo.');const q={table:x.table,operation:x.operation,chave:x.chave,payload:x.payload};if(!intentFromQueue(q))throw Error('Intenção não reconhecida.');return q;});
- const state:LocalRecoveryState={userId,persons:ownedUniqueRows(value.persons,userId,'persons'),medications:ownedUniqueRows(value.medicamentos,userId,'medicamentos') as ScopedStockRow[],doses:ownedUniqueRows(value.dose_logs,userId,'dose_logs'),acquisitions:ownedUniqueRows(value.renovacoes,userId,'renovacoes'),withdrawals:ownedUniqueRows(value.retiradas,userId,'retiradas'),queue:pending};
+ const pending=rows(r.pending).map(x=>{if(!isRow(x.payload)||typeof x.table!=='string'||typeof x.operation!=='string'||typeof x.chave!=='string'||x.payload.user_id!==userId)throw Error('Intenção fora do escopo.');const q={table:x.table,operation:x.operation,chave:x.chave,payload:x.payload};recoveryOperationR7(q,userId);return q;});
+ const state:LocalRecoveryState={userId,persons:ownedUniqueRows(value.persons,userId,'persons'),medications:ownedUniqueRows(value.medicamentos,userId,'medicamentos') as ScopedStockRow[],doses:ownedUniqueRows(value.dose_logs,userId,'dose_logs'),acquisitions:ownedUniqueRows(value.renovacoes,userId,'renovacoes'),withdrawals:ownedUniqueRows(value.retiradas,userId,'retiradas'),links:value.a1_prescription_links===undefined?[]:ownedUniqueRows(value.a1_prescription_links,userId,'a1_prescription_links'),queue:pending};
  const verified=validateMacro02Backup(state);
  if(verified.pendingCount!==r.pendingCount||verified.pendingCount!==pending.length)throw Error('Fila do backup incompleta.');
  return {state,verified};
@@ -40,6 +41,7 @@ export function classifyMacro02RecoveryFile(value:unknown,userId:string,ledger:u
 /** Recover only original pending intents when current clinical rows already match their terminal state.
  * No dose, stock, acquisition or receipt is imported. Never mint an operation ID or replay a local debit. */
 export function planMacro02QueueRecovery(local:LocalRecoveryState,pending:readonly PendingItem[]){
+ if(pending.some(q=>q.payload.macro02_compound!==undefined))throw Error('Recuperação de envelope composto exige o recibo integral; preserve o arquivo.');
  const scopes=new Set(pending.map(q=>{const i=intentFromQueue(q);if(!i||i.stockBefore.user_id!==local.userId)throw Error('Intenção fora da conta.');return i.stockBefore.medicationId;}));
  const current=local.queue.filter(q=>q.payload.user_id===local.userId&&scopes.has(String(q.table==='medicamentos'?q.payload.id:q.payload.medicamento_id)));
  const byKey=new Map(pending.map(q=>[q.chave,q]));

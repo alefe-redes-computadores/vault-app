@@ -303,13 +303,9 @@ export function Providers({
   } =
     useSyncQueue();
 
-  const [
-    isPullDone,
-    setIsPullDone,
-  ] =
-    useState(
-      false
-    );
+  // A conclusion from a previous authenticated owner cannot authorize onboarding.
+  const [pullDoneOwner, setIsPullDone] = useState<string | null>(null);
+  const isPullDone = Boolean(user?.id && pullDoneOwner === user.id);
 
   const [pullError, setPullError] = useState<string | null>(null);
   const [pullAttempt, setPullAttempt] = useState(0);
@@ -323,10 +319,16 @@ export function Providers({
 
   useDoseNotificationActions();
 
-  const ownedPersonCount = useLiveQuery(
-    () => user ? db.persons.where("user_id").equals(user.id).count() : 0,
-    [user?.id]
-  );
+  // Dexie live queries retain the last result while dependency changes hydrate.
+  // A zero from anonymous boot or another account is not proof of an empty Vault.
+  const profileOwner = user?.id ?? null;
+  const ownedPersonResult = useLiveQuery(async () => {
+    if (!profileOwner) return undefined;
+    const count = await db.persons.where("user_id").equals(profileOwner).count();
+    return { owner: profileOwner, count };
+  }, [profileOwner]);
+  const ownedPersonCount = profileOwner && ownedPersonResult?.owner === profileOwner
+    ? ownedPersonResult.count : undefined;
 
   const [profileGateReady, setProfileGateReady] = useState(false);
   const [profileGateOpen, setProfileGateOpen] = useState(false);
@@ -400,7 +402,7 @@ export function Providers({
     if (pullUserRef.current === nextUserId) return;
     pullUserRef.current = nextUserId;
     hasPulledRef.current = false;
-    setIsPullDone(false);
+    setIsPullDone(null);
     setPullError(null);
     setVaultSyncRuntimeOwner(nextUserId);
     setVaultSyncRuntime({ phase: "idle", error: null });
@@ -559,9 +561,7 @@ export function Providers({
             // A successful Promise can still contain noncritical table errors.
             const partialPullIssue = getPullFailureMessage();
             if (partialPullIssue) setPullError(partialPullIssue);
-            setIsPullDone(
-              true
-            );
+            setIsPullDone(user.id);
           }
         )
         .catch(

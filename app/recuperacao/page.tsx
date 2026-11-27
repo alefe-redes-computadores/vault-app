@@ -2,6 +2,8 @@
 // VAULT_RECOVERY_CENTER_V68
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Macro02PreparationR6 } from "@/components/saude/Macro02PreparationR6";
+import { Macro02ActiveDeviceVerificationR5 } from "@/components/saude/Macro02ActiveDeviceVerificationR5";
 import { P13DeviceDoseAudit } from "@/components/saude/P13DeviceDoseAudit";
 import { useRouter } from "next/navigation";
 import {inspectMacro02Backup,stageMacro02Backup,getMacro02StagedSummary,clearMacro02StagedBackup} from "@/lib/sync/macro02-backup-recovery";
@@ -156,6 +158,8 @@ export default function RecoveryCenterPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void px-4 pb-32 pt-6 text-ink-primary">
+        {user?.id && <Macro02PreparationR6 key={`prepare:${user.id}`} uid={user.id} />}
+        {user?.id && <Macro02ActiveDeviceVerificationR5 key={user.id} uid={user.id} />}
         <header className="mx-auto flex max-w-2xl items-start gap-3">
           <button
             type="button"

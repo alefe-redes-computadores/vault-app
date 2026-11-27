@@ -1,0 +1,38 @@
+'use strict';
+// Generate real wire requests from the production client modules, not hand-authored SQL JSON.
+const fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'../..'),cache=new Map();
+function load(file){file=path.resolve(root,file);if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);new Function('module','exports','require',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(m,m.exports,n=>n.startsWith('@/')?load(n.slice(2)+'.ts'):n.startsWith('.')?load(path.resolve(path.dirname(file),n)+'.ts'):require(n));return m.exports;}
+const {makeMacro02CompoundR6,projectCompoundRow,assertCompoundAckR6,compoundQueueAnchorR6}=load('lib/dose-premium/cutover-compound-r6.ts');
+const {classifyActiveBackupR7,verifyExtendedBackupR7}=load('lib/dose-premium/active-receipt-recovery-r7.ts');
+const {captureStockCount}=load('lib/dose-premium/stock-cycle.ts'),{observedStockContext}=load('lib/dose-premium/stock-context.ts'),{acquisitionWire,acquisitionMedicationPatch}=load('lib/dose-premium/acquisition-wire.ts');
+const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,uid=id(1),pid=id(2),epoch=id(3),at='2026-11-26T12:00:00Z',later='2026-11-26T12:01:00Z';
+const common={user_id:uid,person_id:pid,created_at:at,updated_at:at,synced:true};
+const next=(r,p={})=>({...r,updated_at:later,synced:false,...p});
+function build(kind,i){let n=i*100+20;const newId=()=>id(++n);const mid=id(i*100+4),rxid=id(i*100+5),wid=id(i*100+6),scope={user_id:uid,person_id:pid,medicationId:mid};
+ const med={...common,id:mid,nome:'Synthetic',dosagem:'1mg',estoque_quantidade:10,estoque_unidade_medida:'comprimido',macro02_stock_managed:false,estoque_ciclo_id:null,estoque_data_referencia:'2026-11-26'};
+ let after,rx,withdrawal,link,s,previous;
+ function stock(a,b,mode,extra={}){return {version:2,mode,operationId:id(i*100+30),previous:null,after:null,stockBefore:observedStockContext(a,scope),stockAfter:observedStockContext(b,scope),stockRevisionBefore:a.updated_at,stockRevisionAfter:b.updated_at,stockReferenceAfter:b.estoque_data_referencia??null,beforeCount:captureStockCount(a),afterCount:captureStockCount(b),acquisition:null,countedCurrentStock:null,initialStockQuantity:null,sequence:1,predecessor:null,...extra};}
+ if(kind==='adjustment'){after=next(med,{nome:'Synthetic edit',estoque_quantidade:8,macro02_stock_managed:true});s=stock(med,after,kind);}
+ if(kind==='acquisition'||kind==='acquisition-unquantified'){rx=next({...common,id:rxid,medicamento_id:mid,data:'2026-11-26',tipo_aquisicao:'sus',quantidade:kind==='acquisition'?3:null,data_aquisicao:'2026-11-26',data_proxima_retirada:'2026-12-26',a3_location_changes:[],exige_nova_receita:false});after=next(med,{...(kind==='acquisition'?{estoque_quantidade:13,macro02_stock_managed:true}:{}),data_retorno_sus:'2026-12-26'});if(kind==='acquisition')s=stock(med,after,kind,{acquisition:acquisitionWire(rx),medicationPatch:acquisitionMedicationPatch(med,after)});withdrawal={before:null,after:next({...common,id:wid,medicamento_id:mid,renovacao_origem_id:rxid,data:'2026-12-26',status:'agendada',tipo:'sus',reagendamentos:[],a3_location_changes:[]})};}
+ if(kind==='prescription'){rx=next({...common,id:rxid,medicamento_id:mid,data:'2026-11-26',a3_location_changes:[]});after=next(med,{data_receita:'2026-11-26'});previous=projectCompoundRow('renovacoes',{...common,id:id(i*100+9),medicamento_id:mid,data:'2026-11-25',a3_location_changes:[]});link={...common,id:id(i*100+10),medicamento_id:mid,renovacao_anterior_id:previous.id,renovacao_atual_id:rxid,tipo:'renovacao',origem:'relato_pessoal',observacoes:null,deleted_at:null,synced:false};}
+ const c=makeMacro02CompoundR6({kind,uid,epoch,before:med,after,stock:s,rx:kind==='acquisition'?undefined:rx,withdrawal,link,newId});return {c,after,rx,withdrawal,link,previous};}
+const fixtures={adjustment:build('adjustment',1),acquisition:build('acquisition',2),unquantified:build('acquisition-unquantified',3),prescription:build('prescription',4),rollback:build('acquisition',5),race:build('adjustment',6)};
+const sqlj=x=>`$wire$${JSON.stringify(x)}$wire$::jsonb`;
+const insert=(table,row)=>`INSERT INTO public.${table} SELECT * FROM jsonb_populate_record(NULL::public.${table},${sqlj(row)});`;
+const dir=process.argv[2];if(!dir)throw Error('output dir required');fs.mkdirSync(dir,{recursive:true});
+if(process.argv[3]==='verify'){
+ for(const k of ['adjustment','acquisition','unquantified','prescription']){const f=fixtures[k],ack=JSON.parse(fs.readFileSync(path.join(dir,k+'.ack.json'),'utf8')),ledger=JSON.parse(fs.readFileSync(path.join(dir,k+'.ledger.json'),'utf8'));assertCompoundAckR6(f.c,ack);const q=compoundQueueAnchorR6(f.c);const rows={medicamentos:[f.after],renovacoes:f.rx?[f.rx]:[],retiradas:f.withdrawal?[f.withdrawal.after]:[],a1_prescription_links:f.link?[f.link]:[]};verifyExtendedBackupR7(uid,[q],rows);assert.deepEqual(classifyActiveBackupR7(uid,epoch,[q],ledger).confirmed,[f.c.operation_id]);}
+ console.log('MACRO02_REAL_PG_WIRE_AND_BACKUP_RECEIPTS_PASS=4');process.exit(0);
+}
+const seed=[];for(const f of Object.values(fixtures)){seed.push(insert('medicamentos',f.c.medication_before));if(f.previous)seed.push(insert('renovacoes',f.previous));}
+// Force a late collision on the withdrawal insert after the stock/acquisition
+// writer has already run. The entire transaction and its receipts must roll back.
+const collision={...fixtures.rollback.withdrawal.after,renovacao_origem_id:null};seed.push(insert('retiradas',projectCompoundRow('retiradas',collision)));
+fs.writeFileSync(path.join(dir,'seed.sql'),seed.join('\n')+'\n');
+for(const [k,f] of Object.entries(fixtures)){fs.writeFileSync(path.join(dir,k+'.json'),JSON.stringify(f.c));fs.writeFileSync(path.join(dir,k+'.sql'),`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false) \\g /dev/null\nSELECT public.vault_macro02_commit_compound_r6(${sqlj(f.c)});\n`);fs.writeFileSync(path.join(dir,k+'.ledger.sql'),`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false) \\g /dev/null\nSELECT public.vault_macro02_read_active_receipts_r7('${epoch}',ARRAY['${f.c.operation_id}'::uuid]);\n`);}
+const rival=structuredClone(fixtures.race.c);rival.operation_id=id(699);rival.stock.operationId=id(698);rival.metadata[0].operation_id=id(697);rival.medication_after.nome='Rival';rival.metadata[0].changes[0].after.nome='Rival';fs.writeFileSync(path.join(dir,'rival.sql'),`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false) \\g /dev/null\nSELECT public.vault_macro02_commit_compound_r6(${sqlj(rival)});\n`);
+const bad=structuredClone(fixtures.unquantified.c);bad.operation_id=id(899);bad.medication_after.estoque_quantidade=99;fs.writeFileSync(path.join(dir,'bad-stock.sql'),`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false) \\g /dev/null\nSELECT public.vault_macro02_commit_compound_r6(${sqlj(bad)});\n`);
+
+const changedReplay=structuredClone(fixtures.adjustment.c);changedReplay.medication_after.nome='Changed replay';
+fs.writeFileSync(path.join(dir,'changed-replay.sql'),`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false) \\g /dev/null\nSELECT public.vault_macro02_commit_compound_r6(${sqlj(changedReplay)});\n`);

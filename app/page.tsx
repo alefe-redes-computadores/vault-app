@@ -1,6 +1,6 @@
 // app/page.tsx
 "use client";
-import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
+import {useMacro02ModeR5} from "@/hooks/useMacro02ModeR5";
 import { selectHomeDocumentAlerts, countHomeTakenDoseLogs, selectHomeOverdueWithdrawals } from "@/lib/home/home-view-projections";
 import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
 import { selectHomeAttentionP4R3 } from "@/lib/home/home-attention-authority-p4-r3";
@@ -182,6 +182,7 @@ function mapUrgenciaToAlertLevel(
 // ============================================================
 
 export default function HomePage() {
+ const macro02Mode=useMacro02ModeR5();
   const resolveTreatmentColor = useTreatmentIdentityColorResolverR03();
  const {events:homeCareFlowEvents=[]}=useCareFlowM2();
  const supplyOverview=useSupplyOverview();
@@ -1044,13 +1045,14 @@ export default function HomePage() {
         // Read the live scope before every batch item; a profile change cannot redirect a write.
         const scope=homeDoseScopeRef.current;
         assertHomeReviewScope(dose.review,scope,dose);
+        if(macro02Mode==='hold')throw Error('Confira a autoridade deste aparelho na Central de segurança.');
         if(resolution.kind==='ignored'){
           const id=await doseLogsRepository.setStatus({personId:scope.person_id,medicamentoId:dose.medicamentoId,data:dose.data,horario:dose.horario,status:'ignored',motivo:resolution.motivo,expected:dose.review.expected,onlyIfPending:true,requireKnownEmptyStock:resolution.requireKnownEmptyStock,adjustStock:false});
           const saved=await doseLogsRepository.getById(id,scope.person_id);
           if(!saved||saved.id!==id||saved.user_id!==scope.user_id||saved.person_id!==scope.person_id||saved.medicamento_id!==dose.medicamentoId||saved.data!==dose.data||saved.horario.slice(0,5)!==dose.horario||!saved.ignorado_em||saved.tomado_em||saved.motivo!==(resolution.motivo?.trim()||'nao_realizada'))throw Error('Registro local requer conferência antes de nova tentativa.');
         }else{
-          if(MACRO02_PREMIUM_UI_ENABLED&&!resolution.confirmation)throw Error('Confira a quantidade e a unidade antes de registrar.');
-          if(!MACRO02_PREMIUM_UI_ENABLED&&resolution.confirmation)throw Error('A declaração explícita pertence à experiência Premium ainda dormente. Nenhum registro foi alterado.');
+          if(macro02Mode==='premium'&&!resolution.confirmation)throw Error('Confira a quantidade e a unidade antes de registrar.');
+          if(macro02Mode==='legacy'&&resolution.confirmation)throw Error('A declaração explícita pertence à experiência Premium ainda não confirmada neste aparelho. Nenhum registro foi alterado.');
           const asOf=new Date().toISOString();
           const actualAt=resolution.kind==='scheduled'?civilDoseInstant(dose.data,dose.horario,asOf):resolution.kind==='now'?(resolution.confirmedAt??asOf):civilDoseInstant(resolution.takenAtLocal.slice(0,10),resolution.takenAtLocal.slice(11),asOf);
           const id=await doseLogsRepository.setStatus({personId:scope.person_id,medicamentoId:dose.medicamentoId,data:dose.data,horario:dose.horario,status:'taken',tomadoEm:actualAt,quantidade:resolution.confirmation?.quantity,unit:resolution.confirmation?.unit,expected:dose.review.expected,onlyIfPending:true,adjustStock:resolution.confirmation?.adjustStock??dose.data===hoje,requireRegisteredStock:resolution.requireRegisteredStock});

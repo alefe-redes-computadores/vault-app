@@ -4,6 +4,7 @@
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase/client";
 import type { DoseLog } from "@/lib/types";
+import {metadataPendingProtection} from "@/lib/dose-premium/cutover-metadata-pending";
 import {readMacro02DoseReceipts} from "@/lib/sync/macro02-dose-receipts";
 import { checkDoseIngress, acceptDosePage, verifyRemoteDoseReceipt } from "@/lib/dose-premium/ingress-guard";
 import { isSameRecentCloudDose } from "@/lib/sync/recent-dose-merge";
@@ -54,7 +55,9 @@ export async function refreshRecentCloudDoses(userId: string): Promise<number> {
     const proofs=await readMacro02DoseReceipts(userId,scoped.filter((row,i)=>observed[i]&&checkDoseIngress(userId,observed[i] as unknown as Record<string,unknown>,row as unknown as Record<string,unknown>)==="review").map(row=>row.id!));
     await db.transaction("rw", db.doseLogs, db.syncQueue, async () => {
       // Nunca sobrepor tomada pendente, mesmo que ainda não tenha marcado synced=false.
-      const queued = await db.syncQueue.filter(item => item.table === "doseLogs").toArray();
+      const allQueued = await db.syncQueue.toArray();
+      const metadata = metadataPendingProtection(allQueued,userId);
+      const queued = allQueued.filter(item => item.table === "doseLogs");
       const queuedIds = new Set(queued.map(item => {
         const data = item.payload as {id?: unknown} | null;
         return typeof data?.id === "string" ? data.id : null;
@@ -66,7 +69,7 @@ export async function refreshRecentCloudDoses(userId: string): Promise<number> {
       for (let i = 0; i < incoming.length; i++) {
         const remote = incoming[i];
         const local = previous[i];
-        if (queuedIds.has(remote.id!)) { protectedLocal++; continue; }
+        if (metadata.has("doseLogs",remote.id!) || queuedIds.has(remote.id!)) { protectedLocal++; continue; }
         if (local?.synced === false) { protectedLocal++; continue; }
         if (local && local.user_id !== userId) { evidenceConflicts++; continue; }
         if (checkDoseIngress(userId, local as unknown as Record<string,unknown> | undefined, remote as unknown as Record<string,unknown>) === "review" && !verifyRemoteDoseReceipt(userId,local as unknown as Record<string,unknown>|undefined,remote as unknown as Record<string,unknown>,proofs.get(remote.id!))) { evidenceConflicts++; continue; }

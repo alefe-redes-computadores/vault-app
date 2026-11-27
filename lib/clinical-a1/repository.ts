@@ -1,3 +1,4 @@
+import {metadataPendingProtection} from '@/lib/dose-premium/cutover-metadata-pending';
 import { db } from "@/lib/db";
 import { enfileirarOperacao, solicitarProcessamentoSync } from "@/lib/sync/enfileirarOperacao";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
@@ -66,6 +67,7 @@ export const clinicalA1Repository={
     if(previous!.data>current!.data)throw new Error("A receita anterior não pode ser posterior à atual.");
     const row:A1PrescriptionLink={...newMeta(input.userId,input.personId),medicamento_id:input.medicationId,renovacao_anterior_id:input.previousId,renovacao_atual_id:input.currentId,tipo:input.tipo,origem:input.origem,observacoes:str(input.observacoes).slice(0,1000)||null};
     await db.transaction("rw",[db.a1_prescription_links,db.syncQueue],async()=>{
+      if(metadataPendingProtection(await db.syncQueue.toArray(),input.userId).has('medicamentos',input.medicationId))throw Error('Vínculo clínico anterior aguarda confirmação.');
       const existing=await db.a1_prescription_links.where("person_id").equals(input.personId).filter(x=>x.user_id===input.userId&&!x.deleted_at&&x.renovacao_atual_id===input.currentId).toArray();
       if(existing.length)throw new Error("Esta receita já possui vínculo de versão. Abra o histórico existente.");
       // A1 version graph must be acyclic, including two same-day prescriptions.

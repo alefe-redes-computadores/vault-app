@@ -2,10 +2,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 require('fake-indexeddb/auto');const Dexie=require('dexie').default;
 const db=new Dexie('vault-v163-stock-integrity');db.version(1).stores({medicamentos:'id,person_id,user_id',doseLogs:'id,medicamento_id,person_id,user_id,data,horario',syncQueue:'id,chave',persons:'id,user_id',renovacoes:'id,user_id',retiradas:'id,user_id'});
 // Exercise the real repository AND outbox with real Dexie; auth/remote remain doubles.
+const epoch='00000000-0000-4000-8000-000000000163';
 let failQueue=false;const cache=new Map();
 function load(file){const filename=path.resolve(file);if(cache.has(filename))return cache.get(filename).exports;const m=new Module(filename,module);m.paths=Module._nodeModulePaths(path.dirname(filename));cache.set(filename,m);
  m.require=name=>{
- if(name==='@/lib/sync/macro02-authority')return {prepareMacro02ClinicalWrite:async()=>({writer:'premium',assertCurrent:async()=>{assert(Dexie.currentTransaction);}}),macro02Authority:()=>({prepareWrite:async()=>({writer:'premium',assertCurrent:async()=>{assert(Dexie.currentTransaction);}})})};
+ if(name==='@/lib/sync/macro02-authority')return {prepareMacro02ClinicalWrite:async()=>({writer:'premium',epoch,assertCurrent:async()=>{assert(Dexie.currentTransaction);}}),macro02Authority:()=>({prepareWrite:async()=>({writer:'premium',epoch,assertCurrent:async()=>{assert(Dexie.currentTransaction);}})})};
  if(name==='@/lib/db')return {db};
  if(name==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:'u'}},error:null})};
  if(name==='@/lib/supabase/client')return {supabase:{}};
@@ -23,7 +24,7 @@ function load(file){const filename=path.resolve(file);if(cache.has(filename))ret
  const input={personId:'p',medicamentoId:'m',data:'2026-10-15',horario:'10:00',status:'taken',quantidade:2,unit,tomadoEm:'2026-10-15T10:00:00Z'};await Promise.all([repo.setStatus(input),repo.setStatus(input)]);assert.equal((await db.medicamentos.get('m')).estoque_quantidade,24);assert.equal(await db.doseLogs.count(),1);await repo.setStatus({...input,status:'ignored'});assert.equal((await db.medicamentos.get('m')).estoque_quantidade,26);
  const unavailable={personId:'p',medicamentoId:'m',data:'2026-10-15',horario:'11:00',status:'ignored',motivo:'nao_realizada',onlyIfPending:true,adjustStock:false,expected:null};const ignoredId=await repo.setStatus(unavailable);const queuedAfterFirstIgnore=await db.syncQueue.count();assert.equal(await repo.setStatus(unavailable),ignoredId);assert.equal(await db.syncQueue.count(),queuedAfterFirstIgnore,'same ignored command is a no-op');await assert.rejects(repo.setStatus({...unavailable,motivo:'sem_estoque'}),/já foi revisada/);assert.equal((await db.medicamentos.get('m')).estoque_quantidade,26);
  const drops={...med,id:'drops',forma_farmaceutica:'gotas',formato:'gotas',estoque_unidade_medida:'ml',estoque_gotas_por_ml:20,estoque_ciclo_id:crypto.randomUUID()};await db.medicamentos.add(drops);await repo.registrarTomadaAvulsa({personId:'p',medicamentoId:'drops',data:'2026-10-15',horario:'14:02',quantidade:2,doseKind:'sos',unit:declareDoseUnit('drop','declared'),tomadoEm:'2026-10-15T14:02:00Z'});assert(Math.abs((await db.medicamentos.get('drops')).estoque_quantidade-25.9)<1e-8);assert.equal((await db.medicamentos.get('m')).estoque_quantidade,26);
- const queue=await db.syncQueue.toArray();assert(queue.every(q=>q.payload.macro02_atomic&&q.chave));assert.equal(new Set(queue.map(q=>q.chave)).size,queue.length);
+ const queue=await db.syncQueue.toArray();assert(queue.every(q=>q.payload.macro02_atomic&&q.payload.macro02_epoch===epoch&&q.chave));assert.equal(new Set(queue.map(q=>q.chave)).size,queue.length);
  await db.persons.add({id:'p',user_id:'u'});
  const backup=load('lib/dose-premium/backup-contract.ts').validateMacro02Backup({userId:'u',persons:await db.persons.toArray(),medications:await db.medicamentos.toArray(),doses:await db.doseLogs.toArray(),acquisitions:[],withdrawals:[],queue});
  const recover=load('lib/sync/macro02-backup-recovery.ts').recoverMacro02Pending;const missing=queue[0];await db.syncQueue.delete(missing.id);const balanceBefore=await db.medicamentos.toArray(),factsBefore=await db.doseLogs.toArray();

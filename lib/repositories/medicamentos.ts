@@ -1,3 +1,8 @@
+import {captureCompoundLocalR6,stageCompoundR6,compoundTablesR6} from '@/lib/sync/macro02-compound-r6';
+import {makeMacro02CompoundR6} from '@/lib/dose-premium/cutover-compound-r6';
+import {metadataPendingProtection} from '@/lib/dose-premium/cutover-metadata-pending';
+import {requireMacro02AtomicEpoch} from '@/lib/dose-premium/cutover-active-queue-r5';
+import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {atomicQueueKey,nextAtomicPosition,parseStockAtomicIntent,medicationPending} from '@/lib/dose-premium/atomic-envelope';
 import {observedStockContext} from '@/lib/dose-premium/stock-context';
@@ -456,11 +461,10 @@ export const medicamentosRepository = {
     // ========================================================
 
     const authority=await prepareMacro02ClinicalWrite(user.id);
-    const id=await db.transaction('rw',[db.persons,db.medicamentos,db.syncQueue],async()=>{
+    const id=await runMacro02ResidualWrite(authority,user.id,[db.persons,db.medicamentos,db.syncQueue],async()=>{
     await authority.assertCurrent();
-    if(authority.writer!=='legacy')throw Error('MACRO02_CREATE_CUTOVER_NOT_CERTIFIED');
     const person=await db.persons.get(data.person_id);
-    if(!person||person.user_id!==user.id||(payload.estoque_ciclo_id!=null||('macro02_stock_managed' in payload&&payload.macro02_stock_managed===true)))throw Error('Pessoa ou estoque incompatível com a release dormente.');
+    if(!person||person.user_id!==user.id||(authority.writer==='legacy'&&(payload.estoque_ciclo_id!=null||('macro02_stock_managed' in payload&&payload.macro02_stock_managed===true))))throw Error('Pessoa ou estoque incompatível com a release dormente.');
     const createdId =
       await safeAddMedicamento(
         payload
@@ -496,7 +500,7 @@ export const medicamentosRepository = {
       registroCriado,{dispatchSync:false}
     );
     await authority.assertCurrent();return createdId;
-    });
+    },'medication-create');
     solicitarProcessamentoSync();
     const saved=await db.medicamentos.get(id);
     if(saved)await reconcileMedicationNotifications(undefined,saved);
@@ -523,19 +527,21 @@ export const medicamentosRepository = {
         await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});
         const pending=await db.syncQueue.where('chave').equals(`medicamentos:${id}`).first();
         if(!pending||pending.operation==='delete'||pending.payload.user_id!==userId||pending.payload.person_id!==personId||pending.payload.estoque_quantidade!==count||pending.payload.updated_at!==timestamp||pending.payload.macro02_atomic!==undefined)throw Error('Contagem sem confirmação na fila local.');
-        await authority.assertCurrent();return;
+        await authority.assertCurrent();await authority.assertFinalQueue?.();return;
       }
       const scope={user_id:userId,person_id:personId,medicationId:id},before=observedStockContext(previous,scope),queue=await db.syncQueue.toArray();
       if(queue.some(q=>q.payload.user_id===userId&&q.payload.person_id===personId&&q.payload.macro02_atomic===undefined&&(q.table==='medicamentos'&&q.payload.id===id||q.table==='doseLogs'&&q.payload.medicamento_id===id)))throw Error('Alteração anterior de estoque aguarda sincronização.');
+      if(metadataPendingProtection(queue,userId).has('medicamentos',id))throw Error('Intenção clínica anterior aguarda confirmação.');
       const position=nextAtomicPosition(queue,before,previous.updated_at??null);
       await safeUpdateMedicamento(id,{estoque_quantidade:count,estoque_data_referencia:getLocalTodayISO(),updated_at:new Date().toISOString()},{expected,userId,personId});
+      await db.medicamentos.update(id,{macro02_stock_managed:true});
       const saved=await db.medicamentos.get(id);
       if(!saved||saved.user_id!==userId||saved.person_id!==personId||saved.estoque_quantidade!==count)throw Error('Contagem não confirmada.');
       const atomic=parseStockAtomicIntent({version:2,mode:'count',operationId:crypto.randomUUID(),previous:null,after:null,stockBefore:before,stockAfter:observedStockContext(saved,scope),stockRevisionBefore:previous.updated_at??null,stockRevisionAfter:saved.updated_at??null,stockReferenceAfter:saved.estoque_data_referencia??null,beforeCount:captureStockCount(previous),afterCount:captureStockCount(saved),acquisition:null,countedCurrentStock:count,initialStockQuantity:null,...position});
-      await enfileirarOperacao('medicamentos','update',{...saved,macro02_atomic:atomic},{dispatchSync:false});
+      await enfileirarOperacao('medicamentos','update',{...saved,macro02_atomic:atomic,macro02_epoch:requireMacro02AtomicEpoch(authority.epoch)},{dispatchSync:false});
       const pending=await db.syncQueue.where('chave').equals(atomicQueueKey(atomic)).first();
-      if(!pending||pending.table!=='medicamentos'||pending.operation!=='update'||pending.payload.id!==id||pending.payload.user_id!==userId||pending.payload.person_id!==personId||pending.payload.estoque_quantidade!==count||pending.payload.estoque_ciclo_id!==saved.estoque_ciclo_id||pending.payload.updated_at!==saved.updated_at||JSON.stringify(pending.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Contagem sem confirmação na fila local; operação cancelada.');
-      await authority.assertCurrent();
+      if(!pending||pending.table!=='medicamentos'||pending.operation!=='update'||pending.payload.id!==id||pending.payload.user_id!==userId||pending.payload.person_id!==personId||pending.payload.estoque_quantidade!==count||pending.payload.estoque_ciclo_id!==saved.estoque_ciclo_id||pending.payload.updated_at!==saved.updated_at||pending.payload.macro02_epoch!==authority.epoch||JSON.stringify(pending.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Contagem sem confirmação na fila local; operação cancelada.');
+      await authority.assertCurrent();await authority.assertFinalQueue?.();
     });
     solicitarProcessamentoSync();
     return id;
@@ -624,29 +630,41 @@ export const medicamentosRepository = {
 
     const auth=await getLocalFirstAuthUser();if(!auth.data.user||auth.data.user.id!==current.user_id)throw Error('Conta autenticada não corresponde ao medicamento.');
     const authority=await prepareMacro02ClinicalWrite(current.user_id);
-    const registroCompleto=await db.transaction('rw',[db.medicamentos,db.syncQueue],async()=>{
+    const updateTables=[...compoundTablesR6.map(t=>db.table(t)),db.doseLogs,db.syncQueue];
+    const registroCompleto=await db.transaction('rw',updateTables,async()=>{
+      const run=async()=>{
       await authority.assertCurrent();
       const latest=await db.medicamentos.get(id);if(!latest||latest.user_id!==current.user_id||latest.person_id!==personId||latest.updated_at!==current.updated_at)throw Error('Cadastro mudou desde a abertura. Revise antes de salvar.');
       const scope={user_id:current.user_id,person_id:personId,medicationId:id},queue=await db.syncQueue.toArray();
       if(medicationPending(queue,scope).length)throw Error('Medicamento possui operação acoplada pendente. Preserve a fila antes de alterar o cadastro.');
       const ordinary=queue.filter(q=>q.payload.user_id===scope.user_id&&q.payload.person_id===scope.person_id&&q.payload.macro02_atomic===undefined&&(q.table==='medicamentos'?q.payload.id===id:q.payload.medicamento_id===id));
       const newLocal=ordinary.some(q=>q.table==='medicamentos'&&q.operation==='add')&&!latest.estoque_ciclo_id;
+      if(authority.writer==='premium'&&newLocal)throw Error('Cadastro anterior ainda não confirmado.');
       const before=observedStockContext(latest,scope);
       if(authority.writer==='legacy'&&(latest.estoque_ciclo_id!=null||('macro02_stock_managed' in latest&&latest.macro02_stock_managed===true))&&stockFieldsChanged(latest,{...latest,...payload}))throw Error('Ciclo Premium existente; revisão necessária.');
+      const adjustment=authority.writer==='premium'&&stockFieldsChanged(latest,{...latest,...Object.fromEntries(Object.entries(payload).filter(([,v])=>v!==undefined))})&&!newLocal;
+      const compoundBefore=adjustment?await captureCompoundLocalR6():null;
+      if(adjustment){if(ordinary.length||metadataPendingProtection(queue,current.user_id).has('medicamentos',id))throw Error('Aguarde a confirmação da alteração anterior antes de ajustar estoque.');}
       await safeUpdateMedicamento(id,payload);
+      if(adjustment)await db.medicamentos.update(id,{macro02_stock_managed:true});
       const saved=await db.medicamentos.get(id);if(!saved||saved.user_id!==current.user_id||saved.person_id!==personId)throw Error('Medicamento não confirmado localmente.');
-      if(authority.writer==='premium'&&stockFieldsChanged(latest,saved)&&!newLocal){
-        if(ordinary.length)throw Error('Aguarde a sincronização da alteração anterior antes de ajustar estoque.');
+      if(adjustment){
+        if(!compoundBefore)throw Error('M02_COMPOUND_LOCAL_PREIMAGE');
         const atomic=parseStockAtomicIntent({version:2,mode:'adjustment',operationId:crypto.randomUUID(),previous:null,after:null,stockBefore:before,stockAfter:observedStockContext(saved,scope),stockRevisionBefore:latest.updated_at??null,stockRevisionAfter:saved.updated_at??null,stockReferenceAfter:saved.estoque_data_referencia??null,beforeCount:captureStockCount(latest),afterCount:captureStockCount(saved),acquisition:null,countedCurrentStock:null,initialStockQuantity:null,...nextAtomicPosition(queue,before,latest.updated_at??null)});
-        await enfileirarOperacao('medicamentos','update',{...saved,macro02_atomic:atomic},{dispatchSync:false});
-        const pending=await db.syncQueue.where('chave').equals(atomicQueueKey(atomic)).first();
-        if(!pending||JSON.stringify(pending.payload.macro02_atomic)!==JSON.stringify(atomic))throw Error('Ajuste sem confirmação na fila local.');
-        // Mixed cadastral edits retain the existing metadata/junction synchronization, after the stock receipt.
+        const compound=makeMacro02CompoundR6({kind:'adjustment',uid:scope.user_id,epoch:requireMacro02AtomicEpoch(authority.epoch),before:{...latest},after:{...saved},stock:atomic,newId:()=>crypto.randomUUID()});
+        await stageCompoundR6(compound,compoundBefore,authority);return saved;
       }
       await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});
       const metadata=await db.syncQueue.where('chave').equals(`medicamentos:${id}`).first();
       if(!metadata||metadata.payload.user_id!==scope.user_id||metadata.payload.person_id!==scope.person_id||metadata.payload.updated_at!==saved.updated_at)throw Error('Cadastro sem confirmação na fila local.');
       await authority.assertCurrent();return saved;
+      };
+      // An adjustment uses its own complete compound postimage/outbox. Ordinary
+      // metadata continues through the already certified residual adapter.
+      const latest=await db.medicamentos.get(id);if(!latest)throw Error('Cadastro indisponível.');
+      const changes=Object.fromEntries(Object.entries(payload).filter(([,v])=>v!==undefined));
+      if(authority.writer==='premium'&&stockFieldsChanged(latest,{...latest,...changes}))return run();
+      return runMacro02ResidualWrite(authority,current.user_id,[db.medicamentos,db.syncQueue],run,'medication-metadata');
     });solicitarProcessamentoSync();
 
     await reconcileMedicationNotifications(
@@ -721,14 +739,13 @@ export const medicamentosRepository = {
 
     const auth=await getLocalFirstAuthUser();if(!auth.data.user||auth.data.user.id!==medicamento.user_id)throw Error('Conta autenticada não corresponde ao medicamento.');
     const authority=await prepareMacro02ClinicalWrite(medicamento.user_id);
-    const registroCompleto=await db.transaction('rw',[db.medicamentos,db.syncQueue],async()=>{
+    const registroCompleto=await runMacro02ResidualWrite(authority,medicamento.user_id,[db.medicamentos,db.syncQueue],async()=>{
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_DISCONTINUE_CUTOVER_NOT_CERTIFIED');
       const latest=await db.medicamentos.get(id);if(!latest||latest.user_id!==medicamento.user_id||latest.person_id!==personId||latest.updated_at!==medicamento.updated_at)throw Error('Cadastro mudou. Revise antes de descontinuar.');
       if(medicationPending(await db.syncQueue.toArray(),{user_id:medicamento.user_id,person_id:personId,medicationId:id}).length)throw Error('Medicamento possui operação acoplada pendente. Preserve a fila antes de descontinuar.');
       await safeUpdateMedicamento(id,descontinuado);const saved=await db.medicamentos.get(id);if(!saved||saved.user_id!==medicamento.user_id||saved.person_id!==personId)throw Error('Histórico não confirmado localmente.');
-      await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});await authority.assertCurrent();return saved;
-    });solicitarProcessamentoSync();
+      await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});await authority.assertCurrent();await authority.assertFinalQueue?.();return saved;
+    },'medication-discontinue');solicitarProcessamentoSync();
 
     await reconcileMedicationNotifications(
       medicamento,

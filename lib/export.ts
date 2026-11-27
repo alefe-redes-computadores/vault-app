@@ -138,7 +138,7 @@ export async function exportAllData(userId: string): Promise<string> {
       // Do not export an unowned payload (possible foreign data). Record that
       // the file cannot prove full queue scope, without exposing its contents.
       const omittedUnowned=clinicalCandidates.filter(q=>typeof q.payload?.user_id!=='string'||!q.payload.user_id).length;
-      const recovery = validateMacro02Backup({userId,persons,medications:medicamentos,doses:doseLogs.map(row=>({...row})),acquisitions:renovacoes.map(row=>({...row})),withdrawals:retiradas.map(row=>({...row})),queue});
+      const recovery = validateMacro02Backup({userId,persons,medications:medicamentos,doses:doseLogs.map(row=>({...row})),acquisitions:renovacoes.map(row=>({...row})),withdrawals:retiradas.map(row=>({...row})),links:(a1Entries.find(([name])=>name==='a1_prescription_links')?.[1]??[]).map(row=>({...row})),queue});
       const data = {
         ...Object.fromEntries(vitalEntries),
         ...Object.fromEntries(a1Entries),

@@ -2,10 +2,14 @@
 
 "use client";
 
+import {sendCompoundR6,finalizeCompoundR6} from '@/lib/sync/macro02-compound-r6';
 import {syncTreatmentVisualIntentR03,finalizeTreatmentVisualIntentR03,TreatmentVisualConflictR03} from "@/lib/sync/treatment-visual-transport-r03";
-import { countMacro02Pending } from "@/lib/dose-premium/authority-session";
-import { isMacro02Atomic, pendingAtomicPredecessor, sendMacro02Atomic, finalizeMacro02Atomic } from "@/lib/sync/macro02-atomic";
+import {allowMacro02QueueR5} from "@/lib/dose-premium/cutover-active-queue-r5";
+import {readMacro02EnrollmentR5} from "@/lib/sync/macro02-enrollment-r5";
+import { isMacro02Atomic, pendingAtomicPredecessor, sendMacro02Atomic, sendMacro02AtomicR5, finalizeMacro02Atomic, finalizeMacro02AtomicR5 } from "@/lib/sync/macro02-atomic";
 import { intentFromQueue, type AtomicAck } from "@/lib/dose-premium/atomic-envelope";
+import {isMacro02Metadata} from "@/lib/dose-premium/cutover-metadata-transport-r5";
+import {sendMacro02MetadataR5,finalizeMacro02MetadataR5} from "@/lib/sync/macro02-metadata-r5";
 import { DOSE_PREMIUM_SELECT, dosePremiumWireFields, assertDosePremiumAck } from "@/lib/dose-premium/wire-fields";
 
 import { resolveConsultaSyncPayloadP0 } from "@/lib/sync/consulta-payload-authority";
@@ -5286,6 +5290,8 @@ export function useSyncQueue() {
       item:
         SyncQueueItem
     ) => {
+      if(item.payload.macro02_compound!==undefined)throw Error('Macro02: envelope composto exige o escritor e recibo integral R6.');
+      if(item.payload.macro02_metadata!==undefined)throw Error('Macro02: metadados R3 aguardam escritor certificado.');
       if(isMacro02Atomic(item)&&item.table!=='doseLogs'){const client=requireSupabase();const {data,error}=await client.auth.getUser();if(error||!data.user)throw Error('Macro02: sessão não confirmada.');return sendMacro02Atomic(item,data.user.id);}
       if(vitalTable(item.table)){
         const client=requireSupabase();const {data,error}=await client.auth.getUser();
@@ -5857,11 +5863,11 @@ export function useSyncQueue() {
                   );
 
                 try {
-                  // Dormant release: keep original incompatible envelopes and clinical
-                  // outbox rows intact. Do not consume retries or reclassify them.
+                  // The server fence is authoritative. No offline/legacy
+                  // fallback, no adoption of a stale epoch or incompatible outbox.
                   if(['doseLogs','medicamentos','renovacoes','retiradas'].includes(item.table)){
-                    const pending=countMacro02Pending(await db.syncQueue.toArray(),authenticatedUser.id);
-                    if(item.payload.user_id!==authenticatedUser.id||pending.premium||pending.unclassified){result.processed--;addLog('Macro02: intenção clínica preservada para revisão de autoridade.','info');continue;}
+                    const enrollment=await readMacro02EnrollmentR5(authenticatedUser.id).catch(()=>null);
+                    if(!enrollment||!allowMacro02QueueR5(enrollment,item,await db.syncQueue.toArray(),authenticatedUser.id)){result.processed--;addLog('Macro02: intenção clínica preservada para revisão de autoridade.','info');continue;}
                   }
                   if (
                     item.operation !==
@@ -5889,9 +5895,21 @@ export function useSyncQueue() {
 
                   if(isMacro02Atomic(item)&&await pendingAtomicPredecessor(item)){result.processed--;addLog('Operação aguardando intenção anterior do mesmo estoque.','info');continue;}
                   // The visual CAS can finalize its own queue row. Clinical operations require their exact ACK.
-                  const sendResult=await syncItem(item);
-                  const atomicAck=typeof sendResult==='boolean'?undefined:sendResult;
-                  const finalized=(item.table==='tratamento_visual_identity'&&sendResult===true)||await finalizeQueueItem(item,atomicAck);
+                  const finalized=await (async()=>{
+                    if(item.payload.macro02_compound!==undefined){const ack=await sendCompoundR6(item,authenticatedUser.id);return finalizeCompoundR6(item,ack);}
+                    if(isMacro02Metadata(item)){
+                      const ack=await sendMacro02MetadataR5(item,authenticatedUser.id);
+                      return finalizeMacro02MetadataR5(item,ack);
+                    }
+                    if(isMacro02Atomic(item)){
+                      const ack=await sendMacro02AtomicR5(item,authenticatedUser.id);
+                      if(!ack||typeof ack!=='object')throw Error('Confirmação acoplada ausente; preserve a fila.');
+                      return finalizeMacro02AtomicR5(item,ack);
+                    }
+                    const sendResult=await syncItem(item);
+                    const atomicAck=typeof sendResult==='boolean'?undefined:sendResult;
+                    return (item.table==='tratamento_visual_identity'&&sendResult===true)||await finalizeQueueItem(item,atomicAck);
+                  })();
 
                   if (
                     finalized

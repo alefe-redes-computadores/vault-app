@@ -1,6 +1,7 @@
 "use client";
 import DormantRetroBatchReviewPage from "@/components/saude/DormantRetroBatchReviewPage";
-import {MACRO02_PREMIUM_UI_ENABLED} from "@/lib/dose-premium/dormant-release-authority";
+import {useMacro02ModeR5} from "@/hooks/useMacro02ModeR5";
+import {Macro02AuthorityHoldR5} from "@/components/saude/Macro02AuthorityHoldR5";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -217,4 +218,4 @@ function RetroBatchReviewContent() {
 function PremiumRetroBatchReviewPage() { return <Suspense fallback={<main className="min-h-screen bg-void p-5 text-sm text-ink-muted">Preparando revisão histórica…</main>}><RetroBatchReviewContent/></Suspense>; }
 
 // The dormant release retains the certified legacy UX. Premium remains preserved for the gated cutover.
-export default function RetroBatchReviewPage(){return MACRO02_PREMIUM_UI_ENABLED ? <PremiumRetroBatchReviewPage/> : <DormantRetroBatchReviewPage/>;}
+export default function RetroBatchReviewPage(){const mode=useMacro02ModeR5();return mode==='premium'?<PremiumRetroBatchReviewPage/>:mode==='legacy'?<DormantRetroBatchReviewPage/>:<Macro02AuthorityHoldR5/>;}
