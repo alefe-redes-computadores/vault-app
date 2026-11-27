@@ -1,0 +1,36 @@
+name: VAULT Macro02 automatic preparation - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-auto-preparation-12f137f46db2']
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin source and preserve concurrent main
+        run: |
+          test "$(git rev-parse HEAD^)" = "12f137f46db2956a7b3a26f5ce348c3f552c9eef"
+          git checkout --detach 12f137f46db2956a7b3a26f5ce348c3f552c9eef
+          test "$(git rev-parse HEAD^{tree})" = "a480145847de408a76f756ca85a8369288dc3593"
+          git merge-base --is-ancestor ed13dd214de04040018d8e8e14bf4fafc9369d6a HEAD
+          git merge-base --is-ancestor dbf27346e09b28be06a0ad0df9a13541576ea74d HEAD
+          git diff --check ed13dd214de04040018d8e8e14bf4fafc9369d6a HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node scripts/test-vault-macro02-operational-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-recovery.cjs
+      - run: node node_modules/typescript/bin/tsc --noEmit
+      - name: V63 cumulative release contracts
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Android Web export (synthetic configuration)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+        run: npm run build:export
