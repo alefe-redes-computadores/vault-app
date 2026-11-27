@@ -1,0 +1,53 @@
+name: VAULT Integrado - escritor composto PG17 (LAB ONLY)
+on:
+  push:
+    branches: ['vault-lab/final-stability-macro02-*']
+permissions:
+  contents: read
+jobs:
+  active-pg17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fonte integrada imutavel
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'cc6f84ad60ffaae42b9f8e897afa421b437fff86'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^{tree}')" = '02449b62688b089d705ebc2fa14a40bf238a10bf'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^1')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^2')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '62a25e385e602ae70451e8e3de7c320d5fce6e90'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          [[ "$GITHUB_REF_NAME" == vault-lab/final-stability-macro02-* ]]
+          test "$(git hash-object '.github/h01-h07/h07-copy.json')" = '14cb87b4e737c96fe5cb2910a95d603299da1050'
+          test "$(git hash-object '.github/h01-h07/qa_browser.py')" = 'c38cca6ecfd40a35862adf9068e6d297dec8df38'
+          test "$(git hash-object '.github/h01-h07/qa_h01_h04.py')" = '542afd4f2cd2473cc2af4f425084f8f897514fa2'
+          test "$(git hash-object '.github/h01-h07/qa_h05_h06.py')" = 'bdc1dc28ce719f448735ef44d8516e51d1605968'
+          test "$(git hash-object '.github/macro02-qa/run-active-r7-pg.sh')" = 'f2482720a5e32525be5fd173ffcbb26a00e0e1c7'
+          test "$(git hash-object '.github/macro02-ui/bootstrap.cjs')" = '83ff3c618167f73690aa3ea251d6896108c17aac'
+          test "$(git hash-object '.github/macro02-ui/browser.cjs')" = '460cd7e8bfb1781b608ce68f7479be00d8b640c5'
+          test "$(git hash-object '.github/macro02-ui/profile-contract.cjs')" = '3b19205188c64b4acd801837cc532a179ced9ef0'
+          test "$(git hash-object '.github/macro02-ui/queue-contract.cjs')" = '298b61edcf428af07f711510617bebd9cad4000d'
+          test "$(git hash-object '.github/macro02-ui/run.sh')" = 'c99b6611679ef4d175b0723a5e3bfb92c07a9550'
+          cp .github/macro02-qa/run-active-r7-pg.sh "$RUNNER_TEMP/macro02-active-pg17.sh"
+          test "$(git hash-object "$RUNNER_TEMP/macro02-active-pg17.sh")" = f2482720a5e32525be5fd173ffcbb26a00e0e1c7
+          git checkout --detach 'cc6f84ad60ffaae42b9f8e897afa421b437fff86'
+          test -z "$(git status --porcelain)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: PostgreSQL 17 - Migration 03 e Premium ativo
+        run: bash "$RUNNER_TEMP/macro02-active-pg17.sh"
+      - name: Limites
+        if: always()
+        run: echo 'PG17 isolado; sem producao; nao certifica UI nem dispositivo fisico.'

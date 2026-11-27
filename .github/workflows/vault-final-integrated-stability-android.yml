@@ -1,0 +1,470 @@
+name: VAULT Integrado - Stability V63 V70 Android (SEM RELEASE)
+
+on:
+  push:
+    branches: ["vault-lab/final-stability-macro02-*"]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: vault-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    needs: [chromium-delta]
+    name: Validar e gerar APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Clonar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Historical audit optional; strict V63 executes the current tree
+
+      - name: Fixar origem integrada e proibir release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'cc6f84ad60ffaae42b9f8e897afa421b437fff86'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^{tree}')" = '02449b62688b089d705ebc2fa14a40bf238a10bf'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^1')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^2')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '62a25e385e602ae70451e8e3de7c320d5fce6e90'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          [[ "$GITHUB_REF_NAME" == vault-lab/final-stability-macro02-* ]]
+          test "$(git hash-object '.github/h01-h07/h07-copy.json')" = '14cb87b4e737c96fe5cb2910a95d603299da1050'
+          test "$(git hash-object '.github/h01-h07/qa_browser.py')" = 'c38cca6ecfd40a35862adf9068e6d297dec8df38'
+          test "$(git hash-object '.github/h01-h07/qa_h01_h04.py')" = '542afd4f2cd2473cc2af4f425084f8f897514fa2'
+          test "$(git hash-object '.github/h01-h07/qa_h05_h06.py')" = 'bdc1dc28ce719f448735ef44d8516e51d1605968'
+          test "$(git hash-object '.github/macro02-qa/run-active-r7-pg.sh')" = 'f2482720a5e32525be5fd173ffcbb26a00e0e1c7'
+          test "$(git hash-object '.github/macro02-ui/bootstrap.cjs')" = '83ff3c618167f73690aa3ea251d6896108c17aac'
+          test "$(git hash-object '.github/macro02-ui/browser.cjs')" = '460cd7e8bfb1781b608ce68f7479be00d8b640c5'
+          test "$(git hash-object '.github/macro02-ui/profile-contract.cjs')" = '3b19205188c64b4acd801837cc532a179ced9ef0'
+          test "$(git hash-object '.github/macro02-ui/queue-contract.cjs')" = '298b61edcf428af07f711510617bebd9cad4000d'
+          test "$(git hash-object '.github/macro02-ui/run.sh')" = 'c99b6611679ef4d175b0723a5e3bfb92c07a9550'
+          git checkout --detach 'cc6f84ad60ffaae42b9f8e897afa421b437fff86'
+          test -z "$(git status --porcelain)"
+          git diff --check 'c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf' HEAD
+          mkdir -p artifacts
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\nLAB_SHA=%s\nPRODUCTION_RELEASE=NO\nCAS_ALREADY_APPLIED=20261127152804\n' 'cc6f84ad60ffaae42b9f8e897afa421b437fff86' '02449b62688b089d705ebc2fa14a40bf238a10bf' "$GITHUB_SHA" > artifacts/STABILITY-H01-H07-ORIGEM.txt
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Instalar dependências reproduzíveis
+        run: npm ci
+
+      - name: Executar gate V63 estrito e TypeScript integral
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          failures=0
+          VAULT_V63_COLLECT_ALL=1 npm run test:release 2>&1 | tee artifacts/V63-STRICT.log || failures=$((failures+1))
+          for marker in 'V63_COLETA_INTEGRAL_APROVADA | executadas=591 | falhas=0' 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'R03_IDENTITY_PASS=49 FAIL=0' 'CAS_TRANSPORT_TOTAL=20' 'STB13_GEOMETRY_BEHAVIOR_PASS=29' 'STB_DIRECTED_PASS=173 FAIL=0' 'V56_R04_CONTEXTUAL_RETURN_PASS=14' 'H01_H04_DIRECTED_PASS=' 'H05_H06_DIRECTED_PASS=' 'H07_DIRECTED_PASS='; do
+            grep -Fq "$marker" artifacts/V63-STRICT.log || { printf "MISSING_GATE_MARKER=%s\n" "$marker"; failures=$((failures+1)); }
+          done
+          node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee artifacts/V70-SUPER.log || failures=$((failures+1))
+          node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee artifacts/V70-FINAL.log || failures=$((failures+1))
+          node scripts/test-vault-update360-v34.cjs 2>&1 | tee artifacts/UPDATE360.log || failures=$((failures+1))
+          node node_modules/typescript/bin/tsc --noEmit 2>&1 | tee artifacts/TYPESCRIPT.log || failures=$((failures+1))
+          printf "FINAL_GATE_FAILURES=%s\n" "$failures" | tee artifacts/FINAL-GATE-STATUS.txt
+          test "$failures" -eq 0
+      - name: Exportar aplicação para o Capacitor
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+        run: node scripts/ci-build-export-resilient.cjs
+
+      - name: Confirmar exportação
+        run: test -f out/index.html
+
+      - name: Criar plataforma Android
+        run: |
+          if test -d android; then
+            npx cap sync android
+          else
+            npx cap add android
+          fi
+
+      - name: Configurar deep link de autenticação
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          android = "http://schemas.android.com/apk/res/android"
+          ET.register_namespace("android", android)
+          tree = ET.parse(path)
+          root = tree.getroot()
+          activity = next(
+              item for item in root.findall("./application/activity")
+              if item.get(f"{{{android}}}name", "").endswith("MainActivity")
+          )
+          exists = any(
+              data.get(f"{{{android}}}scheme") == "vault"
+              and data.get(f"{{{android}}}host") == "callback"
+              for data in activity.findall("./intent-filter/data")
+          )
+          if not exists:
+              intent = ET.SubElement(activity, "intent-filter", {
+                  f"{{{android}}}label": "vault_auth",
+              })
+              ET.SubElement(intent, "action", {
+                  f"{{{android}}}name": "android.intent.action.VIEW",
+              })
+              ET.SubElement(intent, "category", {
+                  f"{{{android}}}name": "android.intent.category.DEFAULT",
+              })
+              ET.SubElement(intent, "category", {
+                  f"{{{android}}}name": "android.intent.category.BROWSABLE",
+              })
+              ET.SubElement(intent, "data", {
+                  f"{{{android}}}scheme": "vault",
+                  f"{{{android}}}host": "callback",
+              })
+              tree.write(path, encoding="utf-8", xml_declaration=True)
+          PY
+
+      - name: Gerar identidade visual Android
+        run: |
+          test -f assets/icon.png
+          test -f assets/splash.png
+          npx @capacitor/assets generate --android
+
+      - name: Sincronizar Capacitor
+        run: npx cap sync android
+
+      - name: Validar bridge e plugins nativos V29
+        run: node scripts/validate-android-bridge-v29.mjs
+
+      - name: Aplicar edge-to-edge nativo
+        run: node scripts/patch-android-edge-to-edge-v28.mjs
+      - name: Configurar Health Connect e validar ferramentas Android
+        run: node scripts/patch-android-health-connect-v113.mjs
+
+      - name: Configurar alarmes exatos M99 com autorização especial
+        run: node scripts/patch-android-exact-alarms-m99.mjs
+
+      - name: Integrar atualização nativa segura M111
+        run: |
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+
+      - name: Instalar ícone de notificações Android
+        run: |
+          test -f assets/android/ic_stat_vault.xml
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+
+      - name: Assinar com chave descartavel de CI e versionar APK
+        shell: bash
+        env:
+          VAULT_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          test "$VAULT_VERSION_CODE" -ge 1
+          VAULT_APP_VERSION="$(node -p 'require("./package.json").version')"
+          export VAULT_APP_VERSION
+          test -n "$VAULT_APP_VERSION"
+
+          KEYSTORE="$RUNNER_TEMP/vault-debug.keystore"
+          keytool -genkeypair -keystore "$KEYSTORE" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 30 -dname "CN=VAULT CI ONLY,O=LAB,C=BR" -storetype JKS
+          test -s "$KEYSTORE"
+
+          keytool -list \
+            -keystore "$KEYSTORE" \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android >/dev/null
+
+          python3 <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("android/app/build.gradle")
+          text = path.read_text(encoding="utf-8")
+          version_code = os.environ["VAULT_VERSION_CODE"]
+
+          text, count = re.subn(
+              r"(?m)^(\s*)versionCode\s+\d+\s*$",
+              rf"\g<1>versionCode {version_code}",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("V86: versionCode não encontrado no Gradle.")
+
+          version_name = os.environ["VAULT_APP_VERSION"]
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version_name):
+              raise SystemExit("M87: versão semântica inválida")
+          text, vn_count = re.subn(
+              r'(?m)^(\s*)versionName\s+"[^"]+"\s*$',
+              rf'\g<1>versionName "{version_name}"',
+              text, count=1,
+          )
+          if vn_count != 1:
+              raise SystemExit("M87: versionName não encontrada no Gradle")
+
+          if "vaultStableDebug" in text:
+              raise SystemExit("V86: contrato de assinatura duplicado.")
+
+          block = r"""
+
+          // Vault V86: assinatura debug permanente para atualizações sobre o APK instalado.
+          android {
+              signingConfigs {
+                  vaultStableDebug {
+                      storeFile file(System.getenv("RUNNER_TEMP") + "/vault-debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.vaultStableDebug
+                  }
+              }
+          }
+          """
+          path.write_text(text.rstrip() + block + "\n", encoding="utf-8")
+          PY
+
+          grep -F "versionCode $VAULT_VERSION_CODE" android/app/build.gradle
+          grep -F "versionName \"$VAULT_APP_VERSION\"" android/app/build.gradle
+          grep -F 'vaultStableDebug' android/app/build.gradle
+          grep -F 'vault-debug.keystore' android/app/build.gradle
+
+          echo "===== CERTIFICADO PERMANENTE DO VAULT ====="
+          keytool -list -v \
+            -keystore "$KEYSTORE" \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android | grep -E 'Alias name:|SHA1:|SHA256:'
+          echo "============================================"
+
+      - name: Compilar APK de teste
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew clean assembleDebug --no-daemon
+
+      - name: Validar identidade e versão do APK
+        shell: bash
+        env:
+          VAULT_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          KEYSTORE="$RUNNER_TEMP/vault-debug.keystore"
+          test -s "$APK"
+          test -s "$KEYSTORE"
+
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APKSIGNER="$(find "$SDK/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+          AAPT="$(find "$SDK/build-tools" -type f -name aapt 2>/dev/null | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          test -n "$AAPT"
+
+          EXPECTED_SHA256="$(keytool -exportcert -rfc \
+            -keystore "$KEYSTORE" \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+
+          CERTS="$("$APKSIGNER" verify --print-certs "$APK" 2>&1)"
+          printf '%s\n' "$CERTS"
+          ACTUAL_SHA256="$(printf '%s\n' "$CERTS" | sed -nE '/[Ss][Hh][Aa]-256[[:space:]]+[Dd][Ii][Gg][Ee][Ss][Tt]:/ { s/^.*:[[:space:]]*//; p; q; }' | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+
+          test -n "$EXPECTED_SHA256"
+          test -n "$ACTUAL_SHA256"
+          test "$EXPECTED_SHA256" = "$ACTUAL_SHA256" || { echo "ERRO: APK assinado com certificado inesperado." >&2; exit 1; }
+
+          BADGING="$("$AAPT" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | head -n 1
+          VAULT_APP_VERSION="$(node -p 'require("./package.json").version')"
+          ACTUAL_VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -nE "s/^package:.*versionName='([^']+)'.*/\1/p" | head -n 1)"
+          test "$ACTUAL_VERSION_NAME" = "$VAULT_APP_VERSION" || { echo "ERRO: versionName real diverge do package.json" >&2; exit 1; }
+          ACTUAL_VERSION_CODE="$(printf '%s\n' "$BADGING" | sed -nE "s/^package:.*versionCode='([0-9]+)'.*/\1/p" | head -n 1)"
+          test "$ACTUAL_VERSION_CODE" = "$VAULT_VERSION_CODE" || { echo "ERRO: versionCode real diverge do github.run_number." >&2; exit 1; }
+
+          echo "ASSINATURA E VERSIONCODE DO VAULT VALIDADOS."
+
+
+      # M67: This summary appears only if the prior gate, export, build and
+      # signed-APK/versionCode verification have succeeded. No medical data.
+      - name: Certificação M67 — resumo da homologação Android
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## VAULT M67 · Build Android com gate V63 estrito (APK ainda requer homologação física)'
+            echo "- Commit de origem: $(git rev-parse HEAD)"
+            echo "- Commit isolado de CI: ${GITHUB_SHA}"
+            echo "- Execução: ${GITHUB_RUN_ID}"
+            echo '- Gate canônico V63 estrito e TypeScript integral aprovados'
+            echo '- Exportação, bridge, build e certificado/versionCode: aprovados'
+            echo '- APK CI descartavel: somente evidencias, nao instalar'
+            echo '- Teste de instalação e sincronização PWA × APK: pendente de homologação manual'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preservar evidencias do APK sem disponibilizar binario instalavel
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum "$APK" > artifacts/APK-CI-ONLY.sha256
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$(find "$SDK/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$SDK/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$AAPT" dump badging "$APK" > artifacts/APK-CI-ONLY.badging.txt
+          "$APKSIGNER" verify --print-certs "$APK" > artifacts/APK-CI-ONLY.cert.txt
+      - name: Upload evidencias Android CI
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Integrado-Android-CI-ONLY
+          path: artifacts/APK-CI-ONLY.*
+          if-no-files-found: error
+      - name: Preservar relatório integral do gate V63 estrito
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-V63-Strict-Audit
+          path: artifacts/V63-STRICT.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preservar origem e V70 do APK de homologacao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Stability-H01-H07-Origem-V70
+          path: |
+            artifacts/STABILITY-H01-H07-ORIGEM.txt
+            artifacts/V70-SUPER.log
+            artifacts/V70-FINAL.log
+            artifacts/UPDATE360.log
+            artifacts/TYPESCRIPT.log
+            artifacts/FINAL-GATE-STATUS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      # Publicação foi deslocada para promote-android-run.yml:
+      # workflow_run completed SUCCESS + Environment protegido + revalidação do artefato original.
+      # Não publicar de dentro do job de compilação; o estado da Action ainda não é completed.
+
+  chromium-delta:
+    name: H01-H07 Chromium antes e depois (loopback)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Pin integrated source and exact previous native candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'cc6f84ad60ffaae42b9f8e897afa421b437fff86'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^{tree}')" = '02449b62688b089d705ebc2fa14a40bf238a10bf'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^1')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86^2')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '62a25e385e602ae70451e8e3de7c320d5fce6e90'
+          test "$(git rev-parse 'cc6f84ad60ffaae42b9f8e897afa421b437fff86:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          [[ "$GITHUB_REF_NAME" == vault-lab/final-stability-macro02-* ]]
+          test "$(git hash-object '.github/h01-h07/h07-copy.json')" = '14cb87b4e737c96fe5cb2910a95d603299da1050'
+          test "$(git hash-object '.github/h01-h07/qa_browser.py')" = 'c38cca6ecfd40a35862adf9068e6d297dec8df38'
+          test "$(git hash-object '.github/h01-h07/qa_h01_h04.py')" = '542afd4f2cd2473cc2af4f425084f8f897514fa2'
+          test "$(git hash-object '.github/h01-h07/qa_h05_h06.py')" = 'bdc1dc28ce719f448735ef44d8516e51d1605968'
+          test "$(git hash-object '.github/macro02-qa/run-active-r7-pg.sh')" = 'f2482720a5e32525be5fd173ffcbb26a00e0e1c7'
+          test "$(git hash-object '.github/macro02-ui/bootstrap.cjs')" = '83ff3c618167f73690aa3ea251d6896108c17aac'
+          test "$(git hash-object '.github/macro02-ui/browser.cjs')" = '460cd7e8bfb1781b608ce68f7479be00d8b640c5'
+          test "$(git hash-object '.github/macro02-ui/profile-contract.cjs')" = '3b19205188c64b4acd801837cc532a179ced9ef0'
+          test "$(git hash-object '.github/macro02-ui/queue-contract.cjs')" = '298b61edcf428af07f711510617bebd9cad4000d'
+          test "$(git hash-object '.github/macro02-ui/run.sh')" = 'c99b6611679ef4d175b0723a5e3bfb92c07a9550'
+          mkdir -p "$RUNNER_TEMP/h01-h07-evidence/before" "$RUNNER_TEMP/h01-h07-evidence/after"
+          cp .github/h01-h07/*.py "$RUNNER_TEMP/"
+          cp .github/h01-h07/h07-copy.json "$RUNNER_TEMP/h01-h07-evidence/"
+          git worktree add --detach "$RUNNER_TEMP/vault-before" b40d302ac4594eac60c3929a6c4f0ca855e0a5fa
+          git worktree add --detach "$RUNNER_TEMP/vault-after" 'cc6f84ad60ffaae42b9f8e897afa421b437fff86'
+          date +%F > "$RUNNER_TEMP/h01-h07-evidence/day.txt"
+          git diff --stat b40d302ac4594eac60c3929a6c4f0ca855e0a5fa 'cc6f84ad60ffaae42b9f8e897afa421b437fff86' > "$RUNNER_TEMP/h01-h07-evidence/delta-stat.txt"
+      - name: Install pinned real Chromium
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/h01-browser"
+          "$RUNNER_TEMP/h01-browser/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/h01-browser/bin/python" -m playwright install --with-deps chromium
+      - name: Build and measure baseline before any candidate acceptance
+        id: baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          e="$RUNNER_TEMP/h01-h07-evidence/before"
+          cd "$RUNNER_TEMP/vault-before"
+          failures=0
+          npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
+          npm run build 2>&1 | tee "$e/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
+      - name: Build and measure candidate, enforce actual improvements
+        if: ${{ !cancelled() && (steps.baseline.outcome == 'success' || steps.baseline.outcome == 'failure') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          e="$RUNNER_TEMP/h01-h07-evidence/after"
+          cd "$RUNNER_TEMP/vault-after"
+          failures=0
+          npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
+          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h05-h06.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h07.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          npm run build 2>&1 | tee "$e/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase after --out out --evidence "$e" --sha 'cc6f84ad60ffaae42b9f8e897afa421b437fff86' --baseline "$RUNNER_TEMP/h01-h07-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase after --out out --evidence "$e" --sha 'cc6f84ad60ffaae42b9f8e897afa421b437fff86' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
+      - name: Preserve real evidence including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Vault-Stability-H01-H07-Chromium-before-after
+          path: ${{ runner.temp }}/h01-h07-evidence/
+          if-no-files-found: error
+          retention-days: 30
