@@ -1,0 +1,72 @@
+name: Macro02 R10 - Premium ativo em navegador real (isolado)
+on:
+  push:
+    branches: ['vault-lab/macro02-premium-browser-r10-*']
+permissions:
+  contents: read
+jobs:
+  active-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4173
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      TZ: America/Sao_Paulo
+      UI_GATE_DIR: ${{ runner.temp }}/macro02-ui
+      ESBUILD_MODULE: ${{ runner.temp }}/macro02-ui/tools/node_modules/esbuild
+      PLAYWRIGHT_MODULE: ${{ runner.temp }}/macro02-ui/tools/node_modules/playwright
+      BOOTSTRAP_BUNDLE: ${{ runner.temp }}/macro02-ui/bootstrap.js
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fixar fonte R10 aprovada e separar harness
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-premium-browser-r10-* ]]
+          test "$(git rev-parse HEAD^)" = d2d79ba19992dcffb0005914f613f070c0584fcc
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/macro02-ui/bootstrap.cjs .github/macro02-ui/browser.cjs .github/macro02-ui/run.sh .github/workflows/macro02-premium-browser-r10.yml vercel.json | LC_ALL=C sort)"
+          test "$(cat vercel.json)" = '{"ignoreCommand":"exit 0"}'
+          mkdir -p "$UI_GATE_DIR"
+          cp .github/macro02-ui/* "$UI_GATE_DIR/"
+          git checkout --detach d2d79ba19992dcffb0005914f613f070c0584fcc
+          test "$(git rev-parse HEAD^{tree})" = ccb4cd7dd57d4e78f9c311034e64cd38e0c6a322
+          test "$(git hash-object scripts/macro02-activation-lab/migration-03-r6-candidate.sql)" = 62a25e385e602ae70451e8e3de7c320d5fce6e90
+          test -z "$(git status --porcelain)"
+          echo R10_SOURCE_IMMUTABLE_PASS
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Exportacao Web real da R10
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node scripts/ci-build-web-resilient.cjs
+          node scripts/verify-static-release-stability.cjs web | tee "$UI_GATE_DIR/static.log"
+      - name: Chromium e escritor real com PG17, offline e reconexao
+        run: |
+          set -euo pipefail
+          npm install --prefix "$UI_GATE_DIR/tools" --no-audit --no-fund --save-exact playwright@1.56.1 esbuild@0.25.12
+          "$UI_GATE_DIR/tools/node_modules/.bin/playwright" install --with-deps chromium
+          node "$UI_GATE_DIR/bootstrap.cjs"
+          bash "$UI_GATE_DIR/run.sh" 2>&1 | tee "$UI_GATE_DIR/browser.log"
+          grep -Fxq MACRO02_ACTIVE_PREMIUM_BROWSER_PG17_GATE_PASS "$UI_GATE_DIR/browser.log"
+      - name: Evidencias sinteticas do navegador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro02-r10-active-ui-${{ github.run_id }}
+          path: |
+            ${{ env.UI_GATE_DIR }}/*.log
+            ${{ env.UI_GATE_DIR }}/*.png
+            ${{ env.UI_GATE_DIR }}/failure.html
+          if-no-files-found: warn
+      - name: Limites
+        if: always()
+        run: echo 'LAB ONLY. PG17 real isolado; autenticacao e transporte REST sinteticos; navegador e IndexedDB reais; nao prova Android fisico ou gateway Supabase produtivo. Sem deploy, sem SQL produtivo. V63/V70 ja certificados na R10.'
