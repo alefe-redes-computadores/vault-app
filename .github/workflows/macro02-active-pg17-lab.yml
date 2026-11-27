@@ -1,0 +1,44 @@
+name: VAULT Macro02 - Migration 03 e Premium ATIVO em PostgreSQL 17 (LAB ONLY)
+on:
+  push:
+    branches: ['vault-lab/macro02-activation-final-pg17-*']
+permissions:
+  contents: read
+jobs:
+  active-pg17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Identidade da candidata e isolamento
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-activation-final-pg17-* ]]
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/workflows/macro02-active-pg17-lab.yml vercel.json | LC_ALL=C sort)"
+          test "$(git rev-parse HEAD^^)" = bf9c864f028f7cdafd4e79931153efcec1c9da44
+          test "$(git rev-parse HEAD~2^{tree})" = 509e4d37f72064ecb14e4b8bcccfd18141cbc721
+          printf 'LAB_SHA=%s\nSOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^)" "$(git rev-parse HEAD^1^{tree})"
+          git checkout --detach HEAD^
+          git diff --check HEAD^ HEAD
+          sha256sum scripts/macro02-activation-lab/migration-03-r6-candidate.sql
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: Migration 03 e quatro envelopes sob autoridade Premium ativa
+        id: pg
+        run: bash scripts/macro02-activation-lab/run-active-r7-pg.sh
+      - name: TypeScript integral da nova candidata
+        if: always() && steps.install.outcome == 'success'
+        run: npx --no-install tsc --noEmit
+      - name: Limites do gate
+        if: always()
+        run: echo 'LAB ONLY. Dados sinteticos, PostgreSQL 17.6, sem rede no container. Nao prova UI, Dexie real ativo, schema produtivo integral ou merge Stability. R4 nao repetida. Sem deploy, sem APK, sem SQL produtivo.'
