@@ -1,0 +1,35 @@
+name: VAULT Macro02 export recovery - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-recovery-export-dbf27346e09b']
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin certified baseline and source; no production effects
+        run: |
+          test "$(git rev-parse 109b116e997de0087883c5b0a7deb94143d97ef3^{tree})" = "f91ae395bce3e4dd47ce84a3730898a35d50050d"
+          test "$(git rev-parse HEAD^)" = "dbf27346e09b28be06a0ad0df9a13541576ea74d"
+          git checkout --detach dbf27346e09b28be06a0ad0df9a13541576ea74d
+          test "$(git rev-parse HEAD^{tree})" = "5b9873540673b4ba1d70b9cdbe0ddd9a1585c70a"
+          git diff --check 109b116e997de0087883c5b0a7deb94143d97ef3 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node scripts/test-vault-macro02-operational-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-recovery.cjs
+      - run: node node_modules/typescript/bin/tsc --noEmit
+      - name: V63 cumulative release contracts
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Android Web export (no production keys)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+        run: npm run build:export
