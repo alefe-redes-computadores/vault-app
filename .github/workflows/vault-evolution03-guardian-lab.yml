@@ -1,0 +1,39 @@
+name: VAULT Macro03 R11 — historical alias compatibility, zero UI delta
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r11']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  host-differential:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r11'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Resolver negative controls (real TypeScript)
+        run: NODE_PATH="$EVO03_LAB/candidate/node_modules" python3 "$EVO03_LAB/tests/test_historical_alias_resolver.py"
+      - name: Original 15 raw and 12 alias-compatible contracts, parent and candidate
+        run: python3 "$EVO03_LAB/tools/ci-host-differential.py"
+      - name: Preserve original failure signatures and differential evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r11-host-differential
+          path: |
+            ${{ runner.temp }}/evo03-host-differential/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
