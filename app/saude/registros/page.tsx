@@ -44,6 +44,9 @@ import { analisarRegistroSaude } from "@/lib/health-insights";
 import {
   buildClinicalDays,
   buildClinicalEvents,
+  clinicalEventClockLabel,
+  clinicalDoseClockSummary,
+  clinicalDoseGroupStateLabel,
   buildClinicalMonth,
   currentClinicalMonth,
   localDateKey,
@@ -669,8 +672,11 @@ function DayGroup({
   const doses = events.filter((e) => e.kind === "dose");
   const groups = new Map<string, ClinicalEvent[]>();
   for (const dose of doses) {
-    const origin = dose.dose?.dose_kind || "scheduled";
-    const key = `${dose.dose?.medicamento_id || dose.title}:${origin}`;
+    const origin = dose.dose?.dose_kind || "unknown";
+    // Do not put different registered medication identities under a single current avatar.
+    const h = dose.historicalMedication;
+    const identity = h ? ["historical",h.nome,h.dosagem,h.formato,h.forma_farmaceutica,h.cores] : ["current_or_unknown",dose.title];
+    const key = JSON.stringify([dose.dose?.medicamento_id || dose.id,origin,identity]);
     groups.set(key, [...(groups.get(key) || []), dose]);
   }
   const summary = [
@@ -725,32 +731,16 @@ function DoseGroup({
 }) {
   const first = events[0];
   const medication = first.medication;
-  const times = events.map((e) => e.time.slice(0, 5));
-  const origins = new Set(events.map((e) => e.dose?.dose_kind));
-  const origin = events.some(isSosDose)
-    ? "SOS"
-    : events.some(isExtraDose)
-    ? "Extra"
-    : first.dose?.ignorado_em
-    ? "Ignorada"
-    : "Programada";
+  const historical = first.historicalMedication;
+  const origin = clinicalDoseGroupStateLabel(events);
   return (
     <details className="group/dose border-b border-surface-border/40 last:border-0">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5">
-        {medication ? (
+        {historical || medication ? (
           <AvatarMedicamento
-            nome={medication.nome}
-            formato={medication.formato || medication.forma_farmaceutica}
-            cores={
-              medication.cores?.length
-                ? medication.cores
-                : medication.cor_principal
-                ? [
-                    medication.cor_principal,
-                    medication.cor_secundaria || medication.cor_principal,
-                  ]
-                : []
-            }
+            nome={historical?.nome || medication?.nome || first.title}
+            formato={historical ? historical.formato || historical.forma_farmaceutica || undefined : medication?.formato || medication?.forma_farmaceutica}
+            cores={historical ? historical.cores : medication?.cores?.length ? medication.cores : medication?.cor_principal ? [medication.cor_principal, medication.cor_secundaria || medication.cor_principal] : []}
             tamanho={10}
           />
         ) : (
@@ -764,6 +754,7 @@ function DoseGroup({
           </p>
           <p className="text-xs text-ink-muted">
             {events.length} {events.length === 1 ? "dose" : "doses"} · {origin}
+            {historical ? " · Cadastro no registro" : medication ? " · Cadastro atual" : " · Referência indisponível"}
           </p>
           {events.some(
             (event) => event.dose?.id && safetyByDoseId.has(event.dose.id)
@@ -774,7 +765,7 @@ function DoseGroup({
           ) : null}
         </div>
         <span className="font-mono text-[9px] text-ink-faint">
-          {events.length === 1 ? times[0] : `${times.length} horários`}
+          {clinicalDoseClockSummary(events)}
         </span>
         <ChevronDown
           size={13}
@@ -790,7 +781,7 @@ function DoseGroup({
             <div className="flex items-center justify-between gap-2">
               <span className="text-ink-muted">{event.subtitle}</span>
               <span className="font-mono text-ink-faint">
-                {event.time.slice(0, 5)}
+                {clinicalEventClockLabel(event)}
               </span>
             </div>
             {event.dose?.id && safetyByDoseId.has(event.dose.id) ? (
@@ -854,7 +845,7 @@ function EventRow({
             </p>
           </div>
           <span className="shrink-0 font-mono text-[9px] text-ink-muted">
-            {displayDate(event.date)} · {event.record?(formatMeasurementTimeSTB(event.record.horario)||"Sem horário"):event.time.slice(0, 5)}
+            {displayDate(event.date)} · {event.record?(formatMeasurementTimeSTB(event.record.horario)||"Sem horário"):clinicalEventClockLabel(event)}
           </span>
         </div>
         {typeof event.intensity === "number" && (

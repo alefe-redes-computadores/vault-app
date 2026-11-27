@@ -55,7 +55,7 @@ check('Gaveta 360: nome e seta preservados; alvo separado e menu independente',(
  assert.match(med,/router\.push\(\s*`\/saude\/medicamentos\/detalhes\?id=/);
 });
 check('Ingrediente e receita: dados canônicos fora do alvo da Gaveta',()=>{
- assert.match(med,/kind === "active_ingredient"/);
+ assert.match(med,/medicationIngredientDisplayResidual\(catalogIdentity, medicationKnowledge360\.facts\)/);
  assert.match(med,/data-vault-v34x-receita-cadastro/);
  assert.match(med,/data-vault-v34x-receita-documento/);
  assert.match(med,/data-vault-r5-active-ingredient/);

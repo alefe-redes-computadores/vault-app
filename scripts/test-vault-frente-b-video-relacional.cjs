@@ -9,7 +9,7 @@ ok(fenix.includes('return <MyHealthPage/>')&&get('app/saude/fenix/layout.tsx').i
 ok(health.includes('const forceFenix=useForcedFenixRouteB()')&&health.includes('profileOnly = forcedFenix')&&get('components/saude/FenixRouteContextB.tsx').includes('createContext(false)'),'painel completo por rota e contexto isolado da Fênix');
 ok(launcher.includes('spanFull={favorites.length%2===1&&i===favorites.length-1}'),'último favorito ímpar expande');
 ok(map.includes('featured.length%2===1')&&map.includes('remaining.length%2===1')&&map.includes('favoriteEntries.length%2===1')&&records.includes('[&_nav]:!grid-cols-3'),'grades órfãs cobertas');
-ok(identity.includes('formatDoseQuantityB')&&timeline.includes('formatDoseQuantityB(item.quantidade)')&&!timeline.includes('estoque_unidade_medida')&&!dossier.includes('estoque_unidade_medida'),'dose sem unidade não inventa unidade');
+ok(identity.includes('formatDoseQuantityB')&&timeline.includes('describeHistoricalDose(item)')&&timeline.includes('historicalPharmaceuticalIdentity(item)')&&!timeline.includes('estoque_unidade_medida')&&!dossier.includes('estoque_unidade_medida'),'dose sem unidade não inventa unidade');
 ok(identity.includes('formatSleepDurationB')&&records.includes('originLabelB(event.record.source)'),'sono legível e origem explícita');
 ok(records.includes('metricIdentityB(event.record.tipo)')&&medical.includes('<MedicalDossierRowIconB row={row}')&&get('components/saude/MedicalDossierRowIconB.tsx').includes('metricIdentityB(row.visualB?.metric)'),'ambos consumidores usam tipo real');
 ok(medical.includes('<MedicalDossierRowIconB row={row}')&&get('components/saude/MedicalDossierRowIconB.tsx').includes('<MedicationFormatIcon formato={row.visualB.formato}')&&dossier.includes('visualB:pharma?')&&dossier.includes('medForRow?')&&dossier.includes('medMap.get(dose.medicamento_id)')&&dossier.includes('historicalPharmaceuticalIdentity(dose)'),'dossiê usa forma/cor histórica validada ou cadastro por ID no consumidor real');
@@ -89,12 +89,12 @@ const mutantMetricMap={...h.METRIC_IDENTITY_B,oxigenacao:{...h.METRIC_IDENTITY_B
 ok(new Set(Object.values(mutantMetricMap).map(x=>x.icon.displayName)).size<9,'mutante negativo de ícones repetidos detectado');
 // R02: actual timeline, historical dose invariants and route boundary (synthetic records only).
 const timelineJs=ts.transpileModule(timeline,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const tm=new Module('timeline-b',module);tm.require=id=>{if(id==='@/lib/clinical-front-b-pure')return pure;if(id==='./dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id);throw Error('Timeline depende de '+id)};tm._compile(timelineJs,'timeline-b');
+const tm=new Module('timeline-b',module);tm.require=id=>{if(id==='@/lib/clinical-front-b-pure')return pure;if(id==='./dose-slot-authority')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id);if(id==='./dose-premium/pharmaceutical-snapshot'||id==='./dose-premium/historical-unit')return require('./vault-macro02-test-pure-loader.cjs').loadMacro02Pure(id.replace('./dose-premium/','@/lib/dose-premium/'));throw Error('Timeline depende de '+id)};tm._compile(timelineJs,'timeline-b');
 const taken={id:'dose-b',user_id:'u',person_id:'p',medicamento_id:'med-b',data:'2026-11-25',horario:'10:00',tomado_em:'2026-11-25T10:00:00-03:00',quantidade:5};
 const med={id:'med-b',user_id:'u',person_id:'p',nome:'Sintético',estoque_unidade_medida:'gotas'};
 const eventFor=(dose,medication)=>tm.exports.buildClinicalEvents([], [dose], [medication])[0];
 const hist=eventFor(taken,med),histChanged=eventFor(taken,{...med,estoque_unidade_medida:'comprimidos'});
-ok(hist.subtitle===histChanged.subtitle&&hist.subtitle.includes('5 (unidade não informada)'),'dose histórica independe da unidade atual do estoque');
+ok(hist.subtitle===histChanged.subtitle&&hist.subtitle.includes('Quantidade registrada: 5 · unidade não informada'),'dose histórica independe da unidade atual do estoque');
 ok(!hist.subtitle.includes('gotas')&&!histChanged.subtitle.includes('comprimidos'),'negativo: estoque não rotula dose histórica');
 const ignored=eventFor({...taken,tomado_em:undefined,ignorado_em:taken.tomado_em},med);
 ok(ignored.subtitle.includes('ignorada')&&!ignored.subtitle.includes('Quantidade registrada'),'dose ignorada não afirma consumo');

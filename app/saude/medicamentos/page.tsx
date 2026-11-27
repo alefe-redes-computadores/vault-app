@@ -141,6 +141,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components/saude/MedicationActionsSheetR4";
 import { MedicationSheet360R3, type Medication360Value, type Medication360Tab } from "@/components/saude/MedicationSheet360R3";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
+import { medicationIngredientDisplayResidual } from "@/lib/medications/visual-copy";
 import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
@@ -468,10 +469,12 @@ export default function MedicamentosListPage() {
     ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.authorityState || "unvalidated" : "unvalidated";
   const selectedRegulatoryNeedsReview = selectedRegulatoryMedication
     ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.regulatoryNeedsReview === true : false;
-  const selectedRegulatoryIngredient = selectedRegulatoryMedication &&
-    (selectedRegulatoryAuthority === "confirmed" || selectedRegulatoryAuthority === "compatible")
-      ? catalogIdentities[selectedRegulatoryMedication.id || ""]?.activeIngredients?.join(" + ") || null
-      : null;
+  const selectedRegulatoryIngredient = selectedRegulatoryMedication
+    ? medicationIngredientDisplayResidual(
+        catalogIdentities[selectedRegulatoryMedication.id || ""],
+        resolveMedicationKnowledgeM153P4(selectedRegulatoryMedication, selectedRegulatoryMedication.data_receita || undefined).facts
+      ).join(" + ") || null
+    : null;
   useEffect(() => {
     if (selectedRegulatory && selectedRegulatoryMedication) regulatoryCloseRef.current?.focus();
   }, [selectedRegulatoryScope?.medicationId, selectedRegulatory, selectedRegulatoryMedication]);
@@ -1018,15 +1021,7 @@ export default function MedicamentosListPage() {
       const prescriptionIdentityP6 = regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
-      const knowledgeIngredient = (catalogIdentity?.authorityState === "confirmed" || catalogIdentity?.authorityState === "compatible")
-        ? medicationKnowledge360.facts.find(fact => fact.kind === "active_ingredient" && fact.authority === "official_exact")?.value
-        : undefined;
-      const activeIngredients =
-        catalogIdentity?.activeIngredients?.length
-          ? catalogIdentity.activeIngredients
-          : catalogIdentity?.activeIngredient
-            ? [catalogIdentity.activeIngredient]
-            : knowledgeIngredient ? [knowledgeIngredient] : [];
+      const activeIngredients = medicationIngredientDisplayResidual(catalogIdentity, medicationKnowledge360.facts);
 
       const activeIngredient =
         activeIngredients.join(" + ");
@@ -1511,7 +1506,7 @@ export default function MedicamentosListPage() {
                     {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                   </button>
                   {med.data_receita && <span data-vault-v34x-receita-cadastro className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada no cadastro · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
-                  {!med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Documento de receita vinculado</span>}
+                  {compactCards && !med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Documento de receita vinculado</span>}
                   </div>
                   <button type="button" aria-haspopup="dialog" aria-label={`Abrir menu 360 de ${med.nome}`} data-vault-med360-entry="menu"
                     onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("acoes");}}
