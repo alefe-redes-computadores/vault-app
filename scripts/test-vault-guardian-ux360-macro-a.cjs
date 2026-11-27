@@ -70,7 +70,7 @@ const hub=load('lib/health-hub/r5.ts');
 ok('Hub preserva IDs e favoritos',()=>assert(hub.HEALTH_MODULES_R5.some(x=>x.id==='fenix'&&x.href==='/saude/fenix')));
 ok('Preferências de outra pessoa não são globalizadas',()=>assert(read('app/saude/mapa/page.tsx').includes('encodeURIComponent(uid)')&&read('app/saude/mapa/page.tsx').includes('encodeURIComponent(pid)')));
 ok('Fonte de retorno preserva pesquisa',()=>assert(read('app/saude/mapa/page.tsx').includes('const sourceHref=')));
-ok('Explorar conserva todos os destinos nas duas densidades',()=>{const page=read('app/saude/mapa/page.tsx');assert(page.includes('aria-pressed={showAdditional}')&&page.includes('data-vault-map-density'));assert.deepEqual(d.clinicalVisibleSectionsSTB(false),d.clinicalVisibleSectionsSTB(true));assert.equal(d.clinicalHiddenCountSTB(),0);});
+ok('Explorar conserva todos os destinos na apresentação única H03',()=>{const page=read('app/saude/mapa/page.tsx');assert(!page.includes('setShowAdditional')&&!page.includes('data-vault-map-density'));assert(page.includes('clinicalVisibleSectionsSTB(false)')&&page.includes('searchClinicalDirectoryM150(query)')&&page.includes('toggleHubFavoriteR5'));assert.deepEqual(d.clinicalVisibleSectionsSTB(false),d.clinicalVisibleSectionsSTB(true));assert.equal(d.clinicalHiddenCountSTB(),0);});
 const flow=read('app/saude/careflow/page.tsx');
 ok('Card principal corresponde ao real destino Linha Clínica',()=>assert(flow.includes('const primary=areas[0]')&&flow.includes('>Linha Clínica</strong>')&&!flow.includes('>Modo Médico 360</strong>')));
 ok('PDFs têm card visível',()=>assert(flow.includes("cards:[areas[1],areas[3],areas[7]]")));
@@ -100,7 +100,7 @@ const identityCases={
  'NAV-10':assertExtraRoutes,
  'NAV-11':()=>assert(read('app/saude/linha-clinica/page.tsx').includes('scrollIntoView')),
  'NAV-12':()=>assert.equal(c.safeClinicalReturnM150('/api/private','/saude/linha-clinica','/saude/mapa'),'/saude/mapa'),
- 'HUB-01':()=>assert(read('app/saude/mapa/page.tsx').includes('setShowAdditional')),
+ 'HUB-01':()=>{const page=read('app/saude/mapa/page.tsx');assert(!page.includes('setShowAdditional')&&page.includes('clinicalVisibleSectionsSTB(false)')&&page.includes('searchClinicalDirectoryM150(query)'));assert.equal(d.clinicalHiddenCountSTB(),0);},
  'HUB-02':()=>assert.equal(new Set(all.map(e=>e.href)).size,all.length),
  'HUB-03':()=>assert(all.some(e=>e.href==='/saude/brain-v7')),
  'HUB-04':()=>assert(hub.HEALTH_MODULES_R5.some(e=>e.id==='medicamentos'&&e.title==='Medicamentos')),

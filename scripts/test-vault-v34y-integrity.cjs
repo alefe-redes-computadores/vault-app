@@ -102,7 +102,7 @@ check('Home: navegação por IDs e opção de relacionar sem inventar vínculo',
  assert.match(home,/primaryMedicationCareOpportunity\.treatmentHref!/);
  assert.match(home,/!primaryMedicationCareOpportunity\.treatmentHref && primaryMedicationCareOpportunity\.medicamentoId/);
  assert.match(home,/Relacionar tratamento/);assert.match(home,/encodeURIComponent\(primaryMedicationCareOpportunity\.medicamentoId\)/);assert.match(home,/return_to=\$\{encodeURIComponent/);
- assert.match(home,/<FolderHeart size=\{18\}/);
+ assert(home.includes('<TreatmentIdentityIconR03 entity={primaryMedicationCareOpportunity.treatmentId?{id:primaryMedicationCareOpportunity.treatmentId}:null} size={18}') && home.includes('primaryMedicationCareOpportunity.treatmentHref!'));
  assert.doesNotMatch(home,/className="vault-deferred-lg space-y-3"/);
 });
 check('Rede do medicamento: médico sem ID aponta editor existente',()=>{

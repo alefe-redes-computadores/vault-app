@@ -89,7 +89,7 @@ const grouped=med.slice(med.indexOf('// M146: a mesma regra executiva'),med.inde
 for(const segment of [filtered,grouped]){
  ok(segment.includes('medicationCareStageNeedsAttention(')&&segment.includes('brainLane === "now" || brainLane === "prepare"')&&segment.includes('reasons.some(reason'), 'Filtro e grupo utilizam decisão executiva canônica');
 }
-ok(med.includes('className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção"'),'Motivo de atenção legível');
+ok(med.includes('cardAttentionH01.length>0')&&med.includes('data-vault-h01-attention className="text-[11px] leading-snug text-amber-200" aria-label="Motivo da atenção"')&&med.includes('cardAttentionH01.join(" · ")'),'Motivo de atenção legível');
 const home=read('app/page.tsx');
 ok(home.indexOf('id="home-compromissos"')<home.indexOf('id="home-atencao"')&&home.indexOf('id="home-atencao"')<home.indexOf('id="home-brain"'),'M145: agenda preserva precedência sobre alertas e Brain');
 ok(home.includes('<p className="sr-only" role="note">')&&home.includes('<HomeDailyHero'),'Nota complementar acessível sem ocupar a primeira dobra');

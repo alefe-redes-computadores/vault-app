@@ -53,7 +53,7 @@ assert(read("app/saude/retiradas/editar/page.tsx").includes('label === "Hospital
 assert(read("app/saude/fornecimento/page.tsx").includes('key === "hospital_id" ? "hospital"'));
 
 const treatmentOption = read("components/saude/TreatmentRelationOption.tsx");
-assert(treatmentOption.includes("treatment.cor"));
+assert(treatmentOption.includes("useTreatmentIdentityColorResolverR03()") && treatmentOption.includes("treatmentColorR03(resolveTreatmentColor(treatment))") && !treatmentOption.includes("treatment.cor"));
 assert(treatmentOption.includes("<TreatmentIdentityIconR03 entity={treatment}"));
 assert(treatmentOption.includes("statusLabel(treatment.status)"));
 for (const page of [

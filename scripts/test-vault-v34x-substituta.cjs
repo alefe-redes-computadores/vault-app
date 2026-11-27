@@ -29,7 +29,7 @@ const tests=[
   ['Identidade: fallback somente de snapshot confirmado',()=>{assert.match(src.medHook,/sameVerifiedProduct/);assert.match(src.medHook,/medication\.catalog_snapshot\?\.match_kind === "exact"/);assert.match(src.medHook,/displayIngredients/)}],
   ['Detalhes: identidade legivel sem abrir gaveta',()=>{assert.match(src.details,/data-vault-v34x-ingredient-visible/);assert.match(src.details,/medicationIngredientDisplayResidual\(catalogIdentity, stableMedicationKnowledge\.facts\)/)}],
   ['Medicamentos: V34 fixa filtros na rolagem',()=>assert.match(src.meds,/sticky top-20/)],
-  ['Home: destino de tratamento tipado e icone',()=>{assert.match(src.home,/primaryMedicationCareOpportunity\.treatmentHref!/);assert.match(src.home,/<FolderHeart size=\{18\}/)}],
+  ['Home: destino de tratamento tipado e icone',()=>{assert.match(src.home,/primaryMedicationCareOpportunity\.treatmentHref!/);assert(src.home.includes('<TreatmentIdentityIconR03 entity={primaryMedicationCareOpportunity.treatmentId?{id:primaryMedicationCareOpportunity.treatmentId}:null} size={18}') && src.home.includes('primaryMedicationCareOpportunity.treatmentHref!'))}],
   ['Home: CTA esmeralda',()=>{assert.match(src.home,/\? "bg-emerald-300 text-void"/);assert.doesNotMatch(src.home,/\? "bg-coral text-white"/)}],
   ['CareFlow: numero impar na grade agrupada',()=>{assert.match(src.care,/Consulta e documentos',cards:\[areas\[1\],areas\[3\],areas\[7\]\]/);assert.match(src.care,/group\.cards\.length%2===1&&index===group\.cards\.length-1/)}],
   ['CareFlow: exames preservados em grupo funcional',()=>assert.match(src.care,/Registros e evolução',cards:\[areas\[2\],areas\[4\],areas\[5\],areas\[6\]\]/)],

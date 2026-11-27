@@ -33,7 +33,8 @@ assert.equal((details.match(/const journeySnapshot\s*=/g)||[]).length,1,'Somente
 assert.match(list,/density="compact"/,'Listagem ainda usa cards compactos');
 assert.match(list,/interactiveContent/,'Navegacao e botoes independentes preservados');
 assert.match(list,/navigationLabel=\{`Ver detalhes de \$\{med\.nome\}`\}/,'Nome completo acessivel no card');
-assert.match(list,/line-clamp-2 break-words font-display/,'Nome principal sem truncate no mobile');
+assert.match(list, /<span title=\{medicationListDisplayNameM150P3\([^\n]+\)\} className="min-w-0 max-w-full break-words font-display[^"\n]*">\s*\{medicationListDisplayNameM150P3\(/,'Nome principal sem truncate no mobile');
+assert.doesNotMatch(list, /<span title=\{medicationListDisplayNameM150P3[^\n]*className="[^"\n]*(?:line-clamp-|truncate)/, "nome completo sem corte na identidade H01");
 assert.doesNotMatch(list,/grid-cols-\[minmax\(0,1fr\)_auto\] items-start/,'Acoes nao disputam largura com nome');
 assert.match(list,/contextualActionLabel/,'Acao contextual real, contexto completo mantido em aria-label');
 assert.match(list,/\{careAction\.label\}/,'Rótulo completo permanece acessivel');

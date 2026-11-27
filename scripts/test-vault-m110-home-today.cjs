@@ -37,7 +37,7 @@ ok(home.includes('completedDoses={dosesTomadasDaRotinaHoje}')&&metrics.includes(
 ok(metrics.includes('"/hoje?focus=doses&status=tomados"')&&metrics.includes('"/saude/medicamentos"'),'Navegacao nova sem quebrar consumidor antigo');
 ok(metrics.includes('grid grid-cols-4')&&metrics.includes('key: "medicamentos"')&&metrics.includes('key: "extra"'),'Quatro indicadores e contratos existentes preservados');
 ok(home.includes('formatVaultClinicalDateBR(primaryMedicationCareOpportunity.latestRenewalDate)'),'Data de aquisicao apenas formatada na UI');
-ok(home.includes('HomeDailyHero')&&home.includes('HomeQuickMetrics')&&home.includes('<TreatmentIdentityIconR03 entity={tratamento}')&&home.includes('<TreatmentIdentityIconR03 entity={linked}'),'Ação agora e tratamentos coloridos preservados');
+ok(home.includes('HomeDailyHero')&&home.includes('HomeQuickMetrics')&&home.includes('<TreatmentIdentityIconR03 entity={tratamento}')&&home.includes('<TreatmentIdentityIconR03 entity={primaryMedicationCareOpportunity.treatmentId?{id:primaryMedicationCareOpportunity.treatmentId}:null}')&&home.includes('useTreatmentIdentityColorResolverR03()'),'Ação agora e tratamentos coloridos preservados');
 ok(home.includes('home-continuity-other')&&home.includes('medicationCareOpportunities.slice(1)'),'Fila secundária da M109 preservada');
 const preview=parsed('components/hoje/TodayAgendaOverview.tsx');
 ok((/<MedicationFormatIcon\s+formato=\{item.formato\}\s+cores=\{item.cores\}/.test(preview))&&preview.includes('onJumpDose(item.time)'),'Horario mostra iconografia real e passa hora correta');
