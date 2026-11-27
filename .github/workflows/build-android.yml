@@ -1,12 +1,12 @@
-name: Compilar APK Vault
+name: VAULT Stability H01-H07 FINAL - SEM RELEASE
 
 on:
   push:
-    branches: [main, master]
-  workflow_dispatch:
+    branches: ["vault-lab/stability-h01-h07-r2-67ea5ef1"]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: vault-android-${{ github.ref }}
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   build:
+    needs: [chromium-delta]
     name: Validar e gerar APK
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -23,6 +24,41 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Historical audit optional; strict V63 executes the current tree
+
+      - name: Fixar origem do delta e proibir release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SOURCE='32f4c66ea6a3d533e0fe076083470cc88a53e99c'
+          PREVIOUS='b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
+          BASELINE='c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf'
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-h01-h07-r2-67ea5ef1'
+          test "$(git rev-parse HEAD^)" = "$SOURCE"
+          test "$(git rev-parse "$SOURCE^{tree}")" = 'c11b99467261a7aa4cfb9ba61b7870e657131b49'
+          test "$(git rev-parse "$SOURCE^")" = '67ea5ef1706d6864e65c51d9cd83905abf393cbe'
+          test "$(git rev-parse "$SOURCE^^")" = 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3'
+          test "$(git rev-parse '67ea5ef1706d6864e65c51d9cd83905abf393cbe^{tree}')" = '447a64da793c71b210a5e6d8dabb3386cfc0b787'
+          test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^')" = "$PREVIOUS"
+          test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^{tree}')" = '2f1feb9245fd4f5813e9f0c78a5bfc5139214fc0'
+          test "$(git rev-parse "$PREVIOUS^")" = "$BASELINE"
+          test "$(git rev-parse "$BASELINE^{tree}")" = '7118bf620afe2107e3faf9736e7a741a4a3c345d'
+          test "$(git rev-parse "$SOURCE:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql")" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(sha256sum .github/h01-h07/source-files.txt | cut -d' ' -f1)" = '227277dfd65ed8174e4ed76f7cf4a955054af7362c688ded94187446912462e1'
+          test "$(git diff --name-only 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3' "$SOURCE")" = "$(cat .github/h01-h07/source-files.txt)"
+          test "$(git diff --name-only "$SOURCE" HEAD)" = "$(printf '%s\n' .github/h01-h07/h07-copy.json .github/h01-h07/qa_browser.py .github/h01-h07/qa_h01_h04.py .github/h01-h07/qa_h05_h06.py .github/h01-h07/source-files.txt .github/workflows/build-android.yml vercel.json)"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/46015710107" --jq '.conclusion + " " + .head_sha' | grep -Fx 'success 6adc43f0a67c3036d5a2848ecacd3bca850f735a'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/46025982841" --jq '.conclusion + " " + .head_sha' | grep -Fx 'success dfd108d2678f5f00dae162efd9189ada69d3c81d'
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          [[ "$latest" =~ ^vault-android-b([0-9]+)$ ]]
+          last_build="${BASH_REMATCH[1]}"
+          test "$GITHUB_RUN_NUMBER" -gt "$last_build"
+          git checkout --detach "$SOURCE"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p artifacts
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\nLAB_SHA=%s\nVERSION_CODE=%s\nPRODUCTION_RELEASE=NO\nCAS_ALREADY_APPLIED=20261127152804\n' "$SOURCE" "$(git rev-parse HEAD^{tree})" "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > artifacts/STABILITY-H01-H07-ORIGEM.txt
+          cat artifacts/STABILITY-H01-H07-ORIGEM.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -44,7 +80,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          npm run test:release 2>&1 | tee artifacts/V63-STRICT.log
+          VAULT_V63_COLLECT_ALL=1 npm run test:release 2>&1 | tee artifacts/V63-STRICT.log
+          for marker in 'V63_COLETA_INTEGRAL_APROVADA | executadas=584 | falhas=0' 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'R03_IDENTITY_PASS=49 FAIL=0' 'CAS_TRANSPORT_TOTAL=20' 'STB13_GEOMETRY_BEHAVIOR_PASS=29' 'STB_DIRECTED_PASS=173 FAIL=0' 'V56_R04_CONTEXTUAL_RETURN_PASS=14' 'H01_H04_DIRECTED_PASS=' 'H05_H06_DIRECTED_PASS=' 'H07_DIRECTED_PASS='; do
+            grep -Fq "$marker" artifacts/V63-STRICT.log
+          done
+          node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee artifacts/V70-SUPER.log
+          node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee artifacts/V70-FINAL.log
           node scripts/test-vault-update360-v34.cjs
       - name: Exportar aplicação para o Capacitor
         env:
@@ -281,7 +322,8 @@ jobs:
         run: |
           {
             echo '## VAULT M67 · Build Android com gate V63 estrito (APK ainda requer homologação física)'
-            echo "- Commit: ${GITHUB_SHA}"
+            echo "- Commit de origem: $(git rev-parse HEAD)"
+            echo "- Commit isolado de CI: ${GITHUB_SHA}"
             echo "- Execução: ${GITHUB_RUN_ID}"
             echo '- Gate canônico V63 estrito e TypeScript integral aprovados'
             echo '- Exportação, bridge, build e certificado/versionCode: aprovados'
@@ -306,6 +348,106 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Preservar origem e V70 do APK de homologacao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Stability-H01-H07-Origem-V70
+          path: |
+            artifacts/STABILITY-H01-H07-ORIGEM.txt
+            artifacts/V70-SUPER.log
+            artifacts/V70-FINAL.log
+          if-no-files-found: error
+          retention-days: 14
+
       # Publicação foi deslocada para promote-android-run.yml:
       # workflow_run completed SUCCESS + Environment protegido + revalidação do artefato original.
       # Não publicar de dentro do job de compilação; o estado da Action ainda não é completed.
+
+  chromium-delta:
+    name: H01-H07 Chromium antes e depois (loopback)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Pin source and exact previous native candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '32f4c66ea6a3d533e0fe076083470cc88a53e99c'
+          test "$(git rev-parse '32f4c66ea6a3d533e0fe076083470cc88a53e99c^{tree}')" = 'c11b99467261a7aa4cfb9ba61b7870e657131b49'
+          test "$(git rev-parse '32f4c66ea6a3d533e0fe076083470cc88a53e99c^')" = '67ea5ef1706d6864e65c51d9cd83905abf393cbe'
+          test "$(git rev-parse '32f4c66ea6a3d533e0fe076083470cc88a53e99c^^')" = 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3'
+          test "$(git rev-parse '67ea5ef1706d6864e65c51d9cd83905abf393cbe^{tree}')" = '447a64da793c71b210a5e6d8dabb3386cfc0b787'
+          test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^')" = 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
+          test "$(git rev-parse 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa^{tree}')" = '74ea0ee766067b05744bb3840ef54c51c85d58f2'
+          mkdir -p "$RUNNER_TEMP/h01-h07-evidence/before" "$RUNNER_TEMP/h01-h07-evidence/after"
+          cp .github/h01-h07/*.py "$RUNNER_TEMP/"
+          cp .github/h01-h07/h07-copy.json "$RUNNER_TEMP/h01-h07-evidence/"
+          git worktree add --detach "$RUNNER_TEMP/vault-before" 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
+          git worktree add --detach "$RUNNER_TEMP/vault-after" '32f4c66ea6a3d533e0fe076083470cc88a53e99c'
+          date +%F > "$RUNNER_TEMP/h01-h07-evidence/day.txt"
+          git diff --stat 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' '32f4c66ea6a3d533e0fe076083470cc88a53e99c' > "$RUNNER_TEMP/h01-h07-evidence/delta-stat.txt"
+      - name: Install pinned real Chromium
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/h01-browser"
+          "$RUNNER_TEMP/h01-browser/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/h01-browser/bin/python" -m playwright install --with-deps chromium
+      - name: Build and measure baseline before any candidate acceptance
+        id: baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          e="$RUNNER_TEMP/h01-h07-evidence/before"
+          cd "$RUNNER_TEMP/vault-before"
+          failures=0
+          npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
+          npm run build 2>&1 | tee "$e/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
+      - name: Build and measure candidate, enforce actual improvements
+        if: ${{ !cancelled() && (steps.baseline.outcome == 'success' || steps.baseline.outcome == 'failure') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          e="$RUNNER_TEMP/h01-h07-evidence/after"
+          cd "$RUNNER_TEMP/vault-after"
+          failures=0
+          npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
+          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h05-h06.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h07.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          npm run build 2>&1 | tee "$e/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase after --out out --evidence "$e" --sha '32f4c66ea6a3d533e0fe076083470cc88a53e99c' --baseline "$RUNNER_TEMP/h01-h07-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase after --out out --evidence "$e" --sha '32f4c66ea6a3d533e0fe076083470cc88a53e99c' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
+      - name: Preserve real evidence including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Vault-Stability-H01-H07-Chromium-before-after
+          path: ${{ runner.temp }}/h01-h07-evidence/
+          if-no-files-found: error
+          retention-days: 30
