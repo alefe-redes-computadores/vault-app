@@ -21,6 +21,7 @@ const queue=async(table,operation,payload,options)=>{assert(depth);assert.equal(
 const filename=path.join(root,'lib/repositories/doseLogs.ts');const m=new Module(filename,module);m.paths=Module._nodeModulePaths(path.dirname(filename));
 m.require=name=>{
  if(name.startsWith('@/lib/dose-premium/'))return require(path.join(dir,name.split('/').at(-1)+'.js'));
+ if(name==='@/lib/sync/macro02-residual-write')return {runMacro02ResidualWrite:()=>{throw Error('unexpected residual writer in canonical dose contract');}};
  if(name==='@/lib/sync/macro02-authority')return {prepareMacro02ClinicalWrite:async uid=>{assert.equal(uid,'u');assert.equal(depth,0);return {writer,assertCurrent:async()=>{assert(depth);if(++authorityChecks===failAuthorityAt)throw Error('authority invalidated');}};}};
  if(name==='@/lib/db')return {db,safeSetDoseLog:()=>{throw Error('unexpected legacy writer');},safeUpdateMedicamento:()=>{throw Error('unexpected ordinary stock writer');}};
  if(name==='@/lib/supabase/local-auth')return {getLocalFirstAuthUser:async()=>({data:{user:{id:'u'}},error:null})};

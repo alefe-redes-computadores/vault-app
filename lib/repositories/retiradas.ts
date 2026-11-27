@@ -1,3 +1,4 @@
+import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import { withdrawalHistory } from "@/lib/withdrawal-reschedule";
 import { captureHistoricalLocationA3, recordLocationChangeA3 } from "@/lib/health-supply/a3-historical-locations";
@@ -31,9 +32,9 @@ async function med(mid:string,pid:string){
   return m;
 }
 
-export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medicamento,options:{preserveAtomicMedication?:boolean}={}){
+export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medicamento,options:{preserveAtomicMedication?:boolean;residualMetadata?:boolean}={}){
   if(!r.id||!r.person_id||!r.user_id||m.user_id!==r.user_id||m.person_id!==r.person_id)throw new Error("Renovação incompleta para retirada.");
-  if(!options.preserveAtomicMedication&&(m.estoque_ciclo_id!=null||('macro02_stock_managed' in m&&m.macro02_stock_managed===true)))throw Error('Retirada vinculada a estoque Premium.');
+  if(!options.preserveAtomicMedication&&!options.residualMetadata&&(m.estoque_ciclo_id!=null||('macro02_stock_managed' in m&&m.macro02_stock_managed===true)))throw Error('Retirada vinculada a estoque Premium.');
 
   const ex=await db.retiradas
     .where("renovacao_origem_id")
@@ -275,14 +276,11 @@ export const retiradasRepository={
     };
 
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction(
-      "rw",
-      [db.retiradas,db.medicamentos,db.syncQueue],
+    await runMacro02ResidualWrite(authority,userId,[db.retiradas,db.medicamentos,db.syncQueue],
       async()=>{
         await authority.assertCurrent();
-        if(authority.writer!=='legacy')throw Error('MACRO02_WITHDRAWAL_CUTOVER_NOT_CERTIFIED');
         const fresh=await db.medicamentos.get(medicamentoId);
-        if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||(fresh.estoque_ciclo_id!=null||('macro02_stock_managed' in fresh&&fresh.macro02_stock_managed===true)))throw Error('Medicamento incompatível com a retirada.');
+        if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||(authority.writer==='legacy'&&(fresh.estoque_ciclo_id!=null||('macro02_stock_managed' in fresh&&fresh.macro02_stock_managed===true))))throw Error('Medicamento incompatível com a retirada.');
         await db.retiradas.add(retirada);
 
         await enfileirarOperacao(
@@ -292,7 +290,7 @@ export const retiradasRepository={
           {dispatchSync:false}
         );
         await authority.assertCurrent();
-      }
+      },'withdrawal-plan'
     );
 
     solicitarProcessamentoSync();
@@ -303,13 +301,12 @@ export const retiradasRepository={
   async linkReceipt(personId:string,withdrawalId:string,receiptId:string){
     const userId=await uid();
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction("rw",[db.retiradas,db.renovacoes,db.medicamentos,db.syncQueue],async()=>{
+    await runMacro02ResidualWrite(authority,userId,[db.retiradas,db.renovacoes,db.medicamentos,db.syncQueue],async()=>{
         await authority.assertCurrent();
-        if(authority.writer!=='legacy')throw Error('MACRO02_WITHDRAWAL_CUTOVER_NOT_CERTIFIED');
       const r=await db.retiradas.get(withdrawalId),receipt=await db.renovacoes.get(receiptId);
       if(!r || !receipt || r.person_id!==personId || receipt.person_id!==personId || r.user_id!==userId || receipt.user_id!==userId || r.medicamento_id!==receipt.medicamento_id) throw new Error("Recebimento e retirada devem pertencer ao mesmo medicamento e pessoa.");
       const fresh=await db.medicamentos.get(r.medicamento_id);
-      if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||(fresh.estoque_ciclo_id!=null||('macro02_stock_managed' in fresh&&fresh.macro02_stock_managed===true)))throw Error('Medicamento incompatível com o recebimento.');
+      if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||(authority.writer==='legacy'&&(fresh.estoque_ciclo_id!=null||('macro02_stock_managed' in fresh&&fresh.macro02_stock_managed===true))))throw Error('Medicamento incompatível com o recebimento.');
       if(r.renovacao_realizada_id){if(r.renovacao_realizada_id===receiptId)return;throw new Error("Esta retirada já tem um recebimento vinculado.");}
       if(!["agendada","realizada"].includes(r.status) || !receipt.data_aquisicao || !receipt.quantidade || receipt.quantidade<=0) throw new Error("Selecione uma aquisição real com quantidade recebida.");
       if(r.tipo==="sus" && receipt.tipo_aquisicao!=="sus") throw new Error("Selecione uma aquisição SUS.");
@@ -318,7 +315,7 @@ export const retiradasRepository={
       const next={...r,status:"realizada" as const,renovacao_realizada_id:receiptId,quantidade_retirada:receipt.quantidade,realizada_em:r.realizada_em||now(),updated_at:now(),synced:false};
       await db.retiradas.put(next);await enfileirarOperacao("retiradas","update",next,{dispatchSync:false});
       await authority.assertCurrent();
-    });solicitarProcessamentoSync();
+    },'withdrawal-link-receipt');solicitarProcessamentoSync();
   },
 
   async update(id:string,personId:string,changes:RetiradaUpdateInput){
@@ -378,18 +375,15 @@ export const retiradasRepository={
     next.reagendamentos = withdrawalHistory(current, next, next.updated_at!, reason);
 
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction(
-      "rw",
-      [db.retiradas,db.medicamentos,db.syncQueue],
+    await runMacro02ResidualWrite(authority,userId,[db.retiradas,db.medicamentos,db.syncQueue],
       async()=>{
         await authority.assertCurrent();
-        if(authority.writer!=='legacy')throw Error('MACRO02_WITHDRAWAL_CUTOVER_NOT_CERTIFIED');
         const latest = await db.retiradas.get(id);
         if (!latest || latest.user_id!==userId || latest.person_id!==personId || latest.updated_at !== current.updated_at || latest.data !== current.data || latest.status !== current.status) {
           throw new Error("A retirada foi atualizada. Reabra para revisar o reagendamento.");
         }
         const fresh=await db.medicamentos.get(next.medicamento_id);
-        if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||(fresh.estoque_ciclo_id!=null||('macro02_stock_managed' in fresh&&fresh.macro02_stock_managed===true)))throw Error('Medicamento incompatível com a retirada.');
+        if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||(authority.writer==='legacy'&&(fresh.estoque_ciclo_id!=null||('macro02_stock_managed' in fresh&&fresh.macro02_stock_managed===true))))throw Error('Medicamento incompatível com a retirada.');
         await db.retiradas.put(next);
         if (current.tipo === "sus" && next.tipo === "sus" && current.medicamento_id === next.medicamento_id && next.status === "agendada" && next.data !== current.data) {
           const freshMedication = await db.medicamentos.get(next.medicamento_id);
@@ -407,7 +401,7 @@ export const retiradasRepository={
           {dispatchSync:false}
         );
         await authority.assertCurrent();
-      }
+      },'withdrawal-plan'
     );
 
     solicitarProcessamentoSync();
@@ -424,16 +418,15 @@ export const retiradasRepository={
     const timestamp = now();
     let changed = 0;
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction("rw", [db.retiradas, db.medicamentos, db.syncQueue], async () => {
+    await runMacro02ResidualWrite(authority,userId,[db.retiradas, db.medicamentos, db.syncQueue], async () => {
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_WITHDRAWAL_CUTOVER_NOT_CERTIFIED');
       const rows: Retirada[] = [];
       for (const expected of selected) {
         const row = await db.retiradas.get(expected.id);
         if (!row || row.user_id !== userId || row.person_id !== personId || row.status !== "agendada" || row.renovacao_realizada_id) throw new Error("Uma retirada não está mais disponível para reagendamento. Revise a seleção.");
         if (row.data !== expected.data || row.updated_at !== expected.updated_at) throw new Error("Uma retirada foi atualizada. Reabra o planejamento.");
         const medication = await db.medicamentos.get(row.medicamento_id);
-        if (!medication || medication.user_id !== userId || medication.person_id !== personId || (medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true))) throw new Error("Medicamento não encontrado para a pessoa ativa.");
+        if (!medication || medication.user_id !== userId || medication.person_id !== personId || (authority.writer==='legacy'&&(medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true)))) throw new Error("Medicamento não encontrado para a pessoa ativa.");
         rows.push(row);
       }
       for (const row of rows) {
@@ -451,7 +444,7 @@ export const retiradasRepository={
         changed++;
       }
       await authority.assertCurrent();
-    });
+    },'withdrawal-plan');
     if (changed) solicitarProcessamentoSync();
     return changed;
   },
@@ -465,16 +458,13 @@ export const retiradasRepository={
     }
 
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction(
-      "rw",
-      [db.retiradas,db.medicamentos,db.syncQueue],
+    await runMacro02ResidualWrite(authority,userId,[db.retiradas,db.medicamentos,db.syncQueue],
       async()=>{
         await authority.assertCurrent();
-        if(authority.writer!=='legacy')throw Error('MACRO02_WITHDRAWAL_CUTOVER_NOT_CERTIFIED');
         const fresh=await db.retiradas.get(current.id!);
         if(!fresh||fresh.user_id!==userId||fresh.person_id!==personId||fresh.updated_at!==current.updated_at)throw Error('Retirada alterada. Revise novamente.');
         const medication=await db.medicamentos.get(fresh.medicamento_id);
-        if(!medication||medication.user_id!==userId||medication.person_id!==personId||(medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true)))throw Error('Medicamento incompatível com a retirada.');
+        if(!medication||medication.user_id!==userId||medication.person_id!==personId||(authority.writer==='legacy'&&(medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true))))throw Error('Medicamento incompatível com a retirada.');
         await db.retiradas.delete(current.id!);
 
         await enfileirarOperacao(
@@ -488,7 +478,7 @@ export const retiradasRepository={
           {dispatchSync:false}
         );
         await authority.assertCurrent();
-      }
+      },'withdrawal-plan'
     );
 
     solicitarProcessamentoSync();

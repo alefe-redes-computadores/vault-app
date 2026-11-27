@@ -1,3 +1,4 @@
+import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {atomicQueueKey,nextAtomicPosition,parseStockAtomicIntent} from '@/lib/dose-premium/atomic-envelope';
 import {observedStockContext} from '@/lib/dose-premium/stock-context';
@@ -1570,9 +1571,7 @@ export const renovacoesRepository = {
     // ========================================================
 
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction(
-      "rw",
-      [
+    await runMacro02ResidualWrite(authority,userId,[
         db.renovacoes,
         db.retiradas,
         db.a1_prescription_links,
@@ -1582,11 +1581,10 @@ export const renovacoesRepository = {
       ],
       async () => {
         await authority.assertCurrent();
-        if(authority.writer!=='legacy')throw Error('MACRO02_ACQUISITION_EDIT_CUTOVER_NOT_CERTIFIED');
         const fresh=await db.renovacoes.get(safeId);
         if(!fresh||fresh.user_id!==userId||fresh.person_id!==safePersonId||fresh.updated_at!==atual.updated_at)throw Error('Aquisição alterada. Revise novamente.');
         const source=await db.medicamentos.get(fresh.medicamento_id);
-        if(!source||source.user_id!==userId||source.person_id!==safePersonId||(source.estoque_ciclo_id!=null||('macro02_stock_managed' in source&&source.macro02_stock_managed===true)))throw Error('Aquisição vinculada a estoque incompatível.');
+        if(!source||source.user_id!==userId||source.person_id!==safePersonId||(authority.writer==='legacy'&&(source.estoque_ciclo_id!=null||('macro02_stock_managed' in source&&source.macro02_stock_managed===true))))throw Error('Aquisição vinculada a estoque incompatível.');
         // A1 is the single prescription-version ledger: do not mutate a linked
         // prescription into an acquisition or move its historical date/medicine.
         const a1Relations=await db.a1_prescription_links.where("person_id").equals(safePersonId)
@@ -1644,10 +1642,10 @@ export const renovacoesRepository = {
         );
 
         const medicamentoAtual = await db.medicamentos.get(renovacaoAtualizada.medicamento_id);
-        if (!medicamentoAtual || medicamentoAtual.user_id!==userId || medicamentoAtual.person_id !== safePersonId || (medicamentoAtual.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamentoAtual&&medicamentoAtual.macro02_stock_managed===true))) throw new Error("Medicamento da renovação não encontrado para reconciliar retirada.");
-        await reconcileScheduledRetiradaFromRenovacao(renovacaoAtualizada, medicamentoAtual);
+        if (!medicamentoAtual || medicamentoAtual.user_id!==userId || medicamentoAtual.person_id !== safePersonId || (authority.writer==='legacy'&&(medicamentoAtual.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamentoAtual&&medicamentoAtual.macro02_stock_managed===true)))) throw new Error("Medicamento da renovação não encontrado para reconciliar retirada.");
+        await reconcileScheduledRetiradaFromRenovacao(renovacaoAtualizada, medicamentoAtual,{residualMetadata:authority.writer==='premium'});
         await authority.assertCurrent();
-      }
+      },'prescription-edit'
     );
 
     solicitarProcessamentoSync();
@@ -1696,9 +1694,7 @@ export const renovacoesRepository = {
     if(linkedRx)throw new Error("Receita vinculada a outra versão: preserve os dois registros e seu histórico.");
 
     const authority=await prepareMacro02ClinicalWrite(userId);
-    await db.transaction(
-      "rw",
-      [
+    await runMacro02ResidualWrite(authority,userId,[
         db.renovacoes,
         db.retiradas,
         db.a1_prescription_links,
@@ -1707,11 +1703,10 @@ export const renovacoesRepository = {
       ],
       async () => {
         await authority.assertCurrent();
-        if(authority.writer!=='legacy')throw Error('MACRO02_ACQUISITION_DELETE_CUTOVER_NOT_CERTIFIED');
         const fresh=await db.renovacoes.get(safeId);
         if(!fresh||fresh.user_id!==userId||fresh.person_id!==safePersonId||fresh.updated_at!==renovacao.updated_at)throw Error('Aquisição alterada. Revise novamente.');
         const source=await db.medicamentos.get(fresh.medicamento_id);
-        if(!source||source.user_id!==userId||source.person_id!==safePersonId||(source.estoque_ciclo_id!=null||('macro02_stock_managed' in source&&source.macro02_stock_managed===true)))throw Error('Aquisição vinculada a estoque incompatível.');
+        if(!source||source.user_id!==userId||source.person_id!==safePersonId||(authority.writer==='legacy'&&(source.estoque_ciclo_id!=null||('macro02_stock_managed' in source&&source.macro02_stock_managed===true))))throw Error('Aquisição vinculada a estoque incompatível.');
         const linked=await db.retiradas.where("renovacao_realizada_id").equals(safeId).toArray();
         if(linked.some(r=>r.person_id===safePersonId&&r.user_id===userId))throw new Error("Este recebimento está vinculado a uma retirada e ao estoque. A exclusão precisa de estorno.");
         await detachOrDeleteRetiradaFromRenovacao(renovacao);
@@ -1738,7 +1733,7 @@ export const renovacoesRepository = {
           }
         );
         await authority.assertCurrent();
-      }
+      },'prescription-delete'
     );
 
     solicitarProcessamentoSync();

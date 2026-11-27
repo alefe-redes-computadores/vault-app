@@ -1,3 +1,4 @@
+import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {atomicQueueKey,nextAtomicPosition,parseStockAtomicIntent,medicationPending} from '@/lib/dose-premium/atomic-envelope';
 import {observedStockContext} from '@/lib/dose-premium/stock-context';
@@ -456,11 +457,10 @@ export const medicamentosRepository = {
     // ========================================================
 
     const authority=await prepareMacro02ClinicalWrite(user.id);
-    const id=await db.transaction('rw',[db.persons,db.medicamentos,db.syncQueue],async()=>{
+    const id=await runMacro02ResidualWrite(authority,user.id,[db.persons,db.medicamentos,db.syncQueue],async()=>{
     await authority.assertCurrent();
-    if(authority.writer!=='legacy')throw Error('MACRO02_CREATE_CUTOVER_NOT_CERTIFIED');
     const person=await db.persons.get(data.person_id);
-    if(!person||person.user_id!==user.id||(payload.estoque_ciclo_id!=null||('macro02_stock_managed' in payload&&payload.macro02_stock_managed===true)))throw Error('Pessoa ou estoque incompatível com a release dormente.');
+    if(!person||person.user_id!==user.id||(authority.writer==='legacy'&&(payload.estoque_ciclo_id!=null||('macro02_stock_managed' in payload&&payload.macro02_stock_managed===true))))throw Error('Pessoa ou estoque incompatível com a release dormente.');
     const createdId =
       await safeAddMedicamento(
         payload
@@ -496,7 +496,7 @@ export const medicamentosRepository = {
       registroCriado,{dispatchSync:false}
     );
     await authority.assertCurrent();return createdId;
-    });
+    },'medication-create');
     solicitarProcessamentoSync();
     const saved=await db.medicamentos.get(id);
     if(saved)await reconcileMedicationNotifications(undefined,saved);
@@ -721,14 +721,13 @@ export const medicamentosRepository = {
 
     const auth=await getLocalFirstAuthUser();if(!auth.data.user||auth.data.user.id!==medicamento.user_id)throw Error('Conta autenticada não corresponde ao medicamento.');
     const authority=await prepareMacro02ClinicalWrite(medicamento.user_id);
-    const registroCompleto=await db.transaction('rw',[db.medicamentos,db.syncQueue],async()=>{
+    const registroCompleto=await runMacro02ResidualWrite(authority,medicamento.user_id,[db.medicamentos,db.syncQueue],async()=>{
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_DISCONTINUE_CUTOVER_NOT_CERTIFIED');
       const latest=await db.medicamentos.get(id);if(!latest||latest.user_id!==medicamento.user_id||latest.person_id!==personId||latest.updated_at!==medicamento.updated_at)throw Error('Cadastro mudou. Revise antes de descontinuar.');
       if(medicationPending(await db.syncQueue.toArray(),{user_id:medicamento.user_id,person_id:personId,medicationId:id}).length)throw Error('Medicamento possui operação acoplada pendente. Preserve a fila antes de descontinuar.');
       await safeUpdateMedicamento(id,descontinuado);const saved=await db.medicamentos.get(id);if(!saved||saved.user_id!==medicamento.user_id||saved.person_id!==personId)throw Error('Histórico não confirmado localmente.');
       await enfileirarOperacao('medicamentos','update',saved,{dispatchSync:false});await authority.assertCurrent();return saved;
-    });solicitarProcessamentoSync();
+    },'medication-discontinue');solicitarProcessamentoSync();
 
     await reconcileMedicationNotifications(
       medicamento,

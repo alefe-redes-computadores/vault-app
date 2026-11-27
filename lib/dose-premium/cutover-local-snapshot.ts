@@ -11,6 +11,10 @@ export async function captureMacro02LocalCutover(host:{
  transaction<T>(run:()=>Promise<T>):Promise<T>;
  readTable(table:CutoverTable|'syncQueue'):Promise<readonly unknown[]>;
  assertSession():void;
+ validateLocal?:(local:CutoverLocal)=>void;
+ /** Operational cutover also holds on any outside-account-dependency queue;
+  * an unknown/unowned item cannot prove that a frozen image is complete. */
+ requireAllQueueDependenciesClear?:boolean;
 },uid:string):Promise<CutoverLocal>{
  if(!text(uid))throw Error('MACRO02_CUTOVER_ACCOUNT');
  host.assertSession();
@@ -37,7 +41,7 @@ export async function captureMacro02LocalCutover(host:{
   if(!Array.isArray(queue))throw Error('MACRO02_CUTOVER_LOCAL_QUEUE');
   for(const q of queue){
    if(!isRow(q)||!text(q.table)){omitted_unowned_count++;continue;}
-   const special=q.table==='tratamento_visual_identity';if(!clinical.has(q.table)&&!special)continue;
+   const special=q.table==='tratamento_visual_identity'||host.requireAllQueueDependenciesClear===true&&!clinical.has(q.table);if(!clinical.has(q.table)&&!special)continue;
    if(!isRow(q.payload)||!text(q.payload.user_id)){omitted_unowned_count++;continue;}
    if(q.payload.user_id!==uid)continue;
    if(special){external_dependency_queue_count++;continue;}
@@ -46,6 +50,6 @@ export async function captureMacro02LocalCutover(host:{
   const local:CutoverLocal={account_id:uid,rows:Object.fromEntries(scoped) as unknown as CutoverRows,queue:original,omitted_unowned_count,unscoped_rows_count,external_dependency_queue_count};
   // Validate shape, scope and canonical representation while the same
   // transaction is active. Never replace or serialize unknown values silently.
-  cutoverLocalIdentity(local);host.assertSession();return local;
+  (host.validateLocal??cutoverLocalIdentity)(local);host.assertSession();return local;
  });
 }

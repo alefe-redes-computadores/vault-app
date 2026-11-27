@@ -1,3 +1,4 @@
+import {runMacro02ResidualWrite} from "@/lib/sync/macro02-residual-write";
 import {prepareMacro02ClinicalWrite} from "@/lib/sync/macro02-authority";
 import {capturePharmaceuticalSnapshot} from '@/lib/dose-premium/pharmaceutical-snapshot';
 import { atomicQueueKey, nextAtomicPosition, parseAtomicIntent, type AtomicIntent } from "@/lib/dose-premium/atomic-envelope";
@@ -1078,16 +1079,15 @@ export const doseLogsRepository = {
     const desired = course ? temporaryCourseSlots(course) : [];
     const reason = course ? temporaryCourseNote(course) : "";
     const authority=await prepareMacro02ClinicalWrite(user.id);
-    const result=await db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+    const result=await runMacro02ResidualWrite(authority,user.id,[db.doseLogs, db.medicamentos, db.syncQueue], async () => {
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_PLANNING_CUTOVER_NOT_CERTIFIED');
       const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
       if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso temporário para um tratamento de duração definida.");
       const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
         .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id && row.dose_kind !== "sos" && row.dose_kind !== "extra");
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
         !row.tomado_em && !row.ignorado_em);
-      if((medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true))||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
+      if((authority.writer==='legacy'&&(medication.estoque_ciclo_id!=null||('macro02_stock_managed' in medication&&medication.macro02_stock_managed===true)))||oldPending.some(row=>hasPremiumEvidence(row)))throw Error('Planejamento com evidência Premium exige revisão de autoridade.');
       const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
       if (oldBySlot.size !== oldPending.length) throw new Error("Há agendamentos duplicados no período. Revise-os antes de continuar.");
       // Não converter tomadas/ignoradas históricas em slots novos nem reaplicar consumo.
@@ -1128,7 +1128,7 @@ export const doseLogsRepository = {
         scheduled++;
       }
       await authority.assertCurrent();return { scheduled, cancelled };
-    });
+    },'planned-dose');
     solicitarProcessamentoSync();return result;
   },
 
@@ -1153,15 +1153,14 @@ export const doseLogsRepository = {
     const user = await requireAuthenticatedUser();
 
     const authority=await prepareMacro02ClinicalWrite(user.id);
-    const result=await db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+    const result=await runMacro02ResidualWrite(authority,user.id,[db.doseLogs, db.medicamentos, db.syncQueue], async () => {
       await authority.assertCurrent();
-      if(authority.writer!=='legacy')throw Error('MACRO02_PLANNING_CUTOVER_NOT_CERTIFIED');
       const medicamento = await getMedicamentoForPerson(
         safeMedicamentoId,
         safePersonId,
         user.id
       );
-      if((medicamento.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamento&&medicamento.macro02_stock_managed===true)))throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
+      if((authority.writer==='legacy'&&(medicamento.estoque_ciclo_id!=null||('macro02_stock_managed' in medicamento&&medicamento.macro02_stock_managed===true))))throw Error('Planejamento com estoque Premium exige revisão de autoridade.');
       const existing = await getDoseLogForSlot(
         safeMedicamentoId,
         safePersonId,
@@ -1203,7 +1202,7 @@ export const doseLogsRepository = {
       // Agendar nunca altera o estoque. O consumo acontece somente
       // quando a pessoa confirma a tomada.
       await authority.assertCurrent();return id;
-    });
+    },'planned-dose');
     solicitarProcessamentoSync();return result;
   },
 

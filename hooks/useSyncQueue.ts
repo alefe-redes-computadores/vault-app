@@ -5286,6 +5286,7 @@ export function useSyncQueue() {
       item:
         SyncQueueItem
     ) => {
+      if(item.payload.macro02_metadata!==undefined)throw Error('Macro02: metadados R3 aguardam escritor certificado.');
       if(isMacro02Atomic(item)&&item.table!=='doseLogs'){const client=requireSupabase();const {data,error}=await client.auth.getUser();if(error||!data.user)throw Error('Macro02: sessão não confirmada.');return sendMacro02Atomic(item,data.user.id);}
       if(vitalTable(item.table)){
         const client=requireSupabase();const {data,error}=await client.auth.getUser();

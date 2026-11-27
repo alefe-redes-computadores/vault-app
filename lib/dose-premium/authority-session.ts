@@ -12,6 +12,9 @@ export function countMacro02Pending(rows:readonly PendingItem[],accountId:string
   if(!row.payload||typeof row.payload!=='object'||Array.isArray(row.payload)){unclassified++;continue;}
   if(typeof row.payload.user_id!=='string'||!row.payload.user_id){unclassified++;continue;}
   if(row.payload.user_id!==accountId)continue;
+  // R3 metadata is not a legacy operation. Until the server transport is
+  // certified it is held intact, never reclassified or dispatched.
+  if(row.payload.macro02_metadata!==undefined){unclassified++;continue;}
   if(row.payload.macro02_atomic!==undefined){try{const intent=intentFromQueue(row);if(!intent||intent.stockBefore.user_id!==accountId)throw Error('scope');premium++;}catch{unclassified++;}continue;}
   if(['unidade_dose','unidade_dose_rotulo','fonte_unidade','estoque_movimento','farmaco_snapshot','estoque_ciclo_id'].some(k=>row.payload[k]!=null)||row.payload.macro02_stock_managed===true){unclassified++;continue;}
   legacy++;
