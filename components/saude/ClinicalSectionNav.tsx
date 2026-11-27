@@ -5,7 +5,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 export type ClinicalSectionNavItem={id:string;label:string;icon:ReactNode;badge?:string|number|null;iconClassName?:string};
 
 /** Compact in-page navigation for long clinical workspaces. */
-export function ClinicalSectionNav({label,items,layout="grid",density="regular",priorityCount}:{label:string;items:readonly ClinicalSectionNavItem[];layout?:"scroll"|"grid";density?:"regular"|"compact";priorityCount?:number}){
+export function ClinicalSectionNav({label,items,layout="grid",density="regular",priorityCount,alignTreatmentTabs=false}:{label:string;items:readonly ClinicalSectionNavItem[];layout?:"scroll"|"grid";density?:"regular"|"compact";priorityCount?:number;alignTreatmentTabs?:boolean}){
   const secondaryId=useId();
   const idsKey=items.map(item=>item.id).join("|");
   const [activeId,setActiveId]=useState(items[0]?.id??"");
@@ -38,7 +38,7 @@ export function ClinicalSectionNav({label,items,layout="grid",density="regular",
 
   // A deep link to a secondary section must reveal its navigation item.
   useEffect(()=>{if(secondary.some(item=>item.id===activeId))setExpanded(true);},[activeId,idsKey,count]);
-  const itemLink=(item:ClinicalSectionNavItem)=>{const active=activeId===item.id;return <a key={item.id} href={`#${item.id}`} title={item.label} aria-label={item.badge!==undefined&&item.badge!==null?`${item.label} · ${item.badge}`:item.label} aria-current={active?"location":undefined} onClick={event => {
+  const itemLink=(item:ClinicalSectionNavItem)=>{const active=activeId===item.id;return <a key={item.id} data-vault-h05-tab={alignTreatmentTabs&&compactFive?item.id:undefined} href={`#${item.id}`} title={item.label} aria-label={item.badge!==undefined&&item.badge!==null?`${item.label} · ${item.badge}`:item.label} aria-current={active?"location":undefined} onClick={event => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     setActiveId(item.id);
     document.getElementById(item.id)?.dispatchEvent(new Event("vault:reveal-clinical-section"));

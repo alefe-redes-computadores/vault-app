@@ -25,7 +25,7 @@ export function ConsultationChangeM121({context,ownerId,personId,today,onPrepare
          <p className="rounded-lg bg-surface/70 p-2"><strong className="block text-sm text-ink-primary">{snapshot.counts.documentsRegistered}</strong> documentos cadastrados</p>
        </div>
        {snapshot.sample.length>0&&<details className="mt-3 rounded-xl border border-surface-border/50 p-2"><summary className="min-h-10 cursor-pointer text-xs font-semibold text-ink-muted">Ver registros recentes de exemplo</summary><ul className="space-y-1 pt-2 text-[11px] text-ink-muted">{snapshot.sample.map((v,i)=><li key={`${i}:${v.date}:${v.title}`}>{v.date.split("-").reverse().join("/")} · {v.title} · {v.source}</li>)}</ul></details>}
-       <button type="button" disabled={!selected} onClick={()=>selected&&onPrepare(selected.date)} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-300/15 px-3 text-xs font-bold text-violet-100 disabled:opacity-50"><FileText size={16}/>Usar período no Relatório 360</button>
+       <button type="button" disabled={!selected} onClick={()=>selected&&onPrepare(selected.date)} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-300/15 px-3 text-xs font-bold text-violet-100 disabled:opacity-50"><FileText size={16}/>Usar período no Relatório</button>
        <p className="mt-2 flex gap-2 text-[10px] leading-relaxed text-ink-faint"><ShieldCheck size={14} className="shrink-0"/>{snapshot.limitation} Exportação somente com sua seleção explícita.</p>
      </>}
  </section>;

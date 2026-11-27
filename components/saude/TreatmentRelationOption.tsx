@@ -1,13 +1,9 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
+import { TreatmentIdentityIconR03, useTreatmentIdentityColorResolverR03 } from "@/components/saude/TreatmentIdentityR03";
 import { treatmentColorR03 } from "@/lib/health-profile/treatment-preferences-r03";
 import type { Tratamento } from "@/lib/types";
-
-function treatmentColor(treatment: Tratamento): string {
-  return treatmentColorR03(treatment.cor);
-}
 
 function statusLabel(status?: string): string {
   if (status === "ativo") return "Em acompanhamento";
@@ -24,7 +20,8 @@ export function TreatmentRelationOption({
   treatment: Tratamento;
   selected: boolean;
 }) {
-  const color = treatmentColor(treatment);
+  const resolveTreatmentColor = useTreatmentIdentityColorResolverR03();
+  const color = treatmentColorR03(resolveTreatmentColor(treatment));
 
   return (
     <div className="flex min-w-0 w-full items-center gap-3">

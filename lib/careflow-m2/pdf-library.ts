@@ -39,7 +39,7 @@ export async function makeClinicalPdfM2(report:Report360):Promise<Blob>{
   const pdf=new jsPDF({unit:'mm',format:'a4',compress:true});let y=21;let page=1;
   const clean=(v:unknown)=>String(v??'').replace(/[\u0000-\u001f\u007f]/g,' ').trim();
   const line=(text:string,size=9)=>{pdf.setFontSize(size);const lines=pdf.splitTextToSize(clean(text),174) as string[];for(const x of lines){if(y>272){pdf.addPage();page++;y=20;}pdf.text(x,18,y);y+=size===9?5:7;}y+=2;};
-  pdf.setFont('helvetica','bold');line('VAULT / RELATORIO CLINICO 360',14);
+  pdf.setFont('helvetica','bold');line('VAULT / RELATORIO CLINICO',14);
   pdf.setFont('helvetica','normal');line(`Pessoa: ${report.personName} | ${report.start} a ${report.end}`);
   line('Dados registrados pelo usuario. Nao representa diagnostico medico ou comprovacao de uso.');
   for(const row of report.rows){pdf.setFont('helvetica','bold');line(`${row.date} | ${row.title}`);pdf.setFont('helvetica','normal');line(row.detail);}

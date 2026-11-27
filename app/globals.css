@@ -486,3 +486,53 @@ html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header)
 [data-vault-medication-flow="true"] [data-vault-med360-microbanner] { margin-top: 4px; }
 /* H04: no extra tail. The existing STB-13 ready selector is the sole measured reserve,
  * with its existing conservative fallback until the observer measures. */
+
+/* H05: treatment navigation uses three fixed semantic tracks; an absent badge
+   occupies no DOM/count, only the same grid track. The scroll container is unchanged. */
+[data-vault-h05-tab] {
+  display: grid;
+  grid-template-rows: 24px minmax(2.4em, auto) 20px;
+  justify-items: center;
+  align-items: center;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding-block: 7px;
+}
+[data-vault-h05-tab] > span:nth-child(2) {
+  align-self: center;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+[data-vault-h05-tab] > span:nth-child(3) { align-self: center; }
+/* Treatment-only StatCard grid. Three equal cards, icon/title/value/legend aligned.
+   A bounded two-line label track accommodates narrow mobile widths without clipping. */
+[data-vault-h05-stats] { align-items: stretch; }
+[data-vault-h05-stats] > div {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 3px;
+  padding: 9px;
+  border-radius: 16px;
+}
+[data-vault-h05-stats] > div > div:first-child {
+  display: grid;
+  grid-template-rows: 16px minmax(2.4em, auto);
+  align-items: center;
+  justify-items: start;
+  gap: 3px;
+  margin-bottom: 0;
+  font-size: 10px;
+}
+[data-vault-h05-stats] > div > div:first-child > span {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: .015em;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  align-self: start;
+}
+[data-vault-h05-stats] > div > p:last-child { margin-top: 0; overflow-wrap: anywhere; }

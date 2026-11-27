@@ -79,7 +79,7 @@ import {
 } from "@/hooks/useMedicamentos";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/db";
-import { indexMedicationTreatmentsP7, safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
+import { indexMedicationTreatmentsP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 
 import {
   useDoseLogs,
@@ -143,7 +143,7 @@ import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components
 import { MedicationSheet360R3, type Medication360Value, type Medication360Tab } from "@/components/saude/MedicationSheet360R3";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
 import { medicationIngredientDisplayResidual } from "@/lib/medications/visual-copy";
-import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
+import { TreatmentIdentityIconR03, useTreatmentIdentityColorResolverR03 } from "@/components/saude/TreatmentIdentityR03";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
@@ -238,6 +238,7 @@ function regulatoryListLabelMED04(
 }
 
 export default function MedicamentosListPage() {
+  const resolveTreatmentColor = useTreatmentIdentityColorResolverR03();
   const healthIntelligence = useSharedHealthIntelligence();
   const { user: treatmentOwner } = useAuth();
   const { retiradas, isLoading: withdrawalsLoading } = useRetiradas();
@@ -1408,7 +1409,7 @@ export default function MedicamentosListPage() {
           regulatory: { label: regulatoryCopy.label, detail: regulatoryProfile?.detail || "Sem regra confirmada na referência", source: regulatoryCopy.source, verified: regulatoryCopy.official, authority: catalogIdentity?.authorityState === "confirmed" ? "Referência confirmada" : catalogIdentity?.authorityState === "compatible" ? "Referência compatível" : catalogIdentity?.authorityState === "possible_divergence" ? "Divergência a conferir" : "Não validada", declared: med.tipo_receita || null },
           prescriptionDate: med.data_receita || null,
           renewalDate: med.proxima_renovacao || null,
-          treatments: cardTreatments.map(t => ({id:t.id,name:t.nome,color:safeTreatmentColorP7(t.cor)})),
+          treatments: cardTreatments.map(t => ({id:t.id,name:t.nome,color:resolveTreatmentColor(t)})),
           conflicts: knowledge.conflicts.map(f => ({declared:f.value,reference:f.officialValue || "Referência diferente",limitation:f.limitation})),
           provenance: <MedicationProvenanceLineM150P3 onContext={openMedicationContextP7R3}
             latestManufacturer={latestManufacturer} declaredManufacturer={med.laboratorio_etiqueta}
@@ -1500,7 +1501,7 @@ export default function MedicamentosListPage() {
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <div data-vault-med360-header className="flex min-w-0 w-full items-start gap-1">
                   <div data-vault-v34x-title-hitbox className="flex min-w-0 flex-1 flex-col items-start gap-0">
-                  <button type="button" aria-haspopup="dialog" data-vault-med360-entry="name" aria-label={`Abrir Gaveta 360 de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
+                  <button type="button" aria-haspopup="dialog" data-vault-med360-entry="name" aria-label={`Abrir Gaveta de medicamentos de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
                     className="pointer-events-auto relative z-20 inline-flex min-h-11 w-fit max-w-full flex-none flex-col items-start justify-center gap-[2px] rounded-lg px-1 text-left transition-transform active:scale-[.99] active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                     <span className="flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5">
                     <span title={medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)} className="min-w-0 max-w-full break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
@@ -1512,7 +1513,7 @@ export default function MedicamentosListPage() {
                     {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                   </button>
                   </div>
-                  <button type="button" aria-haspopup="dialog" aria-label={`Abrir menu 360 de ${med.nome}`} data-vault-med360-entry="menu"
+                  <button type="button" aria-haspopup="dialog" aria-label={`Abrir menu de ${med.nome}`} data-vault-med360-entry="menu"
                     onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("acoes");}}
                     className="pointer-events-auto relative z-20 grid size-11 shrink-0 place-items-center rounded-xl border border-transparent bg-transparent text-ink-secondary transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Ellipsis size={19} aria-hidden="true"/></button>
                 </div>
@@ -1556,7 +1557,7 @@ export default function MedicamentosListPage() {
                 )}
               {Boolean(cardTreatments.length > 0) && <div data-vault-med360-treatment-tags className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0">
                 {cardTreatments.slice(0,compactCards ? 2 : 3).map(t=>{
-                  const color = safeTreatmentColorP7(t.cor);
+                  const color = resolveTreatmentColor(t);
                   return <button key={t.id || t.nome} type="button" data-vault-r5-context="tratamento"
                     onClick={event=>{event.preventDefault();event.stopPropagation();trigger("vibrate");if(t.id) router.push(`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id)}`);else openMedicationSheet360("ficha");}}
                     aria-label={`Abrir tratamento ${t.nome}`} className={`pointer-events-auto relative z-20 inline-flex min-h-6 max-w-full items-center gap-1 text-[10px] font-semibold ${compactCards ? "min-h-6 border-0 bg-transparent px-0" : "min-h-7 rounded-lg border border-surface-border/50 bg-surface/40 px-2"}`}

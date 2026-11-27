@@ -21,7 +21,7 @@ ok(med.includes('navigationP6.kind === "completed" ? null')&&med.includes('exact
 ok(med.includes('data-vault-r4-main-action')&&med.includes('actionLayoutM150P3.primary')&&med.includes('grid-cols-[minmax(0,1fr)_88px]'),'acao canonica fixa no card');
 ok(!med.includes('openMedicationContextP7R3("treatment")')&&med.includes('data-vault-med360-treatment-tags')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('railSize="label"'),'tratamento e tarja regulatoria continuam funcionais');
 ok(sheet.includes('value.controls.map')&&sheet.includes('window.setTimeout(onClose,0)'),'reutiliza controles clinicos sem recriar comandos');
-ok(sheet.includes('value.treatments.map')&&sheet.includes('<TreatmentIdentityIconR03 entity={t}')&&med.includes('safeTreatmentColorP7(t.cor)'),'tratamentos explicitos e cores validas');
+ok(sheet.includes('value.treatments.map')&&sheet.includes('<TreatmentIdentityIconR03 entity={t}')&&med.includes('const color = resolveTreatmentColor(t);')&&require('node:fs').readFileSync('components/saude/TreatmentIdentityR03.tsx','utf8').includes('normalizeTreatmentColorR03(resolveOwnedTreatmentR03(entity,records,scope)?.cor)'),'tratamentos explicitos e cores validas');
 ok(sheet.includes('max-h-[min(89dvh,790px)]')&&sheet.includes('safe-area-inset-bottom')&&sheet.includes('Escape'),'Android viewport, Safe Area e teclado');
 ok(sheet.includes('role="dialog"')&&sheet.includes('aria-modal="true"')&&sheet.includes('role="tablist"')&&sheet.includes('aria-selected={tab===id}'),'acessibilidade da gaveta');
 ok(sheet.includes('document.activeElement')&&sheet.includes('original?.focus()')&&sheet.includes('closeRef.current?.focus()'),'foco devolvido ao elemento de origem');

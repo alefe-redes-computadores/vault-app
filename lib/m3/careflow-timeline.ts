@@ -38,7 +38,7 @@ export async function makeCareFlowTimelinePdfM3(personName:string,rows:readonly 
     for(const part of pdf.splitTextToSize(clean(s),174) as string[]){if(y>275){pdf.addPage();y=18;}pdf.text(part,18,y);y+=bold?6:5;}
     y+=1;
   }
-  line('VAULT · CAREFLOW 360 | LINHA DO TEMPO LOCAL',true);
+  line('VAULT · CAREFLOW | LINHA DO TEMPO LOCAL',true);
   line(`Pessoa: ${personName} · ${rows.length} evento(s) selecionado(s)`);
   line('Dados declarados ou vinculados no aplicativo. Não representam diagnóstico nem confirmação de uso.');
   if(rows.length===0)line('Sem registros selecionados para a linha do tempo.');

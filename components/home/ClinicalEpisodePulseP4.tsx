@@ -43,7 +43,7 @@ export function ClinicalEpisodePulseP4(){
   if(!suggestion||hidden===scope)return null;
   return <section aria-label="Acompanhamento opcional do Brain por consulta" className="rounded-[22px] border border-sky-300/20 bg-surface/75 p-3.5">
     <div className="flex items-start gap-2.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/[.07] text-sky-300"><Activity size={18}/></span>
-      <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.13em] text-sky-300">Brain 360 · Acompanhamento opcional</p>
+      <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.13em] text-sky-300">Brain · Acompanhamento opcional</p>
         <strong className="mt-1 block break-words text-sm text-ink-primary">{suggestion.label}</strong>
         <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{suggestion.explanation}</p>
       </div>

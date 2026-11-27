@@ -20,7 +20,7 @@ export function BrainReturnCardD3({brief}: {brief: ReturnBriefD3}) {
       setCopyState('error');
     }
   }
-  return <section aria-label="Brain 360 — Cartão de Retorno" className="overflow-hidden rounded-[24px] border border-violet-300/20 bg-gradient-to-br from-violet-300/[.055] via-surface to-surface p-4">
+  return <section aria-label="Brain — Cartão de Retorno" className="overflow-hidden rounded-[24px] border border-violet-300/20 bg-gradient-to-br from-violet-300/[.055] via-surface to-surface p-4">
     <div className="flex items-start gap-3">
       <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-violet-300/25 bg-violet-300/[.08] text-violet-200" aria-hidden="true"><Brain size={22}/></span>
       <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-200">Preparação para o retorno</p>

@@ -25,7 +25,7 @@ export const VAULT_CAPABILITIES: readonly VaultCapability[] = [
     evidence:"Doses registradas, registros de saúde, consultas, cadastro atual de medicamentos e snapshots já salvos do Brain V5.",
     limits:"Sem diagnóstico, sem alerta retroativo, sem anexo automático de e-mail. Documentos incluem somente títulos quando autorizados.",
     example:"Preparar os últimos 30 dias em PDF, copiar o e-mail de um médico cadastrado e anexar voluntariamente no e-mail.",
-    location:"Saúde → Linha de Cuidado → Central de Relatórios 360",status:"included_in_this_build",
+    location:"Saúde → Linha de Cuidado → Central de Relatórios",status:"included_in_this_build",
   },
   {
     id:"m97-care-correlation",surgery:"M97",domain:"brain",title:"Relações temporais entre registros",

@@ -2,7 +2,7 @@
 "use client";
 
 import {useAuth} from "@/hooks/useAuth";
-import {TreatmentIdentityIconR03} from "@/components/saude/TreatmentIdentityR03";
+import {TreatmentIdentityIconR03,useTreatmentIdentityColorResolverR03} from "@/components/saude/TreatmentIdentityR03";
 import {treatmentColorR03} from "@/lib/health-profile/treatment-preferences-r03";
 import {distinctClinicalAlertMessages} from "@/lib/ui/distinct-clinical-alerts-ux360";
 import {useRetiradas} from "@/hooks/useRetiradas";
@@ -260,6 +260,7 @@ function getStatusLabel(status: Tratamento["status"]): string {
 // ============================================================
 
 function TratamentoContent() {
+  const resolveTreatmentColor = useTreatmentIdentityColorResolverR03();
   const { trigger } = useHapticFeedback();
 
   const router = useRouter();
@@ -825,7 +826,7 @@ function TratamentoContent() {
   // TEMA
   // ==========================================================
 
-  const treatmentColor = treatmentColorR03(tratamento.cor);
+  const treatmentColor = treatmentColorR03(resolveTreatmentColor(tratamento));
 
   // ==========================================================
   // RENDER
@@ -985,7 +986,7 @@ function TratamentoContent() {
 
 
         <section className="space-y-4 px-5 pt-5">
-          <ClinicalSectionNav label="Áreas do tratamento" layout="grid" density="compact" priorityCount={5} items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes}]}/>
+          <ClinicalSectionNav label="Áreas do tratamento" layout="grid" density="compact" priorityCount={5} alignTreatmentTabs items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes}]}/>
           <span id="tratamento-visao" className="block scroll-mt-24" aria-hidden="true"/>
           <motion.div
             variants={fadeUp}
@@ -1125,7 +1126,7 @@ function TratamentoContent() {
             )}
 
             {(medicamentosAtivos.length>0 || linkedDocuments.length>0 || panorama.renovacoes>0) && (
-            <div className="relative z-10 mt-4 grid grid-cols-3 gap-1.5 border-t border-surface-border/50 pt-4">
+            <div data-vault-h05-stats className="relative z-10 mt-4 grid grid-cols-3 gap-1.5 border-t border-surface-border/50 pt-4">
               <StatCard
                 icon={<Pill size={14} />}
                 label="Em uso"

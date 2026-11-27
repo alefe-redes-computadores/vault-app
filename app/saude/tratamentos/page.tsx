@@ -76,7 +76,7 @@ import {
 } from "@/components/list";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
-import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
+import { TreatmentIdentityIconR03, useTreatmentIdentityColorResolverR03 } from "@/components/saude/TreatmentIdentityR03";
 import { treatmentColorR03 } from "@/lib/health-profile/treatment-preferences-r03";
 import { inspectTreatmentMedicationLinks } from "@/lib/health-intelligence/treatment-link-review";
 import { withReturnTarget } from "@/lib/navigation/return-context";
@@ -193,6 +193,7 @@ function normalizeSearch(
 // ============================================================
 
 function TratamentoListContent() {
+  const resolveTreatmentColor = useTreatmentIdentityColorResolverR03();
   const { loading: personLoading } = useActivePersonId();
   const {
     trigger,
@@ -899,7 +900,7 @@ function TratamentoListContent() {
                 }
                 const treatmentId = tratamento.id;
 
-                const treatmentColor = treatmentColorR03(tratamento.cor);
+                const treatmentColor = treatmentColorR03(resolveTreatmentColor(tratamento));
 
                 return (
                   <ListCard
