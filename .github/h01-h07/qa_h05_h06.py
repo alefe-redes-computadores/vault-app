@@ -21,10 +21,10 @@ def fixtures(day):
 
 def geometry(p):
  nav=p.get_by_role('navigation',name='Áreas do tratamento');expect(nav).to_be_visible(timeout=45000)
- return nav.evaluate('''n=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,cy:r.y+r.height/2,top:r.top,bottom:r.bottom}};const tabs=[...n.querySelectorAll('a')].map(e=>({href:e.getAttribute('href'),rect:rect(e),icon:rect(e.children[0]),title:rect(e.children[1]),badge:rect(e.children[2]),text:e.innerText,active:e.getAttribute('aria-current'),overflow:e.scrollWidth>e.clientWidth+2}));const stats=[...document.querySelectorAll('main div')].find(e=>e.children.length===3&&[...e.children].map(x=>x.innerText.split('\\n')[0].trim().toLowerCase()).join('|')==='em uso|documentos|aquisições');return {tabs,scrollWidth:n.scrollWidth,clientWidth:n.clientWidth,scrollLeft:n.scrollLeft,stats:stats?[...stats.children].map(e=>({rect:rect(e),icon:rect(e.children[0]?.children[0]),title:rect(e.children[0]?.children[1]),value:rect(e.children[1]),legend:rect(e.children[2]),text:e.innerText,overflow:e.scrollWidth>e.clientWidth+2})):[],pageOverflow:document.documentElement.scrollWidth>innerWidth+2}}''')
+ return nav.evaluate('''n=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,cy:r.y+r.height/2,top:r.top,bottom:r.bottom}};const tabs=[...n.querySelectorAll('a')].map(e=>({href:e.getAttribute('href'),rect:rect(e),icon:rect(e.children[0]),title:rect(e.children[1]),badge:rect(e.children[2]),text:e.innerText,active:e.getAttribute('aria-current'),overflow:e.scrollWidth>e.clientWidth+2}));const candidates=[...document.querySelectorAll('main div')].filter(e=>e.children.length===3&&[...e.children].map(x=>x.innerText.split('\\n')[0].trim().toLowerCase()).join('|')==='em uso|documentos|aquisições');document.querySelectorAll('[data-vault-qa-h05-stats]').forEach(e=>e.removeAttribute('data-vault-qa-h05-stats'));const stats=candidates.length===1?candidates[0]:null;if(stats)stats.setAttribute('data-vault-qa-h05-stats','true');return {statsMatches:candidates.length,tabs,scrollWidth:n.scrollWidth,clientWidth:n.clientWidth,scrollLeft:n.scrollLeft,stats:stats?[...stats.children].map(e=>({rect:rect(e),icon:rect(e.children[0]?.children[0]),title:rect(e.children[0]?.children[1]),value:rect(e.children[1]),legend:rect(e.children[2]),text:e.innerText,overflow:e.scrollWidth>e.clientWidth+2})):[],pageOverflow:document.documentElement.scrollWidth>innerWidth+2}}''')
 
 def check_geometry(g,after):
- require(len(g['tabs'])==5,'five actual treatment tabs missing');require(len(g['stats'])==3,'three actual indicators missing')
+ require(len(g['tabs'])==5,'five actual treatment tabs missing');require(g['statsMatches']==1 and len(g['stats'])==3,'unique three actual indicators missing or ambiguous')
  require(not g['pageOverflow'],'page horizontal overflow')
  require([x['href'] for x in g['tabs']]==['#tratamento-visao','#tratamento-medicamentos','#tratamento-rede','#tratamento-linha','#tratamento-financeiro'],'tab order/route altered')
  require(g['tabs'][0]['badge'] is None and g['tabs'][2]['badge'] is None,'invented count')
@@ -41,12 +41,17 @@ def check_geometry(g,after):
 def h05(p,out,width,after):
  p.goto(q.ORIGIN+'/saude/tratamentos/detalhes?id='+q.TREAT_A);q.wait_nav(p);nav=p.get_by_role('navigation',name='Áreas do tratamento');expect(nav).to_be_visible(timeout=45000)
  nav.evaluate("e=>e.scrollIntoView({block:'center',behavior:'instant'})");p.wait_for_timeout(180)
- g=geometry(p);check_geometry(g,after);h.shot(p,out,f'{width}-H05-navigation',nav)
+ g=geometry(p)
+ # Preserve the raw measurements even when a subsequent assertion fails.
+ (out/f'{width}-H05-geometry.json').write_text(json.dumps(g,ensure_ascii=False,indent=2)+'\n')
+ check_geometry(g,after);h.shot(p,out,f'{width}-H05-navigation',nav)
+ # Use the same uniquely measured DOM node, not an independent text locator.
+ stats=p.locator('[data-vault-qa-h05-stats="true"]');expect(stats).to_have_count(1)
+ if after:expect(p.locator('[data-vault-h05-stats][data-vault-qa-h05-stats="true"]')).to_have_count(1)
+ h.shot(p,out,f'{width}-H05-stats',stats)
  fifth=nav.locator('a[href="#tratamento-financeiro"]');fifth.scroll_into_view_if_needed();require(fifth.evaluate('e=>{const r=e.getBoundingClientRect(),n=e.closest("nav").getBoundingClientRect();return r.left>=n.left-2&&r.right<=n.right+2}'),'fifth tab clipped');h.shot(p,out,f'{width}-H05-fifth-tab',nav)
  fifth.click();require(p.evaluate('location.hash')=='#tratamento-financeiro','finance tab not functional');nav.locator('a[href="#tratamento-visao"]').click();require(p.evaluate('location.hash')=='#tratamento-visao','overview not functional')
- stats=p.locator('[data-vault-h05-stats]') if after else p.locator('main div.grid.grid-cols-3').filter(has=p.get_by_text('Em uso',exact=True)).filter(has=p.get_by_text('Documentos',exact=True)).filter(has=p.get_by_text('Aquisições',exact=True)).first
- if after:expect(stats).to_have_count(1)
- h.shot(p,out,f'{width}-H05-stats',stats);return g
+ return g
 
 def assert_icon(loc,choice,color,id):
  expect(loc).to_be_visible(timeout=45000);expect(loc).to_have_attribute('data-vault-treatment-icon',choice,timeout=45000);expect(loc).to_have_attribute('data-vault-treatment-id',id)

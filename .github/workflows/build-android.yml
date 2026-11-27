@@ -35,8 +35,9 @@ jobs:
           PREVIOUS='b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
           BASELINE='c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf'
           test "$GITHUB_REF_NAME" = 'vault-lab/stability-h01-h07-final-d9dcb9db'
-          test "$(git rev-parse HEAD^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
-          test "$(git rev-parse HEAD^^)" = "$SOURCE"
+          test "$(git rev-parse HEAD^)" = 'c9687a1efdcb9c501c15a8e93c766131fd32798a'
+          test "$(git rev-parse HEAD^^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
+          test "$(git rev-parse HEAD^^^)" = "$SOURCE"
           test "$(git rev-parse "$SOURCE^{tree}")" = '447a64da793c71b210a5e6d8dabb3386cfc0b787'
           test "$(git rev-parse "$SOURCE^")" = 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3'
           test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^')" = "$PREVIOUS"
@@ -389,8 +390,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
-          test "$(git rev-parse HEAD^^)" = '67ea5ef1706d6864e65c51d9cd83905abf393cbe'
+          test "$(git rev-parse HEAD^)" = 'c9687a1efdcb9c501c15a8e93c766131fd32798a'
+          test "$(git rev-parse HEAD^^)" = 'e5f4c8776c615b37958cc7a4f28165cd4fb2ed91'
+          test "$(git rev-parse HEAD^^^)" = '67ea5ef1706d6864e65c51d9cd83905abf393cbe'
           test "$(git rev-parse '67ea5ef1706d6864e65c51d9cd83905abf393cbe^{tree}')" = '447a64da793c71b210a5e6d8dabb3386cfc0b787'
           test "$(git rev-parse '67ea5ef1706d6864e65c51d9cd83905abf393cbe^')" = 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3'
           test "$(git rev-parse 'd9dcb9db533e260b4320cccb1c79cadbeb9045b3^')" = 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
