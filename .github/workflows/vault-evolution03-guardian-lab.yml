@@ -1,0 +1,136 @@
+name: VAULT Macro03 R04 — consolidated causal proof (Android R03 retained)
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r04']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  postgres:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r04'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install only compiler into disposable laboratory
+        run: |
+          npm install --prefix "$RUNNER_TEMP/evo03-tsc" --no-save --no-audit --no-fund --ignore-scripts typescript@5.5.4
+          mkdir -p "$EVO03_LAB/candidate/node_modules/.bin"
+          ln -s "$RUNNER_TEMP/evo03-tsc/node_modules/.bin/tsc" "$EVO03_LAB/candidate/node_modules/.bin/tsc"
+      - name: PostgreSQL 17.6 and PostgREST concurrent laboratory (no ports)
+        run: |
+          set -o pipefail
+          bash "$EVO03_LAB/tools/ci-pg17-docker.sh" 2>&1 | tee "$RUNNER_TEMP/evo03-pg-r04.log"
+      - name: Preserve PostgreSQL synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r04-pg-evidence
+          path: ${{ runner.temp }}/evo03-pg-r04.log
+          if-no-files-found: warn
+          retention-days: 30
+  browser:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r04'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact lockfile and pinned browser driver
+        run: |
+          cd "$EVO03_LAB/candidate" && npm ci
+          npm install --prefix "$RUNNER_TEMP/evo03-browser" --no-save --no-audit --no-fund --ignore-scripts playwright@1.55.0
+          "$RUNNER_TEMP/evo03-browser/node_modules/.bin/playwright" install chromium --with-deps
+      - name: Real IndexedDB/Dexie (synthetic identities)
+        run: |
+          set -o pipefail
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/evo03-browser/node_modules/playwright" node "$EVO03_LAB/tools/ci-browser-dexie.cjs" 2>&1 | tee "$RUNNER_TEMP/evo03-browser-r04.log"
+      - name: Preserve Chromium synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r04-browser-evidence
+          path: ${{ runner.temp }}/evo03-browser-r04.log
+          if-no-files-found: warn
+          retention-days: 30
+  catalog-acquisition:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r04'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: bash .vault-evo03-lab/prepare.sh
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - name: Capture official public sources, no approval or publishing
+        run: |
+          python3 -m venv "$RUNNER_TEMP/catalog-venv"
+          source "$RUNNER_TEMP/catalog-venv/bin/activate"
+          python -m pip install --disable-pip-version-check openpyxl==3.1.5
+          npm install --prefix "$RUNNER_TEMP/evo03-catalog-tsc" --no-save --no-audit --no-fund --ignore-scripts typescript@5.5.4
+          export PATH="$RUNNER_TEMP/evo03-catalog-tsc/node_modules/.bin:$PATH"
+          bash "$EVO03_LAB/tools/ci-official-catalog-capture.sh"
+      - name: Preserve public-source provenance (no clinical data)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-catalog-provenance-review-only
+          path: ${{ runner.temp }}/evo03-catalog-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  host-differential:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r04'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact application lockfile
+        run: cd "$EVO03_LAB/candidate" && npm ci
+      - name: Current candidate full TypeScript and nutritional projection
+        run: |
+          cd "$EVO03_LAB/candidate"
+          node_modules/.bin/tsc --noEmit
+          node "$EVO03_LAB/tools/test-consumer-host.cjs"
+      - name: Cumulative nutrition fixtures (three timezones)
+        run: |
+          export PATH="$EVO03_LAB/candidate/node_modules/.bin:$PATH"
+          bash "$EVO03_LAB/tools/validate-fixture.sh"
+      - name: Original 15 failed contracts, paired parent and candidate
+        if: always()
+        run: python3 "$EVO03_LAB/tools/ci-host-differential.py"
+      - name: Preserve original failure signatures and differential evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r04-host-differential
+          path: |
+            ${{ runner.temp }}/evo03-host-differential/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
