@@ -1,0 +1,56 @@
+name: VAULT Macro02 R4 - gate permanente e politica SQL (SEM RELEASE)
+on:
+  push:
+    branches: ['vault-lab/macro02-integrated-r4-*']
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verificar envelope isolado e arvore candidata
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-integrated-r4-* ]]
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/workflows/macro02-integrated-r4-lab.yml vercel.json | LC_ALL=C sort)"
+          test "$(git rev-parse HEAD^^)" = 31d5f871afbe4bee07f3e72c8181b79832c828a4
+          test "$(git rev-parse HEAD~2^{tree})" = e0e63784351ff6e7c21e3c315bffa17805c0440a
+          printf 'LAB_SHA=%s\nSOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^)" "$(git rev-parse HEAD^1^{tree})"
+          git checkout --detach HEAD^
+          git diff --check HEAD^ HEAD
+      - name: PostgreSQL 17 - nova politica SQL de metadados
+        run: bash scripts/macro02-activation-lab/run-metadata-policy-r4-pg.sh
+      - uses: actions/setup-node@v4
+        if: always() && steps.identity.outcome == 'success'
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias exatas
+        id: install
+        if: always() && steps.identity.outcome == 'success'
+        run: npm ci --no-audit --no-fund
+      - name: Gate permanente V63 (587) e V70, sem perder falhas
+        id: release_gate
+        if: always() && steps.install.outcome == 'success'
+        env:
+          VAULT_V63_COLLECT_ALL: '1'
+        run: node scripts/test-v63-release-gate.mjs
+      - name: V70 independente somente se o gate anterior falhar
+        if: always() && steps.install.outcome == 'success' && steps.release_gate.outcome == 'failure'
+        shell: bash
+        run: |
+          set -uo pipefail
+          rc=0
+          node scripts/test-v70-super-integrity-ux-contract.mjs || rc=1
+          node scripts/test-v70-final-completeness-contract.mjs || rc=1
+          exit "$rc"
+      - name: Limites da certificacao
+        if: always()
+        run: echo 'LAB ONLY. Politica SQL sem escritor remoto. Sem migration produtiva, sem ativacao, sem assinatura, sem promocao APK. Nao repetir Dexie e recuperacao R3 aprovados.'
