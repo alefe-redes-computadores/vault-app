@@ -40,6 +40,7 @@ const TONES:Record<HealthGroupR5,{icon:string;surface:string;heading:string;line
 };
 const BY_ID=new Map(HEALTH_MODULES_R5.map(module=>[module.id,module]));
 const RECOVERY_MODULES_STB=HEALTH_MODULES_R5.filter(m=>m.id==="internacoes"||m.id==="reabilitacao");
+const VITAL_ROOT_STB=HEALTH_MODULES_R5.filter(m=>m.id==="vital");
 const VITAL_TONES:Record<string,{icon:string;surface:string;heading:string;line:string}>={
  vital:{icon:"text-teal-200 bg-teal-400/10 border-teal-400/20",surface:"border-teal-400/20 bg-teal-400/[0.045]",heading:"text-teal-300",line:"border-teal-300/40"},
  'vital-treinos':TONES.intelligence,'vital-nutricao':TONES.foundation,'vital-planos':TONES.capture,
@@ -127,6 +128,7 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
   const query=search.trim(),searchHits=useMemo(()=>query?[...HEALTH_MODULES_R5.filter(m=>matchHubModuleR5(m,query)),...NETWORK_SEARCH_R5.filter(m=>matchHubModuleR5(m,query))]:[],[query]);
   return <section data-vault-ui360-r5-launcher className="space-y-3 pb-5" aria-label="Hub inteligente de Minha Saúde">
     <HealthHubSwitchR5 active="saude" onNavigate={navigateToOther}/>
+    <section data-vault-zhf-vital aria-label="Acesso permanente ao Vital" className="grid grid-cols-2 gap-2">{VITAL_ROOT_STB.map(m=><HubModuleTileR5 key={m.id} module={m} pinned={pinned.has(m.id)} onOpen={open} onPin={togglePin} spanFull/>)}</section>
     <div className="rounded-[18px] border border-sky-300/15 bg-surface/65 p-3 shadow-sm">
       <div className="flex items-center gap-2 text-sky-200"><BrainCircuit size={16} aria-hidden="true"/><h2 className="text-xs font-semibold">Painel de saúde</h2><span className="ml-auto text-[10px] text-ink-muted">Buscar ou escolher</span></div>
       <div className="relative mt-2"><Search size={17} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"/>

@@ -1,19 +1,22 @@
 /** Canonical visual metadata; never infer clinical identity from name or ID. */
 export const TREATMENT_ICON_KEYS_R03=['activity','heart','clipboard','shield','calendar','brain','stethoscope','target','leaf','waypoints','heartpulse','pill'] as const;
-export type TreatmentIconKeyR03=typeof TREATMENT_ICON_KEYS_R03[number];
+export const TREATMENT_EXPANDED_READ_KEYS_UX360=["brain-circuit","waves","moon","moon-star","bed-double","cloud-moon","bone","accessibility","hand","shield-plus","eye","ear","wind","droplet","person-standing","footprints","timer","book-heart","smile","focus","sparkles","folder-heart"] as const;
+export type TreatmentIconKeyR03=typeof TREATMENT_ICON_KEYS_R03[number]|typeof TREATMENT_EXPANDED_READ_KEYS_UX360[number];
 export type TreatmentIdentityRecordR03={id?:unknown;user_id?:unknown;person_id?:unknown;icone?:unknown;icon?:unknown;icon_name?:unknown;cor?:unknown;visual_icon?:unknown;visual_icon_updated_at?:unknown;visual_icon_revision?:unknown;visual_icon_operation_id?:unknown;visual_identity_pending?:unknown;visual_legacy_choice?:unknown};
 export type TreatmentVisualChoiceR03=TreatmentIconKeyR03|'unassigned';
 export type TreatmentScopeR03={userId:string;personId:string};
 export function validTreatmentIconKeyR03(value:unknown):TreatmentIconKeyR03|null {
   if(typeof value!=='string')return null;
   const k=value.trim().toLowerCase();
-  return (TREATMENT_ICON_KEYS_R03 as readonly string[]).includes(k)?k as TreatmentIconKeyR03:null;
+  return ([...TREATMENT_ICON_KEYS_R03,...TREATMENT_EXPANDED_READ_KEYS_UX360] as readonly string[]).includes(k)?k as TreatmentIconKeyR03:null;
 }
 export function explicitTreatmentIconR03(record:TreatmentIdentityRecordR03|null|undefined):TreatmentIconKeyR03|null {
   const pending=readVisualIntentR03(record?.visual_identity_pending);
   if(pending?.state==='pending')return pending.choice==='unassigned'?null:pending.choice;
   if(record?.visual_icon==='unassigned'||(record?.visual_icon==null&&record?.visual_legacy_choice==='unassigned'))return null;
-  for(const value of [record?.visual_icon,record?.visual_legacy_choice,record?.icone,record?.icon_name,record?.icon]){const k=validTreatmentIconKeyR03(value);if(k)return k;}
+  // A confirmed value must not be replaced by an older legacy alias.
+  if(record?.visual_icon!=null)return validTreatmentIconKeyR03(record.visual_icon);
+  for(const value of [record?.visual_legacy_choice,record?.icone,record?.icon_name,record?.icon]){const k=validTreatmentIconKeyR03(value);if(k)return k;}
   return null;
 }
 export function normalizeTreatmentColorR03(value:unknown):string|null {
@@ -33,6 +36,11 @@ export function resolveTreatmentKeyR03(record:TreatmentIdentityRecordR03|null|un
 export function validTreatmentChoiceR03(value:unknown):TreatmentVisualChoiceR03|null {
   return value==='unassigned'?'unassigned':validTreatmentIconKeyR03(value);
 }
+/** Expanded readers are prepared; writes remain limited by deployed CAS.
+ * No runtime switch until a separate Guardian-authorized compatibility plan. */
+export function canWriteTreatmentChoiceR03(value:unknown):boolean {
+  return value==='unassigned'||(typeof value==='string'&&(TREATMENT_ICON_KEYS_R03 as readonly string[]).includes(value));
+}
 export type VisualIntentR03={base:number;choice:TreatmentVisualChoiceR03;operation:string;state:'pending'|'conflict'};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const visualFields=['visual_icon','visual_icon_revision','visual_icon_operation_id','visual_icon_updated_at'] as const;
@@ -51,7 +59,7 @@ export function visualRevisionR03(row:TreatmentIdentityRecordR03|null|undefined)
 }
 export function makeVisualIntentR03(row:TreatmentIdentityRecordR03,value:unknown,expected:number,operation:string):VisualIntentR03 {
   const revision=visualRevisionR03(row),choice=validTreatmentChoiceR03(value),prior=readVisualIntentR03(row.visual_identity_pending);
-  if(revision===null||revision!==expected||revision>=2147483647||!choice||!UUID.test(operation)||operation===row.visual_icon_operation_id||prior?.state==='pending')throw new Error('Identidade visual alterada ou aguardando sincronização; reabra o tratamento.');
+  if(revision===null||revision!==expected||revision>=2147483647||!choice||!canWriteTreatmentChoiceR03(choice)||!UUID.test(operation)||operation===row.visual_icon_operation_id||prior?.state==='pending')throw new Error('Identidade visual alterada ou aguardando sincronização; reabra o tratamento.');
   return {base:revision,choice,operation,state:'pending'};
 }
 export function sameVisualScopeR03(a:TreatmentIdentityRecordR03,b:TreatmentIdentityRecordR03):boolean {

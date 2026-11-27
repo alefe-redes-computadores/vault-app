@@ -693,7 +693,9 @@ function EditarTratamentoContent() {
 
   const [visualEdit,setVisualEdit]=useState<{id:string;personId:string;value:TreatmentVisualChoiceR03;revision:number}|null>(null);
   const selectedVisual=visualEdit?.id===tratamento?.id&&visualEdit?.personId===activePersonId?visualEdit?.value:undefined;
-  const treatmentColor = treatmentColorR03(tratamento?.cor);
+  const [visualColorEdit,setVisualColorEdit]=useState<{id:string;personId:string;color:string}|null>(null);
+  const selectedColor=visualColorEdit?.id===tratamento?.id&&visualColorEdit?.personId===activePersonId?visualColorEdit?.color:undefined;
+  const treatmentColor = treatmentColorR03(selectedColor??tratamento?.cor);
   const visualChoice=selectedVisual??resolveTreatmentKeyR03(tratamento);
   const PreviewIcon=getVaultTreatmentIcon({visual_icon:visualChoice});
 
@@ -806,6 +808,7 @@ function EditarTratamentoContent() {
                   ),
 
                 status,
+                ...(selectedColor!==undefined?{cor:selectedColor}:{}),
                 ...(selectedVisual!==undefined?{visual_icon:selectedVisual,expected_visual_icon_revision:visualEdit?.revision}:{}),
 
                 observacoes:
@@ -1367,7 +1370,7 @@ function EditarTratamentoContent() {
                 </h2>
               </div>
             </div>
-            <TreatmentIdentityPickerR03 value={visualChoice} color={treatmentColor} disabled={!tratamento?.id||!activePersonId||visualRevisionR03(tratamento)===null||readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='pending'} onChange={value=>{const revision=visualRevisionR03(tratamento);if(tratamento?.id&&activePersonId&&revision!==null){setVisualEdit({id:tratamento.id,personId:activePersonId,value,revision});trigger("vibrate");}}}/>
+            <div role="group" aria-label="Cor do tratamento" className="mt-3 flex flex-wrap gap-2">{[["#8B5CF6","Violeta"],["#2563EB","Azul"],["#0D9488","Turquesa"],["#16A34A","Verde"],["#D97706","Âmbar"],["#DC2626","Vermelho"],["#DB2777","Rosa"]].map(([color,label])=><button key={color} type="button" aria-label={label} aria-pressed={treatmentColor===color} onClick={()=>{if(tratamento?.id&&activePersonId){setVisualColorEdit({id:tratamento.id,personId:activePersonId,color});trigger("vibrate");}}} className="grid size-11 shrink-0 place-items-center rounded-xl border-2 bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice" style={{borderColor:treatmentColor===color?color:"transparent"}}><span aria-hidden="true" className="size-6 rounded-full" style={{backgroundColor:color}}/></button>)}</div>
             {readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='pending'&&<p role="status" className="text-xs text-ink-muted">Ícone aguardando sincronização.</p>}
             {readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='conflict'&&<p role="alert" className="text-xs text-coral">Outro aparelho alterou o ícone. Confira e escolha novamente.</p>}
           </motion.div>
@@ -1416,6 +1419,7 @@ function EditarTratamentoContent() {
               }
               required
             />
+            <TreatmentIdentityPickerR03 title={nome} value={visualChoice} color={treatmentColor} disabled={!tratamento?.id||!activePersonId||visualRevisionR03(tratamento)===null||readVisualIntentR03(tratamento?.visual_identity_pending)?.state==='pending'} onChange={value=>{const revision=visualRevisionR03(tratamento);if(tratamento?.id&&activePersonId&&revision!==null){setVisualEdit({id:tratamento.id,personId:activePersonId,value,revision});trigger("vibrate");}}}/>
 
             {/* =================================================
                 CIDS

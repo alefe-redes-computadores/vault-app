@@ -439,7 +439,7 @@ export function BottomNav() {
       >
         <div className="border-t border-surface-border/40 bg-surface/95 px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-xl">
           {showCompose && pathname === "/" && (
-            <div data-vault-home-compose className="mx-auto mb-1 flex max-w-md justify-end">
+            <div data-vault-home-compose className="absolute bottom-full right-2 mb-1 flex max-w-[min(55vw,190px)] justify-end pointer-events-none [&>button]:pointer-events-auto">
               {renderComposeButton(true)}
             </div>
           )}

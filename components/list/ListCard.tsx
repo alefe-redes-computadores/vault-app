@@ -75,6 +75,7 @@ export function ListCard({
 
   return (
     <motion.article
+      data-vault-medication-flow={medicationFlow?"true":undefined}
       key={id}
       initial={false}
       animate={{ opacity: 1, y: 0 }}
@@ -100,8 +101,8 @@ export function ListCard({
       `}
       style={{
         borderColor: isDisabled ? undefined : `${color}40`,
-        contentVisibility: "auto",
-        containIntrinsicSize: isTight ? "116px" : isCompact ? "148px" : "190px",
+        contentVisibility: medicationFlow ? "visible" : "auto",
+        containIntrinsicSize: medicationFlow ? undefined : isTight ? "116px" : isCompact ? "148px" : "190px",
       }}
     >
       <div
@@ -147,6 +148,7 @@ export function ListCard({
               } ${contentClassName}`}
             >
               <div
+                data-vault-med-flow-icon={medicationFlow?"true":undefined}
                 className={`
               flex
               ${isTight ? "h-9 w-9 rounded-xl" : isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
@@ -167,7 +169,7 @@ export function ListCard({
                 {icon}
               </div>
 
-              <div className={medicationFlow ? "col-start-2 row-start-1 min-w-0" : "min-w-0 flex-1"}>{children}</div>
+              <div data-vault-med-flow-body={medicationFlow?"true":undefined} className={medicationFlow ? "col-start-2 row-start-1 min-w-0" : "min-w-0 flex-1"}>{children}</div>
 
               {showChevron && (
                 <ChevronRight

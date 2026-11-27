@@ -13,6 +13,7 @@ import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { MedicationProvenanceLineM150P3 } from "@/components/saude/MedicationProvenanceLineM150P3";
 import { medicationListDisplayNameM150P3 } from "@/lib/medications/medication-list-provenance-m150-p3";
 import { reconcileMedicationP6,medicationListEvidenceLabelP6 } from "@/lib/health-intelligence/pharmalens-reconciliation-p6";
+import {regulatoryCopyUX360} from "@/lib/medications/regulatory-copy-ux360";
 import { medicationCardActionLayoutM150P3 } from "@/lib/medications/medication-card-action-layout-m150-p3";
 import { createMedicationDayComparatorM149 } from "@/lib/health-intelligence/medication-day-sort-m149";
 import { medicationStockLabelM149 } from "@/lib/health-intelligence/medication-stock-display-m149";
@@ -128,7 +129,7 @@ import {
 import { medicationIgnoredStatus } from "@/lib/medication-availability";
 import { medicationStockUnitReview } from "@/lib/health-intelligence/medication-presentation-review";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
-import { getMedicationRegulatorySurface, medicationRegulatoryShortLabel } from "@/lib/medication-regulatory-visual";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import { medicationPersonalAccent, medicationPersonalAccentStyle } from "@/lib/medications/list-personal-accent";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
@@ -233,10 +234,7 @@ function regulatoryListLabelMED04(
   summary: Parameters<typeof medicationListEvidenceLabelP6>[0],
   needsReview = false
 ): string {
-  if (needsReview) return "REVISAR";
-  if (profile?.verified) return medicationRegulatoryShortLabel(profile);
-  if (profile?.label === "Classificação em revisão") return "REVISAR";
-  return medicationListEvidenceLabelP6(summary, profile) ?? "REC. N/C";
+  return regulatoryCopyUX360(profile, needsReview, summary).rail;
 }
 
 export default function MedicamentosListPage() {
@@ -1019,6 +1017,7 @@ export default function MedicamentosListPage() {
       // MED-04: a verified catalogue class wins over a documentary fallback.
       // The Detalhes page already consumes regulatoryProfiles from this same hook.
       const prescriptionIdentityP6 = regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
+      const regulatoryCopy=regulatoryCopyUX360(regulatoryProfile,catalogIdentity?.regulatoryNeedsReview===true,reconciliationP6,catalogIdentity?.authorityState);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
       const activeIngredients = medicationIngredientDisplayResidual(catalogIdentity, medicationKnowledge360.facts);
@@ -1399,7 +1398,7 @@ export default function MedicamentosListPage() {
           stockLabel: stockUnknown ? "Saldo desconhecido" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal)),
           stockDetail: stockUnknown ? "Estoque não informado no cadastro" : textoEstoqueSecundario || estoqueStatus,
           stockReview: stockReview || null,
-          regulatory: { label: regulatoryProfile?.label || receita?.sigla || "Classificação não confirmada", detail: regulatoryProfile?.detail || "Conforme cadastro; sem regra confirmada na referência", source: regulatoryProfile?.sourceLabel || null, verified: Boolean(regulatoryProfile?.verified), authority: catalogIdentity?.authorityState === "confirmed" ? "Referência confirmada" : catalogIdentity?.authorityState === "compatible" ? "Referência compatível" : catalogIdentity?.authorityState === "possible_divergence" ? "Divergência a conferir" : "Não validada", declared: med.tipo_receita || null },
+          regulatory: { label: regulatoryCopy.label, detail: regulatoryProfile?.detail || "Sem regra confirmada na referência", source: regulatoryCopy.source, verified: regulatoryCopy.official, authority: catalogIdentity?.authorityState === "confirmed" ? "Referência confirmada" : catalogIdentity?.authorityState === "compatible" ? "Referência compatível" : catalogIdentity?.authorityState === "possible_divergence" ? "Divergência a conferir" : "Não validada", declared: med.tipo_receita || null },
           prescriptionDate: med.data_receita || null,
           renewalDate: med.proxima_renovacao || null,
           treatments: cardTreatments.map(t => ({id:t.id,name:t.nome,color:safeTreatmentColorP7(t.cor)})),
@@ -1485,7 +1484,7 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-              <div data-vault-executive-density={compactCards?"compact":"comfort"} className={`relative flex min-w-0 flex-col ${compactCards ? "gap-0" : "gap-1"}`}>
+              <div data-vault-executive-density={compactCards?"compact":"comfort"} className={`relative flex min-w-0 flex-col ${compactCards ? "gap-0.5" : "gap-2"}`}>
 
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
@@ -1505,6 +1504,8 @@ export default function MedicamentosListPage() {
                     </span>
                     {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                   </button>
+                  <span data-vault-ux360-regulatory-label className="text-[11px] font-semibold leading-snug text-ink-secondary">{regulatoryCopy.label}{regulatoryCopy.official?" · fonte oficial":""}</span>
+                  {regulatoryCopy.declared&&<span className="text-[11px] leading-snug text-ink-secondary">Tipo informado: {regulatoryCopy.declared}{regulatoryCopy.declarationConflict?" · diverge da referência":""}</span>}
                   {med.data_receita && <span data-vault-v34x-receita-cadastro className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada no cadastro · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
                   {compactCards && !med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Documento de receita vinculado</span>}
                   </div>
@@ -1558,7 +1559,7 @@ export default function MedicamentosListPage() {
                 {!compactCards && cardTreatments.length>3&&<button type="button" data-vault-r5-context="mais-tratamentos" aria-label={`Conferir todos os ${cardTreatments.length} tratamentos vinculados de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center text-[10px] text-ink-secondary underline underline-offset-2">+{cardTreatments.length-3} tratamentos na gaveta</button>}
               </div>}
               </div>
-              {!compactCards && <div data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Contextos adicionais do medicamento">
+              {!compactCards && Boolean(med.tipo_aquisicao || latestManufacturer || med.laboratorio_etiqueta || reconciliationP6.hasDocumentEvidence) && <div data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Contextos adicionais do medicamento">
                 {med.tipo_aquisicao && <button type="button" data-vault-r5-context="origem" aria-label={`Conferir origem registrada de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
                   className="pointer-events-auto relative z-20 inline-flex min-h-7 max-w-full items-center gap-1 whitespace-normal break-words rounded-lg border border-sky-300/20 bg-sky-300/[.04] px-2 text-[10px] font-semibold text-sky-200"><ShoppingBag size={12} aria-hidden="true"/>
                   {supplyRoute?.mode === "hybrid" ? "Origens · conferir" : med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : med.tipo_aquisicao === "gratuito" ? "Gratuito" : "Origem · conferir"}
@@ -1597,7 +1598,7 @@ export default function MedicamentosListPage() {
               aria-label={`Conferir ${stockReview ? "unidade de estoque" : prescriptionReview360 ? "tipo de receita" : "saldo"} de ${med.nome}`}
               className={`pointer-events-auto relative z-20 mt-1 flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[11px] font-semibold text-amber-200 transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 ${compactCards ? "border-t border-amber-300/15 bg-amber-300/[.025] py-1" : "border border-amber-300/25 bg-amber-300/[.055] py-1.5"}`}>
               <AlertTriangle size={14} className="shrink-0" aria-hidden="true"/>
-              <span className="min-w-0 flex-1 break-words">{stockReview ? "Unidade do estoque diferente · conferir" : prescriptionReview360 ? "Receita e catálogo: conferir" : isEstoqueZerado ? "Sem estoque registrado · conferir" : "Estoque baixo · conferir"}</span>
+              <span className="min-w-0 flex-1 break-words">{stockReview ? "Unidade do estoque diferente · conferir" : prescriptionReview360 ? "Receita e catálogo: conferir" : isEstoqueZerado ? (stockNegative ? "Saldo divergente · conferir" : "Saldo registrado zerado · conferir") : "Estoque baixo · conferir"}</span>
               <ChevronRight size={14} className="shrink-0" aria-hidden="true"/>
             </button>}
 
@@ -1945,7 +1946,7 @@ export default function MedicamentosListPage() {
         {/* VAULT_REGULATORY_COMPACT_DIALOG_V76_1 */}
         {selectedRegulatory && selectedRegulatoryMedication && (
           <div
-            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/75 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] vault-r3-dialog-top-inset backdrop-blur-md min-[480px]:items-center min-[480px]:px-5"
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] vault-r3-dialog-top-inset backdrop-blur-sm min-[480px]:items-center min-[480px]:px-5"
             role="presentation"
             onMouseDown={(event) => {
               if (
@@ -1997,8 +1998,8 @@ export default function MedicamentosListPage() {
                 />
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black uppercase tracking-[0.15em] text-ink-faint">
-                    Classificação da receita
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
+                    Classificação regulatória
                   </p>
 
                   <h2
@@ -2006,7 +2007,7 @@ export default function MedicamentosListPage() {
                     className="mt-1 font-display text-base font-semibold text-ink-primary"
                   >
                     {
-                      selectedRegulatory.label
+                      regulatoryCopyUX360(selectedRegulatory,selectedRegulatoryNeedsReview,undefined,selectedRegulatoryAuthority).label
                     }
                   </h2>
 
@@ -2039,27 +2040,28 @@ export default function MedicamentosListPage() {
                 <span className="rounded-full border border-surface-border/50 bg-black/[0.06] px-2.5 py-1 text-[9px] font-semibold text-ink-secondary">
                   {
                     selectedRegulatory.verified && !selectedRegulatoryNeedsReview
-                      ? "Confirmada"
-                      : "Receita não confirmada"
+                      ? "Regulação confirmada"
+                      : "Regulação em conferência"
                   }
                 </span>
               </div>
 
+              {(() => {const evidence=reconcileMedicationP6({medication:selectedRegulatoryMedication,documents:prescriptionDocumentsP6||[],renewals:renewalsByMedication.get(selectedRegulatoryMedication.id||'')||[],userId:treatmentOwner?.id||'',personId:activePersonId||'',regulatory:selectedRegulatory});const copy=regulatoryCopyUX360(selectedRegulatory,selectedRegulatoryNeedsReview,evidence,selectedRegulatoryAuthority);return <div data-vault-ux360-prescription-sources className="mt-3 space-y-2 rounded-xl border border-surface-border bg-surface p-3 text-xs leading-relaxed text-ink-secondary"><p><strong className="text-ink-primary">Identidade:</strong> {copy.identity}</p><p><strong className="text-ink-primary">Tipo informado:</strong> {copy.declared||"Não informado"}{copy.declarationConflict?" · diverge da referência":""}</p><p><strong className="text-ink-primary">Receita pessoal:</strong> {copy.document}</p><p>{copy.validity}</p></div>;})()}
               {selectedRegulatoryNeedsReview && <p className="mt-2.5 text-xs leading-relaxed text-amber-200">Referência regulatória em conferência: fonte, identidade ou apresentação requer revisão. A receita pessoal não confirma a classificação.</p>}
               {!selectedRegulatory.verified && (
                 <p className="mt-2.5 text-xs leading-relaxed text-amber-200">
                   {selectedRegulatoryAuthority === "confirmed"
-                    ? "Medicamento identificado no catálogo, mas a receita ainda não foi confirmada na fonte regulatória atual."
+                    ? "Medicamento identificado no catálogo, mas a classificação regulatória ainda não foi confirmada pela fonte atual."
                     : selectedRegulatoryAuthority === "compatible"
                       ? "Referência farmacêutica compatível encontrada; a correspondência e o tipo de receita ainda exigem conferência."
                       : selectedRegulatoryAuthority === "possible_divergence"
                         ? "Há possível divergência entre o cadastro e a referência encontrada. Confira a identidade e a receita antes de usá-las como comprovadas."
-                        : "Identidade farmacêutica ainda não confirmada pelo catálogo; o tipo de receita também não está confirmado."}
+                        : "Identidade farmacêutica ainda não confirmada pelo catálogo; a classificação regulatória também não está confirmada."}
                 </p>
               )}
 
               <p className="mt-2.5 text-xs leading-relaxed text-ink-faint">
-                Informação para organização de receitas e renovações.
+                Receita pessoal e sua validade são informações independentes da classificação regulatória.
               </p>
             </section>
           </div>

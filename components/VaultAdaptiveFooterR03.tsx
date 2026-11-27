@@ -17,7 +17,7 @@ export function VaultAdaptiveFooterR03(){
     function measure(){
       frame=0;
       const nav=shell.querySelector<HTMLElement>('nav.vault-bottom-nav');
-      const fab=nav?.querySelector<HTMLElement>('button.absolute');
+      const fab=nav?.querySelector<HTMLElement>('button.absolute, [data-vault-home-compose] > button');
       const nodes=[nav,fab].filter((v):v is HTMLElement=>!!v);
       if(nodes.length!==observed.length||nodes.some((n,i)=>observed[i]!==n)){
         observer?.disconnect();for(const n of nodes)observer?.observe(n);observed=nodes;

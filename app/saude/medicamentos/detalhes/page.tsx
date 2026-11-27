@@ -28,7 +28,7 @@ import { MedicationDetailNavigation } from "@/components/saude/MedicationWorkspa
 import { MedicationDetailCareHubM148 } from "@/components/saude/MedicationDetailCareHubM148";
 import { MedicationKnowledgePanelM153P4 } from "@/components/saude/MedicationKnowledgePanelM153P4";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
-import { countLabel, humanizeStockUnit, shortPrescriptionKnowledgeLabel, medicationIngredientDisplayResidual } from "@/lib/medications/visual-copy";
+import { countLabel, humanizeStockUnit, medicationIngredientDisplayResidual } from "@/lib/medications/visual-copy";
 import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
 import { safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 import { buildMedicationDetailHubM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
@@ -48,6 +48,7 @@ import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationA
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
 import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
 import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
+import {regulatoryCopyUX360} from "@/lib/medications/regulatory-copy-ux360";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationConsultationTimelineP6P2 } from "@/components/saude/MedicationConsultationTimelineP6P2";
@@ -1841,9 +1842,9 @@ function MedicamentoDetalhesContent() {
     latestAcquisitionManufacturer: manufacturerOfLatestAcquisitionM148,
   });
   const stableMedicationKnowledge = resolveMedicationKnowledgeM153P4(med, med.data_receita || undefined);
-  const stablePrescriptionKnowledge = stableMedicationKnowledge.facts.find(fact => fact.kind === "prescription_type" && fact.authority !== "conflict");
   const stableIngredientKnowledge = medicationIngredientDisplayResidual(catalogIdentity, stableMedicationKnowledge.facts).join(" + ");
-  const regulatoryHeaderLabel = regulatoryProfile?.label || shortPrescriptionKnowledgeLabel(stablePrescriptionKnowledge?.value);
+  const regulatoryHeaderCopy = regulatoryCopyUX360(regulatoryProfile,catalogIdentity?.regulatoryNeedsReview===true,{declaredType:med.tipo_receita},catalogIdentity?.authorityState);
+  const regulatoryHeaderLabel = regulatoryHeaderCopy.label;
 
   // ==========================================================
   // IDENTIDADE
@@ -2813,18 +2814,15 @@ function MedicamentoDetalhesContent() {
                     {regulatoryHeaderLabel && (
                       <span
                         className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${regulatorySurface.badgeClass}`}
-                        title={regulatoryProfile?.detail || stablePrescriptionKnowledge?.value}
+                        title={regulatoryProfile?.detail || "Nenhuma classificação regulatória confirmada"}
                       >
                         {regulatoryHeaderLabel}
-                        {regulatoryProfile && !regulatoryProfile.verified &&
-                        regulatoryProfile.tone !==
-                          "unknown"
-                          ? " · cadastro"
-                          : ""}
+
                       </span>
                     )}
                   </div>
 
+                  {regulatoryHeaderCopy.declared&&<p className="mt-1 text-xs text-ink-secondary">Tipo informado: {regulatoryHeaderCopy.declared}</p>}
                   {med.laboratorio_etiqueta && <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-sky-200" title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}><Factory size={12} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{med.laboratorio_etiqueta}</span></p>}
                   <p className="mt-1 text-sm font-medium leading-relaxed text-ink-secondary">
                     {med.dosagem}

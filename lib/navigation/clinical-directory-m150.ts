@@ -75,6 +75,18 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
       {id:'biblioteca',label:'Biblioteca de PDFs',description:'Arquivos clínicos locais',href:'/saude/careflow/relatorios',icon:'file'},
     ],
   },
+  {id:'historicos-especializados',title:'Jornadas e registros especializados',description:'Acessos existentes para consulta e acompanhamento',items:[
+      {"id":"linha-clinica","label":"Linha Clínica 360","description":"Leitura longitudinal de fatos clínicos","href":"/saude/linha-clinica","icon":"activity"},
+      {"id":"linha-registros","label":"Linha do tempo dos registros","description":"Consulta de eventos registrados","href":"/saude/timeline","icon":"clock"},
+      {"id":"jornada-clinica","label":"Jornada clínica","description":"Percurso clínico e registros relacionados","href":"/saude/jornada","icon":"activity"},
+      {"id":"jornada-cirurgica","label":"Jornada Cirúrgica 360","description":"Acompanhamento de cirurgias","href":"/saude/cirurgias/jornada","icon":"stethoscope"},
+      {"id":"encaminhamentos-cirurgicos","label":"Encaminhamentos cirúrgicos","description":"Consultar encaminhamentos","href":"/saude/cirurgias/encaminhamentos","icon":"file"},
+      {"id":"diario-pessoal","label":"Diário para conversas difíceis","description":"Espaço privado para expressão e notas","href":"/saude/diario","icon":"clipboard"},
+      {"id":"pedidos-exames","label":"Pedidos, sessões e resultados","description":"Consultar pedidos de exames","href":"/saude/exames/pedidos","icon":"flask"},
+      {"id":"cids","label":"CIDs e Diagnósticos","description":"Consultar registros de diagnósticos","href":"/saude/cids","icon":"clipboard"},
+      {"id":"locais","label":"Locais de saúde","description":"Consultar locais cadastrados","href":"/saude/locais","icon":"users"},
+      {"id":"evolucao-registros","label":"Evolução de saúde","description":"Consultar séries de registros","href":"/saude/registros/evolucao","icon":"activity"}
+    ]},
   {
     id: 'documentos', title: 'Documentos e proteção',
     description: 'Arquivos de saúde e suporte pessoal',
@@ -162,14 +174,16 @@ const additionalSearchAliasesM150: Readonly<Record<string,readonly string[]>> = 
 export function clinicalVisibleSectionsSTB(showAdditional:boolean):readonly ClinicalMapSectionM150[] {
   const promoted=clinicalAdditionalSectionsM150.flatMap(g=>g.items).filter(item=>item.id==='reabilitacao');
   const primary=clinicalDirectoryM150.map(group=>group.id==='careflow'?{...group,items:[...group.items,...promoted]}:group);
-  return showAdditional?[...primary,...clinicalAdditionalSectionsM150.map(group=>({...group,items:group.items.filter(item=>item.id!=='reabilitacao')})).filter(group=>group.items.length>0)]:primary;
+  void showAdditional; // Presentation density only; never hides destinations.
+  const additional=clinicalAdditionalSectionsM150.map(group=>({...group,items:group.items.filter(item=>item.id!=='reabilitacao')})).filter(group=>group.items.length>0);
+  return [...primary.slice(0,2),...additional.filter(g=>g.id==='vital'),...primary.slice(2),...additional.filter(g=>g.id!=='vital')];
 }
 export function clinicalHiddenCountSTB():number {
   return clinicalVisibleSectionsSTB(true).reduce((sum,group)=>sum+group.items.length,0)-clinicalVisibleSectionsSTB(false).reduce((sum,group)=>sum+group.items.length,0);
 }
 export function searchClinicalDirectoryM150(query: string): readonly ClinicalMapSectionM150[] {
   const needle = normalizeClinicalSearchM150(query);
-  if (!needle) return clinicalDirectoryM150;
+  if (!needle) return clinicalVisibleSectionsSTB(false);
   return [...clinicalDirectoryM150,...clinicalAdditionalSectionsM150].map(section =>
     ({...section,items:section.items.filter(item => normalizeClinicalSearchM150([
       item.label,item.description,section.title,...(clinicalSearchAliasesM150P5P5[item.id] || []),

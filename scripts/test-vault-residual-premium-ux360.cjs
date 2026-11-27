@@ -1,0 +1,35 @@
+// Actual source modules, synthetic clinical records only. No DB/clinical writes.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
+const root=process.argv[2]||process.cwd(),read=p=>fs.readFileSync(path.join(root,p),'utf8');let n=0;
+function check(name,fn){fn();n++;console.log('PASS '+name)}
+function load(p,imports={},source=read(p)){const result=ts.transpileModule(source,{fileName:p,reportDiagnostics:true,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}});assert.equal(result.diagnostics.filter(d=>d.category===ts.DiagnosticCategory.Error).length,0);const m={exports:{}};new Function('require','module','exports',result.outputText)(id=>{assert(Object.hasOwn(imports,id),'unexpected dependency '+id);return imports[id]},m,m.exports);return m.exports}
+const lib=load('lib/health-profile/treatment-visual-library-ux360.ts'),pp='lib/health-profile/treatment-preferences-r03.ts',p=load(pp),icons=new Proxy({}, {get:(_,x)=>x});const icon=load('lib/health-profile/treatment-icon.ts',{'lucide-react':icons,'./treatment-preferences-r03':p});const r=load('lib/medications/regulatory-copy-ux360.ts'),d=load('lib/ui/distinct-clinical-alerts-ux360.ts');
+const row={id:'t',user_id:'u',person_id:'a',visual_icon_revision:0},op='10000000-0000-4000-8000-000000000001',op2='10000000-0000-4000-8000-000000000002';
+check('34 distinct keys / 11 categories',()=>{assert.equal(lib.TREATMENT_VISUAL_LIBRARY.length,34);assert.equal(new Set(lib.TREATMENT_VISUAL_LIBRARY.map(x=>x.key)).size,34);assert.equal(new Set(lib.TREATMENT_VISUAL_LIBRARY.map(x=>x.category)).size,11)});
+for(const item of lib.TREATMENT_VISUAL_LIBRARY)check('canonical visual '+item.key,()=>{assert.equal(p.validTreatmentIconKeyR03(item.key),item.key);assert.equal(icon.getVaultTreatmentIcon({visual_icon:item.key}),item.lucide);assert.equal(p.canWriteTreatmentChoiceR03(item.key),item.legacy);if(item.legacy)assert.equal(p.makeVisualIntentR03(row,item.key,0,op).choice,item.key);else assert.throws(()=>p.makeVisualIntentR03(row,item.key,0,op))});
+for(const [name,key] of [['TDAH','brain'],['Dor crônica','activity'],['Depressão','heart'],['Ansiedade','leaf'],['INSÔNIA','moon']])check('suggestion '+name,()=>assert(lib.suggestTreatmentVisualIcons(name).some(x=>x.key===key)));
+check('accent search',()=>assert.deepEqual(lib.searchTreatmentVisualIcons('insonia'),lib.searchTreatmentVisualIcons('insônia')));
+check('unknown and names do not assign',()=>{assert.equal(icon.getVaultTreatmentIcon('TDAH'),'FolderHeart');assert.equal(p.resolveTreatmentKeyR03({...row,nome:'Insônia'}),'unassigned');assert.equal(lib.suggestTreatmentVisualIcons('xyzunknown').length,0)});
+check('explicit precedence and unassigned',()=>{assert.equal(p.resolveTreatmentKeyR03({visual_icon:'brain',icone:'heart'}),'brain');assert.equal(p.resolveTreatmentKeyR03({visual_icon:'unassigned',icone:'brain'}),'unassigned');assert.equal(p.resolveTreatmentKeyR03({visual_icon:'invalid',icone:'brain'}),'unassigned');assert.equal(p.resolveTreatmentKeyR03({icone:'brain'}),'brain')});
+check('pending manual and ACK',()=>{const i=p.makeVisualIntentR03(row,'brain',0,op),ack={...row,visual_icon:'brain',visual_icon_revision:1,visual_icon_operation_id:op,visual_icon_updated_at:'2026-11-26T12:00:00Z'};assert.equal(p.resolveTreatmentKeyR03({...row,visual_identity_pending:i}),'brain');assert(p.visualAcknowledgedR03(i,ack));assert(!p.visualAcknowledgedR03(i,{...ack,visual_icon_operation_id:op2}));assert.throws(()=>p.makeVisualIntentR03({...row,visual_identity_pending:i},'pill',0,op2));assert.equal(p.mergeVisualProjectionR03(ack,{...row,nome:'local'}).nome,'local');assert.equal(p.mergeVisualProjectionR03({...ack,person_id:'b'},row),row)});
+check('scope isolation',()=>{assert.equal(p.resolveOwnedTreatmentR03({id:'t'},[row],{userId:'u',personId:'b'}),null);assert.equal(p.resolveOwnedTreatmentR03({id:'t'},[row],{userId:'u',personId:'a'}),row)});
+check('invalid inherited keys',()=>{for(const k of ['constructor','__proto__','toString'])assert.equal(p.resolveTreatmentKeyR03({icone:k}),'unassigned')});
+check('distinct messages only',()=>assert.deepEqual(d.distinctClinicalAlertMessages(['Atenção clínica',' atenção   clínica ',null,'Não suspender','Suspender']),['Atenção clínica','Não suspender','Suspender']));
+check('regulatory independent from personal documentation',()=>{const a=r.regulatoryCopyUX360({verified:false},false,{declaredType:'branca',hasDocumentEvidence:true},'confirmed');assert(!a.official);assert.equal(a.declared,'Controle especial');assert.match(a.document,/vinculado/);assert.match(a.validity,/não comprova/)});
+check('official retains label even when declaration differs',()=>{const a=r.regulatoryCopyUX360({verified:true,label:'Notificação B'},false,{declaredType:'comum',hasRegulatoryConflict:true},'confirmed');assert(a.official);assert(a.declarationConflict);assert.equal(a.label,'Notificação B')});
+check('divergence and review fail closed',()=>{for(const [review,identity] of [[true,'confirmed'],[false,'possible_divergence']])assert(!r.regulatoryCopyUX360({verified:true,label:'Notificação B'},review,{},identity).official)});
+check('mutant expanded write fails authority check',()=>{const src=read(pp).replace('||!canWriteTreatmentChoiceR03(choice)','');const m=load(pp,{},src);assert.equal(m.makeVisualIntentR03(row,'moon',0,op).choice,'moon');assert.throws(()=>p.makeVisualIntentR03(row,'moon',0,op))});
+if(!process.argv.includes('--local-no-react'))check('actual installed Lucide exports',()=>{const installed=require('lucide-react');for(const e of lib.TREATMENT_VISUAL_LIBRARY)assert(installed[e.lucide],e.lucide)});
+// Expanded persisted intents must not cross the production RPC boundary.
+(async()=>{
+ const payload={id:'t',user_id:'u',person_id:'a',base:0,choice:'moon',operation:op,state:'pending'};
+ let current={...row,visual_identity_pending:payload},calls=0;
+ const transport=load('lib/sync/treatment-visual-transport-r03.ts',{'@/lib/db':{db:{tratamentos:{get:async()=>current}}},'@/lib/health-profile/treatment-preferences-r03':p,'@/lib/sync/queue-health':{},'@/lib/sync/a0-preserve-local-parity':{}});
+ const client={rpc:async()=>{calls++;throw Error('RPC_TEST_BOUNDARY')}};
+ await assert.rejects(transport.syncTreatmentVisualIntentR03({operation:'update',payload},client),/compatibilidade de versões/);
+ assert.equal(calls,0);assert.equal(current.visual_identity_pending,payload);
+ const legacy={...payload,choice:'brain'};current={...current,visual_identity_pending:legacy};
+ await assert.rejects(transport.syncTreatmentVisualIntentR03({operation:'update',payload:legacy},client),/RPC_TEST_BOUNDARY/);assert.equal(calls,1);
+ console.log('PASS CAS transport expanded pending stays local; legacy still reaches RPC');n++;
+ console.log('PREMIUM_UX360_CONTRACT_PASS checks='+n+' MODE=ACTUAL_SOURCE_SYNTHETIC_NO_DB');
+})().catch(error=>{console.error(error);process.exitCode=1});

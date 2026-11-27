@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import type { SyncQueueItem, Tratamento } from '@/lib/types';
 import type { supabase } from '@/lib/supabase/client';
-import {mergeVisualProjectionR03,readVisualIntentR03,sameVisualScopeR03,visualAcknowledgedR03,visualRevisionR03} from '@/lib/health-profile/treatment-preferences-r03';
+import {canWriteTreatmentChoiceR03,mergeVisualProjectionR03,readVisualIntentR03,sameVisualScopeR03,visualAcknowledgedR03,visualRevisionR03} from '@/lib/health-profile/treatment-preferences-r03';
 import {buildSyncFailureUpdate,SYNC_MAX_RETRIES} from "@/lib/sync/queue-health";
 import {preserveA0Tratamento} from '@/lib/sync/a0-preserve-local-parity';
 type Row=Record<string,unknown>;
@@ -36,6 +36,8 @@ export async function syncTreatmentVisualIntentR03(item:SyncQueueItem,client:typ
   const pending=readVisualIntentR03(local.visual_identity_pending);
   if(pending?.operation!==intent.operation){if(visualAcknowledgedR03(intent,local))return finalizeTreatmentVisualIntentR03(item);throw new TreatmentVisualConflictR03('Escolha visual não corresponde à fila local.');}
   if(pending.state==='conflict')throw new TreatmentVisualConflictR03('Escolha visual em conflito. Revise o ícone do tratamento.');
+  // Reader compatibility must never expand the deployed CAS writer contract.
+  if(!canWriteTreatmentChoiceR03(intent.choice))throw Error('Ícone aguardando compatibilidade de versões; escolha preservada na fila.');
   const {data,error}=await client.rpc('vault_set_treatment_visual_r03',{p_id:id,p_person:p.person_id,p_base:intent.base,p_choice:intent.choice,p_operation:intent.operation});
   if(error)throw Error(`Sincronização visual: ${error.message}`);
   const result=data as {status?:unknown;row?:Row}|null;
