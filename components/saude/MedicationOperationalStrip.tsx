@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Circle, Package, MinusCircle } from "lucide-react";
+import { CheckCircle2, Circle, Package, MinusCircle, Clock3 } from "lucide-react";
 
 type StockTone = "empty" | "low" | "known" | "unknown";
 type DoseOutcome = "ignored" | "completed" | "unconfirmed";
@@ -12,14 +12,35 @@ type Props = {
   doseOutcome: DoseOutcome;
   compact?: boolean;
   flowLayoutH01?: boolean;
+  alignedH01?: boolean;
+  completedBadgeH01?: boolean;
 };
 
 /** P14 R6 — UI-only summary: never interprets a dose as taken or changes stock. */
-export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome,compact=false,flowLayoutH01=false}:Props) {
+export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome,compact=false,flowLayoutH01=false,alignedH01=false,completedBadgeH01=false}:Props) {
   const tone=stockTone==="empty"?"text-coral":stockTone==="low"?"text-amber-400":stockTone==="unknown"?"text-ink-muted":"text-emerald-400";
   const redundantEmptyDetail = stockTone === "empty" && /^(?:[≈~=]\s*)?0\s+(?:dose|doses|unidade|unidades)\b/i.test(stockDetail.trim());
   const repeatedEmptyStatusH01 = flowLayoutH01 && stockTone === "empty" && /^(?:sem estoque|estoque zerado|saldo registrado zerado)[.!]?$/i.test(stockDetail.trim());
   const showStockDetail = !compact && !redundantEmptyDetail && !repeatedEmptyStatusH01 && (stockTone === "empty" || stockTone === "unknown" || stockTone === "low") && !!stockDetail.trim() && stockDetail.trim() !== stockLabel.trim();
+  // H01 final: display projection only. Do not derive a dose or stock quantity.
+  if (flowLayoutH01 && alignedH01) {
+    const clock = today.label.match(/^(Próxima dose|Tomado) às (\d{2}:\d{2})$/i);
+    const isFuture = clock?.[1] === "Próxima dose";
+    const shortDose = clock ? (completedBadgeH01 && !isFuture ? clock[2] : `${isFuture ? "Próx." : "Tomada"} ${clock[2]}`) : today.label;
+    const doseHeading = clock ? (isFuture ? "Próxima dose" : "Dose tomada") : "Dose de hoje";
+    const shortStock = stockLabel.replace(/\bcomprimidos?\b/gi,"comp.").replace(/\bcápsulas?\b/gi,"cáps.");
+    const stockParts = stockLabel.match(/^(-?\d+(?:[.,]\d+)?)(?:\s+(.+))?$/);
+    const StatusIcon = doseOutcome === "ignored" ? MinusCircle : doseOutcome === "completed" ? CheckCircle2 : isFuture ? Clock3 : Circle;
+    return <div data-vault-h01-operational-strip="true" data-vault-h01-aligned-strip="true"
+      aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`} title={`${today.detail} · ${stockDetail}`}>
+      <span data-vault-h01-dose="true" className={`min-w-0 font-semibold ${today.tone}`} title={today.label}>
+        {compact ? <><StatusIcon size={12} aria-hidden="true" className="shrink-0"/><span>{shortDose}</span></> : <><span data-vault-h01-fact-label>{doseHeading}</span><span data-vault-h01-fact-value>{clock ? clock[2] : today.label}</span></>}
+      </span>
+      <span data-vault-h01-stock="true" className={`min-w-0 font-semibold ${tone}`} title={stockLabel}>
+        {compact ? <><span aria-hidden="true" className="text-ink-muted">·</span><Package size={12} aria-hidden="true" className="shrink-0"/><span>{shortStock}</span></> : <><span data-vault-h01-fact-label>Estoque</span><span data-vault-h01-fact-value>{stockParts ? stockParts[1] : stockLabel}</span>{stockParts?.[2] && <span data-vault-h01-fact-unit>{stockParts[2]}</span>}{showStockDetail && <span data-vault-h01-fact-unit role="note">{stockDetail}</span>}</>}
+      </span>
+    </div>;
+  }
   return <div data-vault-h01-operational-strip={flowLayoutH01?"true":undefined} className={flowLayoutH01 ? (compact ? "mt-0 grid min-w-0 gap-0 text-[11px] leading-tight" : "mt-0 grid min-w-0 gap-1 text-xs leading-snug") : (compact ? "mt-0 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 border-t-0 pt-0 text-[10px] leading-[1.05rem]" : "mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 border-t-0 pt-0 text-[10px] leading-snug")}
     aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`}
     title={`${today.detail} · ${stockDetail}`}>

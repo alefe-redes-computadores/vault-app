@@ -5,6 +5,7 @@ on:
     paths:
       - 'app/saude/medicamentos/page.tsx'
       - 'app/globals.css'
+      - 'components/saude/MedicationOperationalStrip.tsx'
       - 'scripts/h01-recovery/**'
       - '.github/workflows/h01-recovery.yml'
   workflow_dispatch:
@@ -66,12 +67,13 @@ jobs:
           node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$E/static.log"
           "$RUNNER_TEMP/h01-browser/bin/python" "$GITHUB_WORKSPACE/scripts/h01-recovery/qa_h01_recovery.py" --phase before --out out --evidence "$E" --sha "$BASE" --day "$(cat "$RUNNER_TEMP/h01-evidence/day.txt")" 2>&1 | tee "$E/chromium.log"
       - name: Candidate — actual export and no-downgrade geometry
-        if: ${{ !cancelled() && steps.baseline.outcome == 'success' }}
+        if: ${{ !cancelled() && (steps.baseline.outcome == 'success' || steps.baseline.outcome == 'failure') }}
         shell: bash
         run: |
           set -euo pipefail
           E="$RUNNER_TEMP/h01-evidence/after"
           npm ci --no-audit --no-fund 2>&1 | tee "$E/npm.log"
+          node scripts/test-vault-m136-visual-navigation.cjs 2>&1 | tee "$E/m136.log"
           node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$E/directed.log"
           npm run build 2>&1 | tee "$E/build.log"
           node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$E/static.log"

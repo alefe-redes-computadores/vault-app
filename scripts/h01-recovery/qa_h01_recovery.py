@@ -58,38 +58,60 @@ def top_geometry(p):
 
 def inspect(c):
     g=h.geometry(c)
-    g.update(c.evaluate('''e=>{const r=n=>{const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height}};const card=r(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {rail:rail?.innerText||'',regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',outside:visible.filter(n=>{const a=r(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
+    g.update(c.evaluate('''e=>{const rect=n=>{if(!n)return null;const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height,cx:x.x+x.width/2,cy:x.y+x.height/2}};const card=rect(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]'),title=e.querySelector('[data-vault-med360-entry="name"] > span:first-child > span:first-child'),meta=e.querySelector('[data-vault-h01-identity-meta]'),man=e.querySelector('[data-vault-h01-manufacturer]'),chip=e.querySelector('[data-vault-h01-chips]'),strip=e.querySelector('[data-vault-h01-operational-strip]'),panel=e.querySelector('[data-vault-r5-operational]'),base=e.querySelector('[data-vault-h01-final-base]'),action=e.querySelector('[data-vault-r4-main-action]'),done=e.querySelector('[data-vault-h01-completed]'),icon=e.querySelector('[data-vault-med-flow-icon]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-h01-manufacturer],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {rail:rail?.innerText||'',railRect:rect(rail),railTextRect:rect(rail?.querySelector('span[aria-hidden] > span')),regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',manufacturer:man?.innerText||'',factsAria:strip?.getAttribute('aria-label')||'',factsText:strip?.innerText||'',completed:done?.innerText||'',completedInteractive:!!done?.closest('button,a,[role="button"]'),axis:{title:rect(title),meta:rect(meta),chips:rect(chip),recipe:rect(rx),recipeIcon:rect(rx?.querySelector('svg')),panel:rect(panel),base:rect(base),action:rect(action),icon:rect(icon),facts:rect(strip)},outside:visible.filter(n=>{const a=rect(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
     return g
 
 def check(kind,g,mode,after):
     require(g['card']['height']>0,kind+' absent')
-    text=g['text']; facts=g['reg']+' '+g['regTitle']+' '+g['rail']
+    text=g['text']; facts=g['reg']+' '+g['regTitle']+' '+g['rail']; aria=g['factsAria']; visible=g['factsText']
     if kind in ('normal','long','ignored'):
         require(re.search(r'Controle especial|Especial',facts,re.I),'confirmed classification missing '+kind)
-        require(re.search(r'fonte oficial',g['reg']+' '+g['regTitle'],re.I),'official origin missing '+kind)
+        require(re.search(r'fonte oficial|Fonte:',g['reg']+' '+g['regTitle'],re.I),'official origin missing '+kind)
     if kind=='review':
         require(re.search(r'revis[aã]o|sem confirma',facts,re.I),'review classification not evidenced')
         require('Notificação amarela' in text,'declared yellow missing')
         require('fonte oficial' not in g['reg'].lower(),'review promoted to official')
-    if kind in ('normal','long','ignored','review','taken'):require(bool(re.search(r'\d{2}/\d{2}/\d{4}',g['rx'])),'registered date absent '+kind)
-    if kind=='normal':require('Próxima dose às 20:00' in text and '35 comprimidos' in text,'next scheduled dose/stock missing')
-    if kind=='taken':require(re.search(r'Tomado às 10:00|Dose concluída',text,re.I),'completed dose not factual')
-    if kind in ('ignored','zero'):require(re.search(r'0\s+comprimid|sem estoque|estoque zerado',text,re.I) and g['ctaText'].strip().startswith('Repor'),'zero/restock missing '+kind)
+    if kind in ('normal','long','ignored','review','taken'):
+        if not after or mode=='comfort':require(bool(re.search(r'\d{2}/\d{2}/\d{4}',g['rx'])),'registered date absent '+kind)
+        else:require(not g['rx'],'compact administrative row still visible')
+    if kind=='normal':
+        # M149 displays the stored unit literally (singular or plural); no grammatical inference.
+        require('Próxima dose às 20:00' in aria,'next scheduled dose missing: '+repr(aria))
+        require(re.search(r'35\s+comprimidos?\b',aria,re.I),'registered stock missing: '+repr(aria))
+        require('20:00' in visible and re.search(r'35\s*(?:comp\.|comprimidos?)',visible,re.I),'visible dose/stock missing: '+repr(visible))
+    if kind=='taken':require(re.search(r'Tomado às 10:00|Dose concluída',aria,re.I),'completed dose not factual: '+repr(aria))
+    if kind in ('ignored','zero'):require(re.search(r'0\s+comprimid|sem estoque|estoque zerado',aria,re.I) and g['ctaText'].strip().startswith('Repor'),'zero/restock missing '+kind+': '+repr(aria))
     if kind=='ignored':
-        require('Dose ignorada' in text,'ignored dose missing')
+        require('Dose ignorada' in aria and 'ignorada' in visible.lower(),'ignored dose missing')
         if after:require('Dose ignorada para revisar' not in text,'duplicate ignored reason')
     if kind=='unit':require('Unidade do estoque diferente' in text,'unit warning lost')
     if kind=='negative':require('Saldo divergente' in text,'negative warning lost')
     if kind=='conflict':require('Receita e catálogo: conferir' in text or 'Cadastro em conferência' in text,'conflict lost')
     if kind=='long':require('COMPOSTO SINTÉTICO DE QA B' in g['titleText'] and 'QA TRATAMENTO EXTENSO' in text,'long identity/treatment missing')
     if not after:return
+    require('Laboratório QA' in g['manufacturer'],'real manufacturer missing '+kind)
     require(not g['overflow'] and not g['titleOverflow'] and not g['outside'],'clipping '+kind+': '+str(g['outside']))
     if kind in ('normal','ignored'):require(g['regHidden'],'repeated classification visible in body '+g['reg'])
+    a=g['axis'];x=a['title']['x']
+    for name in ('meta','chips','facts' if mode=='compact' else 'panel'):
+        require(a[name] is not None and abs(a[name]['x']-x)<=2,'text axis drift '+kind+' '+name+': '+repr(a))
+    if mode=='comfort' and g['rx']:
+        for name in ('recipe','recipeIcon'):require(a[name] and abs(a[name]['x']-x)<=2,'comfort recipe axis drift '+kind+' '+name+': '+repr(a))
+    require(g['railRect'] and a['icon']['x']>=g['railRect']['right']+9,'rail/icon gap insufficient '+kind)
+    require(x>=a['icon']['right']+6,'icon/text gap insufficient '+kind)
+    if g['railTextRect']:require(g['railTextRect']['y']>=g['railRect']['y']-1 and g['railTextRect']['bottom']<=g['railRect']['bottom']+1,'rail label clipped '+kind)
     if g['cta']:
         require(g['cta']['height']>=43 and g['cta']['width']>=43,'CTA target below 44 '+kind)
-        require(abs(g['cta']['cy']-g['strip']['cy'])<=3,'CTA misaligned '+kind)
-        require(g['cta']['x']>=g['strip']['right']-1,'CTA overlap '+kind)
-    require(g['dose'] and g['stock'] and abs(g['dose']['x']-g['stock']['x'])<=1 and g['stock']['y']>=g['dose']['bottom']-1,'operational geometry '+kind)
+        if mode=='compact':
+            require(abs(g['cta']['cy']-a['base']['cy'])<=3,'CTA misaligned compact '+kind)
+            require(g['cta']['x']>=a['facts']['right']-1,'CTA overlap '+kind)
+        elif g['cta']['x']>=a['facts']['right']-1:
+            require(abs(g['cta']['cy']-a['facts']['cy'])<=3,'CTA misaligned comfort '+kind)
+        else:require(g['cta']['y']>=a['facts']['bottom']-1,'CTA stacked overlap '+kind)
+    if kind=='taken' and not g['cta']:require(g['completed']=='Tomada' and not g['completedInteractive'],'completed badge missing or fake action')
+    if g['completed']:require(kind=='taken' and not g['completedInteractive'],'unfactual or interactive completed badge '+kind)
+    require(g['dose'] and g['stock'],'missing factual strip '+kind)
+    require(g['stock']['x']>=g['dose']['right']-1 or g['stock']['y']>=g['dose']['bottom']-1,'dose/stock overlap '+kind)
 
 def check_modal(p,authority):
     c=h.card(p,h.NAMES['normal']);b=c.locator('[data-vault-r4-main-action] > button');expect(b).to_be_visible();b.click()
@@ -104,7 +126,7 @@ def main():
     a=argparse.ArgumentParser();a.add_argument('--out',type=Path,required=True);a.add_argument('--evidence',type=Path,required=True);a.add_argument('--sha',required=True);a.add_argument('--phase',choices=['before','after'],required=True);a.add_argument('--baseline',type=Path);a.add_argument('--day',required=True);args=a.parse_args()
     after=args.phase=='after';q.ROOT=args.out.resolve();require((q.ROOT/'index.html').is_file(),'real export missing');args.evidence.mkdir(parents=True,exist_ok=True);fixtures(args.day)
     baseline=json.loads(args.baseline.read_text()) if after else None
-    if after:require(baseline['status']=='PASS' and baseline['phase']=='before','baseline required')
+    if after:require(baseline['phase']=='before','baseline required')
     report={'sha':args.sha,'phase':args.phase,'status':'FAIL','cases':{},'failures':{},'safeArea':'simulated Chromium','authority':'synthetic enrollment; no SQL or clinical mutation','productionWrites':0}
     server=q.ThreadingHTTPServer(('127.0.0.1',8765),Server);threading.Thread(target=server.serve_forever,daemon=True).start()
     try:
@@ -125,15 +147,17 @@ def main():
                                 p.screenshot(path=str(args.evidence/f'{key}-{scale}-{mode}-top.png'),animations='disabled')
                                 if after:require(not top['overflow'],'viewport overflow')
                                 for kind,name in h.NAMES.items():
-                                    c=h.card(p,name);expect(c).to_be_visible(timeout=30000);c.evaluate("e=>e.scrollIntoView({block:'center',behavior:'instant'})");p.wait_for_timeout(100);g=inspect(c);data['cards'][kind]=g;check(kind,g,mode,after)
+                                    c=h.card(p,name);expect(c).to_be_visible(timeout=30000);c.evaluate("e=>e.scrollIntoView({block:'center',behavior:'instant'})");p.wait_for_timeout(100);g=inspect(c);data['cards'][kind]=g
                                     if scale==1 and kind in ('normal','ignored','review','long'):p.screenshot(path=str(args.evidence/f'{key}-{mode}-{kind}.png'),animations='disabled')
-                                if after:
-                                    b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());require(data['delta_first_y']<0,'header not compacted')
+                                    try:check(kind,g,mode,after)
+                                    except AssertionError as exc:report['failures'][f'{key}-{scale}-{mode}-{kind}']=str(exc);print('H01_CARD_FAIL',key,scale,mode,kind,str(exc),flush=True)
+                                if after and baseline['status']=='PASS':
+                                    b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());require(data['delta_first_y']<=0,'header grew versus original productive baseline')
                                     if mode=='compact':require(data['delta_median']<0,'compact card median did not improve')
                             if after:
                                 for kind in ('normal','ignored','review','long'):
                                     require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)
-                        scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors));print('H01_CASE_PASS',key,flush=True)
+                        scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors));print('H01_CASE_'+('FAIL' if any(z.startswith(key+'-') for z in report['failures']) else 'PASS'),key,flush=True)
                     except Exception as exc:
                         report['failures'][key]=str(exc);traceback.print_exc();print('H01_CASE_FAIL',key,str(exc),flush=True)
                         if ctx:
@@ -142,6 +166,7 @@ def main():
                     finally:
                         if ctx:ctx.close()
             browser.close()
+        if after and baseline['status']!='PASS':report['failures']['baseline']='Baseline incomplete: candidate evidence collected, comparative certification blocked'
         report['status']='FAIL' if report['failures'] else 'PASS'
     finally:
         server.shutdown();(args.evidence/'measurements.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')

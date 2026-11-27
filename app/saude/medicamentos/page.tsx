@@ -54,7 +54,6 @@ import {
   ChevronRight,
   Ellipsis,
   ShoppingBag,
-  Factory,
   FileCheck2,
   Repeat2,
   MinusCircle,
@@ -1017,8 +1016,8 @@ export default function MedicamentosListPage() {
         renewals:renewalsByMedication.get(med.id||'')||[],userId:treatmentOwner?.id||'',personId:activePersonId||'',regulatory:regulatoryProfile});
       // MED-04: a verified catalogue class wins over a documentary fallback.
       // The Detalhes page already consumes regulatoryProfiles from this same hook.
-      const prescriptionIdentityP6 = regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true || catalogIdentity?.authorityState === "possible_divergence");
       const regulatoryCopy=regulatoryCopyUX360(regulatoryProfile,catalogIdentity?.regulatoryNeedsReview===true,reconciliationP6,catalogIdentity?.authorityState);
+      const prescriptionIdentityP6 = regulatoryCopy.review ? regulatoryCopy.rail : regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
       const activeIngredients = medicationIngredientDisplayResidual(catalogIdentity, medicationKnowledge360.facts);
@@ -1205,6 +1204,8 @@ export default function MedicamentosListPage() {
         .filter(row => !isPrescriptionOnly(row) && !isFutureAcquisition(row, hojeString))
         .sort((a, b) => renewalEventDate(b).localeCompare(renewalEventDate(a)))[0];
       const latestManufacturer = readManufacturerMetadata(latestAcquisition?.observacoes).manufacturer;
+      const manufacturerH01 = latestManufacturer || med.laboratorio_etiqueta;
+      const manufacturerEvidenceH01 = `Etiqueta declarada: ${med.laboratorio_etiqueta || "Não informada"} · Último fabricante registrado em aquisição: ${latestManufacturer || "Não informado"}`;
       // A33: aquisição SUS posterior à data prevista pede conferência do vínculo,
       // não inferência de conclusão nem nova entrada fictícia de estoque.
       const currentWithdrawalP5P4 = scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "");
@@ -1290,7 +1291,7 @@ export default function MedicamentosListPage() {
                       setQuickDoseMedId(med.id!);
                     }}
                     className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
-                    aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
+                    data-vault-h01-dose-cta={isSOS ? "sos" : "scheduled"} aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
                   >
                     <Zap size={12} fill="currentColor" />
                     {isSOS ? "SOS" : "Tomar"}
@@ -1310,7 +1311,7 @@ export default function MedicamentosListPage() {
                     type="button"
                     className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${/\/retiradas\/(?:detalhes|nova)/.test(careAction.href) ? "border-sky-400/35 bg-sky-400/[.10] text-sky-300" : isRestockDestination(careAction.href, med.id!) ? "border-amber-400/35 bg-amber-400/[.10] text-amber-300" : careActionClass}`}
                     title={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Existe aquisição SUS registrada após a data prevista. Confira se corresponde a esta retirada antes de criar outra." : careAction.description}
-                    aria-label={`${careAction.description} para ${med.nome}`}
+                    data-vault-h01-restock={isRestockDestination(careAction.href, med.id!) ? "true" : undefined} aria-label={`${careAction.description} para ${med.nome}`}
                     aria-description={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Há aquisição SUS registrada após a data agendada. Confira se corresponde a esta retirada; nenhuma conclusão foi feita automaticamente." : undefined}
                     onClick={(event) => {
                       event.preventDefault();
@@ -1344,6 +1345,7 @@ export default function MedicamentosListPage() {
         history: Boolean(historyActionButtonM150P3),
       });
 
+      const completedBadgeH01 = !actionLayoutM150P3.primary && !isSuspenso && !isSOS && rotinaConcluida && dosesTomadasHoje > 0 && dosesIgnoradasHoje === 0;
       const zeroRestockVisibleH01 = stockSnapshot.state === "empty" && (
         (actionLayoutM150P3.primary === "stock" && Boolean(stockActionButtonM150P3)) ||
         (actionLayoutM150P3.primary === "care" && Boolean(careActionButtonM150P3) && isRestockDestination(careAction?.href, med.id!) && withdrawalLinkP71B.state !== "review" && navigationP6.kind !== "review")
@@ -1451,7 +1453,8 @@ export default function MedicamentosListPage() {
           compactTight={compactCards}
           medicationFlow
           interactiveContent
-          className="min-h-0"
+          className="min-h-0 vault-h01-final-card"
+          contentClassName="vault-h01-final-grid"
           showChevron={false}
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="label"
@@ -1502,7 +1505,7 @@ export default function MedicamentosListPage() {
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <div data-vault-med360-header className="flex min-w-0 w-full items-start gap-1">
                   <div data-vault-v34x-title-hitbox className="flex min-w-0 flex-1 flex-col items-start gap-0">
-                  <button type="button" aria-haspopup="dialog" data-vault-med360-entry="name" aria-label={`Abrir Gaveta de medicamentos de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
+                  <button type="button" aria-haspopup="dialog" data-vault-med360-entry="name" aria-label={`Abrir Gaveta de medicamentos de ${med.nome}`} aria-description={manufacturerH01 ? manufacturerEvidenceH01 : undefined} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
                     className="pointer-events-auto relative z-20 inline-flex min-h-11 w-fit max-w-full flex-none flex-col items-start justify-center gap-[2px] rounded-lg px-1 text-left transition-transform active:scale-[.99] active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                     <span className="flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5">
                     <span title={medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)} className="min-w-0 max-w-full break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
@@ -1511,7 +1514,11 @@ export default function MedicamentosListPage() {
                     {med.dosagem && <span title={med.dosagem} className="min-w-0 max-w-full break-words text-[11px] font-medium leading-snug text-ink-secondary">{med.dosagem}</span>}
                     <ChevronRight size={14} className="shrink-0 text-ink-faint" aria-hidden="true"/>
                     </span>
-                    {showActiveIngredient && <span data-vault-r5-active-ingredient className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"}`} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
+                    {(showActiveIngredient || manufacturerH01) && <span data-vault-h01-identity-meta className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[11px] leading-tight" : "text-xs leading-snug"}`}>
+                      {showActiveIngredient && <span data-vault-r5-active-ingredient className={compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
+                      {showActiveIngredient && manufacturerH01 && <span aria-hidden="true"> · </span>}
+                      {manufacturerH01 && <span data-vault-h01-manufacturer data-vault-r5-context="fabricante" title={manufacturerEvidenceH01} className="font-medium text-ink-secondary">{latestManufacturer || med.laboratorio_etiqueta}<span className="sr-only"> · {manufacturerEvidenceH01}</span></span>}
+                    </span>}
                   </button>
                   </div>
                   <button type="button" aria-haspopup="dialog" aria-label={`Abrir menu de ${med.nome}`} data-vault-med360-entry="menu"
@@ -1532,13 +1539,8 @@ export default function MedicamentosListPage() {
                 </>
               )}
               </div>
+              <div data-vault-h01-final-base className="min-w-0">
               <div data-vault-h01-context-stack className="flex min-w-0 flex-col gap-0.5">
-                <div data-vault-h01-regulatory className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
-                  <span data-vault-ux360-regulatory-label title={regulatoryMeaning} className={regulatoryCopy.official && (regulatoryProfile || receita) && prescriptionIdentityP6 !== "REG. OFICIAL" ? "sr-only" : "text-[11px] font-semibold leading-snug text-ink-secondary"}>{compactCards && (regulatoryProfile || receita) && !regulatoryCopy.official ? "Sem confirmação oficial" : `${regulatoryCopy.label}${regulatoryCopy.official?" · fonte oficial":""}`}</span>
-                  {regulatoryCopy.cardDeclaration && !prescriptionReview360 && <button type="button" data-vault-h01-declaration onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}} className={`pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1 text-left text-[11px] leading-snug ${regulatoryCopy.declarationConflict?"text-amber-200":"text-ink-secondary"}`} title={regulatoryCopy.cardDeclaration}>{compactCards && !regulatoryCopy.official && !regulatoryCopy.declarationConflict && regulatoryCopy.declared && (regulatoryProfile || receita) ? `Cadastro: ${regulatoryCopy.declared}` : regulatoryCopy.cardDeclaration}</button>}
-                  {med.data_receita && <span data-vault-v34x-receita-cadastro title={`Receita informada no cadastro · ${med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}`} className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>{compactCards ? "Receita informada · " : "Receita informada no cadastro · "}{med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
-                  {compactCards && !med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>{compactCards ? "Documento vinculado" : "Documento de receita vinculado"}</span>}
-                </div>
               <div data-vault-h01-chips className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] leading-tight">
                 <button type="button" onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("rotina");}} data-vault-r5-context="regime" className={`pointer-events-auto relative z-20 inline-flex min-h-6 shrink-0 items-center gap-1 text-[10px] font-semibold ${compactCards ? (isSOS ? "text-amber-300" : isTemporary ? "text-sky-200" : "text-ink-secondary") : isSOS ? "min-h-7 rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-amber-300" : isTemporary ? "min-h-7 rounded-md border border-sky-300/20 bg-sky-300/[.05] px-1.5 py-0.5 text-sky-200" : "min-h-7 rounded-md border border-surface-border/50 bg-surface/40 px-1.5 py-0.5 text-ink-secondary"}`} aria-label={`Abrir rotina e regime de ${med.nome}`}>
                   <Repeat2 size={12} aria-hidden="true"/>
@@ -1570,34 +1572,38 @@ export default function MedicamentosListPage() {
                 {cardTreatments.length>(compactCards?2:3)&&<button type="button" data-vault-r5-context="mais-tratamentos" aria-label={`Conferir todos os ${cardTreatments.length} tratamentos vinculados de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center text-[10px] text-ink-secondary underline underline-offset-2">+{cardTreatments.length-(compactCards?2:3)} tratamentos</button>}
               </div>}
               </div>
+                <div data-vault-h01-regulatory className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
+                  <span data-vault-ux360-regulatory-label title={regulatoryMeaning} className={regulatoryCopy.official && (regulatoryProfile || receita) && prescriptionIdentityP6 !== "REG. OFICIAL" ? "sr-only" : "text-[11px] font-semibold leading-snug text-ink-secondary"}>{compactCards && (regulatoryProfile || receita) && !regulatoryCopy.official ? (regulatoryCopy.review ? "Em revisão" : "Sem confirmação oficial") : `${regulatoryCopy.label}${regulatoryCopy.official?" · fonte oficial":""}`}</span>
+                  {regulatoryCopy.cardDeclaration && !prescriptionReview360 && <button type="button" data-vault-h01-declaration onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}} className={`pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1 text-left text-[11px] leading-snug ${regulatoryCopy.declarationConflict?"text-amber-200":"text-ink-secondary"}`} title={regulatoryCopy.cardDeclaration}>{compactCards && !regulatoryCopy.official && !regulatoryCopy.declarationConflict && regulatoryCopy.declared && (regulatoryProfile || receita) ? `Cadastro: ${regulatoryCopy.declared}` : regulatoryCopy.cardDeclaration}</button>}
+                  {!compactCards && med.data_receita && <span data-vault-v34x-receita-cadastro title={`Receita informada no cadastro · ${med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}`} className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
+                </div>
               </div>
-              {!compactCards && Boolean(med.tipo_aquisicao || latestManufacturer || med.laboratorio_etiqueta || reconciliationP6.hasDocumentEvidence) && <div data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Contextos adicionais do medicamento">
+              {!compactCards && Boolean(med.tipo_aquisicao || reconciliationP6.hasDocumentEvidence) && <div data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Contextos adicionais do medicamento">
                 {med.tipo_aquisicao && <button type="button" data-vault-r5-context="origem" aria-label={`Conferir origem registrada de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
                   className="pointer-events-auto relative z-20 inline-flex min-h-7 max-w-full items-center gap-1 whitespace-normal break-words rounded-lg border border-sky-300/20 bg-sky-300/[.04] px-2 text-[10px] font-semibold text-sky-200"><ShoppingBag size={12} aria-hidden="true"/>
                   {supplyRoute?.mode === "hybrid" ? "Origens · conferir" : med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : med.tipo_aquisicao === "gratuito" ? "Gratuito" : "Origem · conferir"}
                 </button>}
-                {(latestManufacturer || med.laboratorio_etiqueta) && <button type="button" data-vault-r5-context="fabricante" aria-label={`Conferir fabricante e procedência de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
-                  className="pointer-events-auto relative z-20 inline-flex min-h-7 max-w-full items-center gap-1 whitespace-normal break-words rounded-lg border border-surface-border/45 bg-surface/35 px-2 text-[10px] font-semibold text-ink-secondary"><Factory size={12} aria-hidden="true"/><span className="min-w-0 max-w-full break-words">{latestManufacturer || med.laboratorio_etiqueta}</span>
-                </button>}
-                {reconciliationP6.hasDocumentEvidence && <button type="button" data-vault-r5-context="receita" aria-label={`Conferir documento vinculado de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}}
+                {reconciliationP6.hasDocumentEvidence && <button type="button" data-vault-r5-context="receita" data-vault-v34x-receita-documento aria-label={`Conferir documento vinculado de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}}
                   className="pointer-events-auto relative z-20 inline-flex min-h-7 items-center gap-1 whitespace-normal break-words rounded-lg border border-sky-300/25 bg-sky-300/[.04] px-2 text-[10px] font-semibold text-sky-200"><FileCheck2 size={12} aria-hidden="true"/>Documento vinculado</button>}
               </div>}
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
-              {cardAttentionH01.length>0 && <p data-vault-h01-attention className="text-[11px] leading-snug text-amber-200" aria-label="Motivo da atenção">Atenção: {cardAttentionH01.join(" · ")}</p>}
               <div data-vault-r5-operational className={`${actionLayoutM150P3.primary ? (compactCards ? "grid grid-cols-[minmax(0,1fr)_auto]" : "grid grid-cols-[minmax(0,1fr)_88px]") : "flex"} min-w-0 items-end gap-1`}>
-                <div className="min-w-0 flex-1">
-              <MedicationOperationalStrip today={todayStatus} compact={compactCards} flowLayoutH01
+                <div data-vault-h01-facts className="min-w-0 flex-1">
+              <MedicationOperationalStrip today={todayStatus} compact={compactCards} flowLayoutH01 alignedH01 completedBadgeH01={completedBadgeH01}
               stockLabel={stockUnknown ? "Estoque não registrado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
                 </div>
-                {actionLayoutM150P3.primary && <div aria-label="Ações do medicamento" data-vault-r4-main-action className={`relative flex min-h-11 min-w-0 items-center justify-end ${compactCards?"w-[72px]":"w-[88px]"} [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:px-1 [&>button]:text-center [&>button]:text-[11px]`}>
+                {(actionLayoutM150P3.primary || completedBadgeH01) && <div aria-label="Ações do medicamento" data-vault-r4-main-action data-vault-h01-action-kind={actionLayoutM150P3.primary || "completed"} className={`relative flex min-h-11 min-w-0 items-center justify-end ${compactCards?"w-[72px]":"w-[88px]"} [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:px-1 [&>button]:text-center [&>button]:text-[11px]`}>
                   {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
+                  {!actionLayoutM150P3.primary && <span data-vault-h01-completed role="status" className="flex min-h-11 w-full min-w-0 items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold text-emerald-300"><CheckCircle2 size={13} className="shrink-0" aria-hidden="true"/>Tomada</span>}
                 </div>}
               </div>
+              </div>
+              {cardAttentionH01.length>0 && <p data-vault-h01-attention className="text-[11px] leading-snug text-amber-200" aria-label="Motivo da atenção">Atenção: {cardAttentionH01.join(" · ")}</p>}
               {/* R4: acoes secundarias somente na gaveta; o card nao cresce. */}
             </div>
 
@@ -1653,7 +1659,7 @@ export default function MedicamentosListPage() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail vault-h01-medications-route" data-vault-h01-recovery="r1">
+      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail vault-h01-medications-route" data-vault-h01-recovery="final">
         {/* GRADIENTES DOS ÍCONES */}
 
         <svg
