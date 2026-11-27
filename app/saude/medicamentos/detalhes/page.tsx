@@ -2500,7 +2500,7 @@ function MedicamentoDetalhesContent() {
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-3 pt-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 px-5 pb-3 pt-4 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-void/85 before:backdrop-blur-xl before:content-['']">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
