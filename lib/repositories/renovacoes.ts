@@ -1339,7 +1339,7 @@ export const renovacoesRepository = {
           await reconcileScheduledRetiradaFromRenovacao(
             cleanRenovacao,
             medicamentoPersistido,
-            {preserveAtomicMedication:premiumStock}
+            {preserveAtomicMedication:isPremium}
           );
         }
         if(isPremium){
