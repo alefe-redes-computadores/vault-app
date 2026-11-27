@@ -1,0 +1,47 @@
+name: VAULT Macro03 R24 — exact coverage causal proof (LAB ONLY)
+on:
+  push:
+    branches: ['vault/lab/evolution03-20261126-r24']
+permissions:
+  contents: read
+concurrency:
+  group: vault-evo03-lab-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  server-review:
+    if: github.ref == 'refs/heads/vault/lab/evolution03-20261126-r24'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.16.0'
+      - run: bash .vault-evo03-lab/prepare.sh
+      - name: Install exact lockfile and compile actual candidate
+        run: cd "$EVO03_LAB/candidate" && npm ci --no-audit --no-fund && ./node_modules/.bin/tsc --noEmit
+      - name: Confirm the production catalog is still locked
+        run: python3 "$EVO03_LAB/tools/catalog-review-ledger.py" verify "$EVO03_LAB/evidence/rodada-R12/catalog-triage" "$EVO03_LAB/evidence/r15/catalog-review-ledger.jsonl"
+      - name: Reproduce certified R17.2 HTTP and run R24 before/after PostgreSQL proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/evo03-r24-server"
+          bash "$EVO03_LAB/tools/ci-r23-pg17-docker.sh" 2>&1 | tee "$RUNNER_TEMP/evo03-r24-server/full.log"
+          grep -Fq 'R17_CATALOG_HTTP_TOTAL 16 REAL_ADAPTER_CALLS 6' "$RUNNER_TEMP/evo03-r24-server/full.log"
+          grep -Fq 'R17_CATALOG_DB_CARDINALITY_PASS' "$RUNNER_TEMP/evo03-r24-server/full.log"
+          grep -Fq 'R24_PG_ALL_COHORTS_PASS 6752' "$RUNNER_TEMP/evo03-r24-server/full.log"
+      - name: Preserve laboratory evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: evo03-r24-versioned-server-review
+          path: |
+            ${{ runner.temp }}/evo03-r24-server/
+            ${{ runner.temp }}/evo03-r17-server/
+            ${{ runner.temp }}/evo03-reanchor-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
