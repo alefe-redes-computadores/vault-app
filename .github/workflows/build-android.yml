@@ -1,12 +1,12 @@
-name: Compilar APK Vault
+name: VAULT Stability + Macro02 unified R2 CAS - LAB ONLY
 
 on:
   push:
-    branches: [main, master]
-  workflow_dispatch:
+    branches: ["vault-lab/stability-macro02-unified-20261127-r2-cas"]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: vault-android-${{ github.ref }}
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   build:
+    needs: [chromium-delta, active-browser, active-pg17, release-contracts]
     name: Validar e gerar APK
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -23,6 +24,50 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Historical audit optional; strict V63 executes the current tree
+
+      - name: Fixar origem do delta e proibir release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-macro02-unified-20261127-r2-cas'
+          test "$(git rev-parse HEAD^)" = '4eb137de1313c1efeef2941b7c88bcd259192974'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^1')" = 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^1')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^2')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^{tree}')" = 'a6dc8552c68665159eeeeb8b726e09ba1a7e3c17'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^{tree}')" = '9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          test "$(git rev-parse 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0^{tree}')" = '80e329b57db6504488ea8929dd80ddb73e40adbe'
+          test "$(git rev-parse '471caebe7965eda437ee0b2ee274d20ba819b0b2^{tree}')" = '55de35a2af5297295b73266cec487e99c67cf344'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '47a687affd1c1e855bcbbb4857ac8eac823856e2'
+          test "$(cat vercel.json)" = '{"git":{"deploymentEnabled":false},"ignoreCommand":"exit 0"}'
+          git diff --check 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0' '4eb137de1313c1efeef2941b7c88bcd259192974'
+          python3 - <<'PY_VERIFY'
+          import json,subprocess
+          m=json.load(open('.github/vault-unified/manifest.json'))
+          def g(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert m['candidate']=='4eb137de1313c1efeef2941b7c88bcd259192974' and m['tree']=='9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          assert sorted(g('diff','--name-only','c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['delta'])
+          for p,row in m['delta'].items():assert g('rev-parse','4eb137de1313c1efeef2941b7c88bcd259192974:'+p)==row['blob'],p
+          assert len(m['contracts'])==len(set(m['contracts']))==591
+          assert m['previous_candidate']=='ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          assert sorted(g('diff','--name-only','ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['r2_delta'])
+          assert sorted(m['r2_delta'])==['scripts/macro02-activation-lab/cas-r04-m03-active.sql', 'scripts/macro02-activation-lab/cas-r04-m03-fixture.sql', 'scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql', 'scripts/macro02-activation-lab/cas-r04-m03-seed.sql', 'scripts/macro02-activation-lab/migration-03-r6-candidate.sql']
+          PY_VERIFY
+          SOURCE='4eb137de1313c1efeef2941b7c88bcd259192974'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/46015710107" --jq '.conclusion + " " + .head_sha' | grep -Fx 'success 6adc43f0a67c3036d5a2848ecacd3bca850f735a'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/46025982841" --jq '.conclusion + " " + .head_sha' | grep -Fx 'success dfd108d2678f5f00dae162efd9189ada69d3c81d'
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          [[ "$latest" =~ ^vault-android-b([0-9]+)$ ]]
+          last_build="${BASH_REMATCH[1]}"
+          test "$GITHUB_RUN_NUMBER" -gt "$last_build"
+          git checkout --detach "$SOURCE"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p artifacts
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\nLAB_SHA=%s\nVERSION_CODE=%s\nPRODUCTION_RELEASE=NO\nCAS_ALREADY_APPLIED=20261127152804\n' "$SOURCE" "$(git rev-parse HEAD^{tree})" "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > artifacts/STABILITY-H01-H07-ORIGEM.txt
+          cat artifacts/STABILITY-H01-H07-ORIGEM.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -44,8 +89,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          npm run test:release 2>&1 | tee artifacts/V63-STRICT.log
-          node scripts/test-vault-update360-v34.cjs
+          failures=0
+          VAULT_V63_COLLECT_ALL=1 npm run test:release 2>&1 | tee artifacts/V63-STRICT.log || failures=$((failures+1))
+          for marker in 'V63_COLETA_INTEGRAL_APROVADA | executadas=591 | falhas=0' 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'R03_IDENTITY_PASS=49 FAIL=0' 'CAS_TRANSPORT_TOTAL=20' 'STB13_GEOMETRY_BEHAVIOR_PASS=29' 'STB_DIRECTED_PASS=173 FAIL=0' 'V56_R04_CONTEXTUAL_RETURN_PASS=14' 'H01_H04_DIRECTED_PASS=' 'H05_H06_DIRECTED_PASS=' 'H07_DIRECTED_PASS='; do
+            grep -Fq "$marker" artifacts/V63-STRICT.log || { printf "MISSING_GATE_MARKER=%s\n" "$marker"; failures=$((failures+1)); }
+          done
+          node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee artifacts/V70-SUPER.log || failures=$((failures+1))
+          node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee artifacts/V70-FINAL.log || failures=$((failures+1))
+          node scripts/test-vault-update360-v34.cjs 2>&1 | tee artifacts/UPDATE360.log || failures=$((failures+1))
+          node node_modules/typescript/bin/tsc --noEmit 2>&1 | tee artifacts/TYPESCRIPT.log || failures=$((failures+1))
+          printf "FINAL_GATE_FAILURES=%s\n" "$failures" | tee artifacts/FINAL-GATE-STATUS.txt
+          test "$failures" -eq 0
       - name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
@@ -281,7 +335,8 @@ jobs:
         run: |
           {
             echo '## VAULT M67 · Build Android com gate V63 estrito (APK ainda requer homologação física)'
-            echo "- Commit: ${GITHUB_SHA}"
+            echo "- Commit de origem: $(git rev-parse HEAD)"
+            echo "- Commit isolado de CI: ${GITHUB_SHA}"
             echo "- Execução: ${GITHUB_RUN_ID}"
             echo '- Gate canônico V63 estrito e TypeScript integral aprovados'
             echo '- Exportação, bridge, build e certificado/versionCode: aprovados'
@@ -306,6 +361,394 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Preservar origem e V70 do APK de homologacao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Stability-H01-H07-Origem-V70
+          path: |
+            artifacts/STABILITY-H01-H07-ORIGEM.txt
+            artifacts/V70-SUPER.log
+            artifacts/V70-FINAL.log
+            artifacts/UPDATE360.log
+            artifacts/TYPESCRIPT.log
+            artifacts/FINAL-GATE-STATUS.txt
+          if-no-files-found: error
+          retention-days: 14
+
       # Publicação foi deslocada para promote-android-run.yml:
       # workflow_run completed SUCCESS + Environment protegido + revalidação do artefato original.
       # Não publicar de dentro do job de compilação; o estado da Action ainda não é completed.
+
+  chromium-delta:
+    name: H01-H07 Chromium antes e depois (loopback)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Pin source and exact previous native candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-macro02-unified-20261127-r2-cas'
+          test "$(git rev-parse HEAD^)" = '4eb137de1313c1efeef2941b7c88bcd259192974'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^1')" = 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^1')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^2')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^{tree}')" = 'a6dc8552c68665159eeeeb8b726e09ba1a7e3c17'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^{tree}')" = '9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          test "$(git rev-parse 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0^{tree}')" = '80e329b57db6504488ea8929dd80ddb73e40adbe'
+          test "$(git rev-parse '471caebe7965eda437ee0b2ee274d20ba819b0b2^{tree}')" = '55de35a2af5297295b73266cec487e99c67cf344'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '47a687affd1c1e855bcbbb4857ac8eac823856e2'
+          test "$(cat vercel.json)" = '{"git":{"deploymentEnabled":false},"ignoreCommand":"exit 0"}'
+          git diff --check 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0' '4eb137de1313c1efeef2941b7c88bcd259192974'
+          python3 - <<'PY_VERIFY'
+          import json,subprocess
+          m=json.load(open('.github/vault-unified/manifest.json'))
+          def g(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert m['candidate']=='4eb137de1313c1efeef2941b7c88bcd259192974' and m['tree']=='9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          assert sorted(g('diff','--name-only','c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['delta'])
+          for p,row in m['delta'].items():assert g('rev-parse','4eb137de1313c1efeef2941b7c88bcd259192974:'+p)==row['blob'],p
+          assert len(m['contracts'])==len(set(m['contracts']))==591
+          assert m['previous_candidate']=='ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          assert sorted(g('diff','--name-only','ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['r2_delta'])
+          assert sorted(m['r2_delta'])==['scripts/macro02-activation-lab/cas-r04-m03-active.sql', 'scripts/macro02-activation-lab/cas-r04-m03-fixture.sql', 'scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql', 'scripts/macro02-activation-lab/cas-r04-m03-seed.sql', 'scripts/macro02-activation-lab/migration-03-r6-candidate.sql']
+          PY_VERIFY
+          mkdir -p "$RUNNER_TEMP/h01-h07-evidence/before" "$RUNNER_TEMP/h01-h07-evidence/after"
+          cp .github/h01-h07/*.py "$RUNNER_TEMP/"
+          cp .github/h01-h07/h07-copy.json "$RUNNER_TEMP/h01-h07-evidence/"
+          git worktree add --detach "$RUNNER_TEMP/vault-before" 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
+          git worktree add --detach "$RUNNER_TEMP/vault-after" '4eb137de1313c1efeef2941b7c88bcd259192974'
+          date +%F > "$RUNNER_TEMP/h01-h07-evidence/day.txt"
+          git diff --stat 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' '4eb137de1313c1efeef2941b7c88bcd259192974' > "$RUNNER_TEMP/h01-h07-evidence/delta-stat.txt"
+      - name: Install pinned real Chromium
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/h01-browser"
+          "$RUNNER_TEMP/h01-browser/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/h01-browser/bin/python" -m playwright install --with-deps chromium
+      - name: Build and measure baseline before any candidate acceptance
+        id: baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          e="$RUNNER_TEMP/h01-h07-evidence/before"
+          cd "$RUNNER_TEMP/vault-before"
+          failures=0
+          npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
+          npm run build 2>&1 | tee "$e/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase before --out out --evidence "$e" --sha 'b40d302ac4594eac60c3929a6c4f0ca855e0a5fa' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
+      - name: Build and measure candidate, enforce actual improvements
+        if: ${{ !cancelled() && (steps.baseline.outcome == 'success' || steps.baseline.outcome == 'failure') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          e="$RUNNER_TEMP/h01-h07-evidence/after"
+          cd "$RUNNER_TEMP/vault-after"
+          failures=0
+          npm ci --no-audit --no-fund 2>&1 | tee "$e/npm.log"
+          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h05-h06.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          node scripts/test-vault-stability-h07.cjs 2>&1 | tee -a "$e/directed.log" || failures=$((failures+1))
+          npm run build 2>&1 | tee "$e/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$e/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h01_h04.py" --phase after --out out --evidence "$e" --sha '4eb137de1313c1efeef2941b7c88bcd259192974' --baseline "$RUNNER_TEMP/h01-h07-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium.log" || failures=$((failures+1))
+          "$RUNNER_TEMP/h01-browser/bin/python" "$RUNNER_TEMP/qa_h05_h06.py" --phase after --out out --evidence "$e" --sha '4eb137de1313c1efeef2941b7c88bcd259192974' --day "$(cat "$RUNNER_TEMP/h01-h07-evidence/day.txt")" 2>&1 | tee "$e/chromium-h05-h06.log" || failures=$((failures+1))
+          printf 'FAILED_CHECKS=%s\n' "$failures" | tee "$e/collection-status.txt"
+          test "$failures" -eq 0
+      - name: Preserve real evidence including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Vault-Stability-H01-H07-Chromium-before-after
+          path: ${{ runner.temp }}/h01-h07-evidence/
+          if-no-files-found: error
+          retention-days: 30
+  active-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4173
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      TZ: America/Sao_Paulo
+    steps:
+      - name: Inicializar caminhos do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          ui="$RUNNER_TEMP/macro02-ui"
+          mkdir -p "$ui"
+          {
+            printf 'UI_GATE_DIR=%s\n' "$ui"
+            printf 'ESBUILD_MODULE=%s\n' "$ui/tools/node_modules/esbuild"
+            printf 'PLAYWRIGHT_MODULE=%s\n' "$ui/tools/node_modules/playwright"
+            printf 'BOOTSTRAP_BUNDLE=%s\n' "$ui/bootstrap.js"
+          } >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fixar R10 e verificar delta exclusivo do boot por conta
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-macro02-unified-20261127-r2-cas'
+          test "$(git rev-parse HEAD^)" = '4eb137de1313c1efeef2941b7c88bcd259192974'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^1')" = 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^1')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^2')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^{tree}')" = 'a6dc8552c68665159eeeeb8b726e09ba1a7e3c17'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^{tree}')" = '9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          test "$(git rev-parse 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0^{tree}')" = '80e329b57db6504488ea8929dd80ddb73e40adbe'
+          test "$(git rev-parse '471caebe7965eda437ee0b2ee274d20ba819b0b2^{tree}')" = '55de35a2af5297295b73266cec487e99c67cf344'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '47a687affd1c1e855bcbbb4857ac8eac823856e2'
+          test "$(cat vercel.json)" = '{"git":{"deploymentEnabled":false},"ignoreCommand":"exit 0"}'
+          git diff --check 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0' '4eb137de1313c1efeef2941b7c88bcd259192974'
+          python3 - <<'PY_VERIFY'
+          import json,subprocess
+          m=json.load(open('.github/vault-unified/manifest.json'))
+          def g(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert m['candidate']=='4eb137de1313c1efeef2941b7c88bcd259192974' and m['tree']=='9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          assert sorted(g('diff','--name-only','c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['delta'])
+          for p,row in m['delta'].items():assert g('rev-parse','4eb137de1313c1efeef2941b7c88bcd259192974:'+p)==row['blob'],p
+          assert len(m['contracts'])==len(set(m['contracts']))==591
+          assert m['previous_candidate']=='ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          assert sorted(g('diff','--name-only','ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['r2_delta'])
+          assert sorted(m['r2_delta'])==['scripts/macro02-activation-lab/cas-r04-m03-active.sql', 'scripts/macro02-activation-lab/cas-r04-m03-fixture.sql', 'scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql', 'scripts/macro02-activation-lab/cas-r04-m03-seed.sql', 'scripts/macro02-activation-lab/migration-03-r6-candidate.sql']
+          PY_VERIFY
+          mkdir -p "$UI_GATE_DIR"
+          cp .github/macro02-ui/* "$UI_GATE_DIR/"
+          git checkout --detach 4eb137de1313c1efeef2941b7c88bcd259192974
+          test -z "$(git status --porcelain)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Exportacao Web real da R10
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node <<'NODE' | tee "$UI_GATE_DIR/directives.log"
+          const ts=require('typescript'),fs=require('fs'),cp=require('child_process');
+          const assert=require('node:assert/strict');
+          const file='hooks/useSyncQueue.ts';
+          const parse=(f,s)=>ts.createSourceFile(f,s,ts.ScriptTarget.Latest,true);
+          const old=parse(file,cp.execFileSync('git',['show','d2d79ba19992dcffb0005914f613f070c0584fcc:'+file],{encoding:'utf8'}));
+          const now=parse(file,fs.readFileSync(file,'utf8'));
+          const isClient=s=>ts.isExpressionStatement(s)&&ts.isStringLiteral(s.expression)&&s.expression.text==='use client';
+          const other=p=>p.statements.filter(s=>!isClient(s)).map(s=>s.getText(p));
+          assert.deepEqual(other(now),other(old),'runtime statements changed');
+          assert(isClient(now.statements[0]),'client directive not first');
+          const files=cp.execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(f=>/^(app|components|hooks|lib|src|contexts)\//.test(f)&&/\.[cm]?[jt]sx?$/.test(f));
+          let failures=[];for(const f of files){const p=parse(f,fs.readFileSync(f,'utf8'));let seen=false;for(const s of p.statements){const directive=ts.isExpressionStatement(s)&&ts.isStringLiteral(s.expression);if(isClient(s)&&seen)failures.push(f+':'+(p.getLineAndCharacterOfPosition(s.getStart()).line+1));if(!directive)seen=true;}}
+          assert.deepEqual(failures,[],'misplaced client directives');
+          console.log('R10_DIRECTIVE_ONLY_SEMANTIC_PASS; TRACKED_SOURCE_SCAN='+files.length);
+          const dialog='components/saude/LazyQuickDoseModal.tsx';
+          const d=parse(dialog,fs.readFileSync(dialog,'utf8'));
+          const previous=parse(dialog,cp.execFileSync('git',['show','054ddac624cccbf9a0fd413196e839b038714bd0:components/saude/LazyQuickDoseModal.tsx'],{encoding:'utf8'}));
+          const exported=p=>p.statements.find(s=>ts.isFunctionDeclaration(s)&&s.name?.text==='LazyQuickDoseModal');
+          assert.equal(exported(d).getText(d),exported(previous).getText(previous),'dialog mount semantics changed');
+          assert(d.statements.some(s=>ts.isImportDeclaration(s)&&s.moduleSpecifier.text==='./QuickDoseModal'&&s.importClause?.namedBindings?.elements?.some(e=>e.propertyName?.text==='QuickDoseModal'&&e.name.text==='DoseDialog')),'missing static dialog import');
+          assert(!fs.readFileSync(dialog,'utf8').includes('next/dynamic'),'lazy transport still present');
+          console.log('R10_OFFLINE_DIALOG_STATIC_IMPORT_AND_DEFERRED_MOUNT_PASS');
+          NODE
+          node scripts/test-vault-static-offline-guard.cjs | tee "$UI_GATE_DIR/offline-contract.log"
+          node scripts/test-vault-macro02-dose-premium-p1.cjs | tee "$UI_GATE_DIR/dose-p1.log"
+          node scripts/test-vault-macro02-dose-premium-p2.cjs | tee "$UI_GATE_DIR/dose-p2.log"
+          node scripts/test-vault-macro02-dose-premium-p3.cjs | tee "$UI_GATE_DIR/dose-p3.log"
+          node "$UI_GATE_DIR/queue-contract.cjs" "$PWD" | tee "$UI_GATE_DIR/queue-contract.log"
+          grep -Fxq MACRO02_PREMIUM_ACQUISITION_QUEUE_REGRESSION_PASS "$UI_GATE_DIR/queue-contract.log"
+          node scripts/test-vault-macro02-compound-r6.cjs | tee "$UI_GATE_DIR/compound-contract.log"
+          node "$UI_GATE_DIR/profile-contract.cjs" "$PWD" | tee "$UI_GATE_DIR/profile-contract.log"
+          grep -Fxq MACRO02_OFFLINE_PROFILE_SCOPE_REGRESSION_PASS "$UI_GATE_DIR/profile-contract.log"
+          node scripts/test-vault-offline-session-v62-contract.mjs | tee "$UI_GATE_DIR/auth-contract.log"
+          node scripts/test-vault-m52-sync-resilience.cjs | tee "$UI_GATE_DIR/sync-contract.log"
+          node scripts/ci-build-web-resilient.cjs 2>&1 | tee "$UI_GATE_DIR/build.log"
+          node scripts/verify-static-release-stability.cjs web | tee "$UI_GATE_DIR/static.log"
+      - name: Chromium e escritor real com PG17, offline e reconexao
+        run: |
+          set -euo pipefail
+          npm install --prefix "$UI_GATE_DIR/tools" --no-audit --no-fund --save-exact playwright@1.56.1 esbuild@0.25.12
+          "$UI_GATE_DIR/tools/node_modules/.bin/playwright" install --with-deps chromium
+          node "$UI_GATE_DIR/bootstrap.cjs"
+          bash "$UI_GATE_DIR/run.sh" 2>&1 | tee "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_OFFLINE_RELOAD_AND_HISTORY_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_COLD_OFFLINE_PROFILE_AND_OUTBOX_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_BACKUP_ACTIVE_RECEIPT_READ_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_RECONNECT_EXACT_RETRY_NO_DUPLICATE_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq MACRO02_ACTIVE_PREMIUM_BROWSER_PG17_GATE_PASS "$UI_GATE_DIR/browser.log"
+      - name: Evidencias sinteticas do navegador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro02-r10-active-ui-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/macro02-ui/*.log
+            ${{ runner.temp }}/macro02-ui/*.png
+            ${{ runner.temp }}/macro02-ui/failure.html
+          if-no-files-found: warn
+      - name: Limites
+        if: always()
+        run: echo 'LAB ONLY. PG17 real isolado; autenticacao e transporte REST sinteticos; navegador e IndexedDB reais; nao prova Android fisico ou gateway Supabase produtivo. Sem deploy, sem SQL produtivo. V63/V70 e PG17 certificados na R10; delta da diretiva, import estatico do dialogo e selecao do reconciliador Premium, montagem e guarda de fila preservadas; contagem e conclusao de pull vinculadas ao dono; contratos dirigidos, cold boot sem re-seed e recibos reais. Gate de navegador e exportacao ainda exigido.'
+  active-pg17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fonte imutavel e delta exclusivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-macro02-unified-20261127-r2-cas'
+          test "$(git rev-parse HEAD^)" = '4eb137de1313c1efeef2941b7c88bcd259192974'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^1')" = 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^1')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^2')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^{tree}')" = 'a6dc8552c68665159eeeeb8b726e09ba1a7e3c17'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^{tree}')" = '9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          test "$(git rev-parse 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0^{tree}')" = '80e329b57db6504488ea8929dd80ddb73e40adbe'
+          test "$(git rev-parse '471caebe7965eda437ee0b2ee274d20ba819b0b2^{tree}')" = '55de35a2af5297295b73266cec487e99c67cf344'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '47a687affd1c1e855bcbbb4857ac8eac823856e2'
+          test "$(cat vercel.json)" = '{"git":{"deploymentEnabled":false},"ignoreCommand":"exit 0"}'
+          git diff --check 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0' '4eb137de1313c1efeef2941b7c88bcd259192974'
+          python3 - <<'PY_VERIFY'
+          import json,subprocess
+          m=json.load(open('.github/vault-unified/manifest.json'))
+          def g(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert m['candidate']=='4eb137de1313c1efeef2941b7c88bcd259192974' and m['tree']=='9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          assert sorted(g('diff','--name-only','c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['delta'])
+          for p,row in m['delta'].items():assert g('rev-parse','4eb137de1313c1efeef2941b7c88bcd259192974:'+p)==row['blob'],p
+          assert len(m['contracts'])==len(set(m['contracts']))==591
+          assert m['previous_candidate']=='ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          assert sorted(g('diff','--name-only','ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['r2_delta'])
+          assert sorted(m['r2_delta'])==['scripts/macro02-activation-lab/cas-r04-m03-active.sql', 'scripts/macro02-activation-lab/cas-r04-m03-fixture.sql', 'scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql', 'scripts/macro02-activation-lab/cas-r04-m03-seed.sql', 'scripts/macro02-activation-lab/migration-03-r6-candidate.sql']
+          PY_VERIFY
+          git show HEAD:.github/macro02-qa/run-active-r7-pg.sh > "$RUNNER_TEMP/macro02-active-pg17.sh"
+          test "$(git hash-object "$RUNNER_TEMP/macro02-active-pg17.sh")" = 19e16e450b7fb7f7066a56a31562e0538fe10321
+          git checkout --detach 4eb137de1313c1efeef2941b7c88bcd259192974
+          test -z "$(git status --porcelain)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: PostgreSQL 17 - Migration 03 e Premium ativo
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/macro02-active-pg17.sh" 2>&1 | tee "$RUNNER_TEMP/cas-r04-m03-pg17.log"
+          for marker in CAS_R04_M03_LEGACY_ACK_REPLAY_CONFLICT_SCOPE_PASS CAS_R04_M03_FROZEN_NO_MUTATION_CANCEL_PASS CAS_R04_M03_ACTIVE_ACK_REPLAY_R03_AND_CLINICAL_PASS MACRO02_ACTIVE_COMPOUND_PG17_GATE_PASS; do
+            grep -Fxq "$marker" "$RUNNER_TEMP/cas-r04-m03-pg17.log"
+          done
+      - name: Preservar evidencia CAS R04 e Migration 03
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-CAS-R04-M03-PG17
+          path: ${{ runner.temp }}/cas-r04-m03-pg17.log
+          if-no-files-found: warn
+      - name: Limites
+        if: always()
+        run: echo 'PG17 isolado; sem producao; nao certifica UI nem dispositivo fisico.'
+  release-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fonte imutavel e delta exclusivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-macro02-unified-20261127-r2-cas'
+          test "$(git rev-parse HEAD^)" = '4eb137de1313c1efeef2941b7c88bcd259192974'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^1')" = 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^1')" = 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^2')" = '471caebe7965eda437ee0b2ee274d20ba819b0b2'
+          test "$(git rev-parse 'ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318^{tree}')" = 'a6dc8552c68665159eeeeb8b726e09ba1a7e3c17'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974^{tree}')" = '9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          test "$(git rev-parse 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0^{tree}')" = '80e329b57db6504488ea8929dd80ddb73e40adbe'
+          test "$(git rev-parse '471caebe7965eda437ee0b2ee274d20ba819b0b2^{tree}')" = '55de35a2af5297295b73266cec487e99c67cf344'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql')" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          test "$(git rev-parse '4eb137de1313c1efeef2941b7c88bcd259192974:scripts/macro02-activation-lab/migration-03-r6-candidate.sql')" = '47a687affd1c1e855bcbbb4857ac8eac823856e2'
+          test "$(cat vercel.json)" = '{"git":{"deploymentEnabled":false},"ignoreCommand":"exit 0"}'
+          git diff --check 'b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0' '4eb137de1313c1efeef2941b7c88bcd259192974'
+          python3 - <<'PY_VERIFY'
+          import json,subprocess
+          m=json.load(open('.github/vault-unified/manifest.json'))
+          def g(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert m['candidate']=='4eb137de1313c1efeef2941b7c88bcd259192974' and m['tree']=='9a74ae8b01b2db12a1600706ebd9ac67abb772bd'
+          assert sorted(g('diff','--name-only','c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['delta'])
+          for p,row in m['delta'].items():assert g('rev-parse','4eb137de1313c1efeef2941b7c88bcd259192974:'+p)==row['blob'],p
+          assert len(m['contracts'])==len(set(m['contracts']))==591
+          assert m['previous_candidate']=='ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318'
+          assert sorted(g('diff','--name-only','ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318','4eb137de1313c1efeef2941b7c88bcd259192974').splitlines())==sorted(m['r2_delta'])
+          assert sorted(m['r2_delta'])==['scripts/macro02-activation-lab/cas-r04-m03-active.sql', 'scripts/macro02-activation-lab/cas-r04-m03-fixture.sql', 'scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql', 'scripts/macro02-activation-lab/cas-r04-m03-seed.sql', 'scripts/macro02-activation-lab/migration-03-r6-candidate.sql']
+          PY_VERIFY
+          git show HEAD:.github/macro02-qa/run-active-r7-pg.sh > "$RUNNER_TEMP/macro02-active-pg17.sh"
+          test "$(git hash-object "$RUNNER_TEMP/macro02-active-pg17.sh")" = 19e16e450b7fb7f7066a56a31562e0538fe10321
+          git checkout --detach 4eb137de1313c1efeef2941b7c88bcd259192974
+          test -z "$(git status --porcelain)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript integral
+        run: npx --no-install tsc --noEmit
+      - name: Teste residual de recuperacao com Dexie real
+        run: node --require ./scripts/vault-m2-test-alias-preload.cjs scripts/test-vault-macro02-restore-staging.cjs
+      - name: V63 integral e V70 - sem excluir contratos
+        if: success()
+        env:
+          VAULT_V63_COLLECT_ALL: '1'
+        run: |
+          set -euo pipefail
+          node scripts/test-v63-release-gate.mjs | tee "$RUNNER_TEMP/v63-unified.log"
+          grep -Fq 'V63_COLETA_INTEGRAL_APROVADA | executadas=591 | falhas=0' "$RUNNER_TEMP/v63-unified.log"
+          node scripts/test-v70-super-integrity-ux-contract.mjs
+          node scripts/test-v70-final-completeness-contract.mjs
+      - name: Preservar log V63 unificado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Unified-V63-contracts
+          path: ${{ runner.temp }}/v63-unified.log
+          if-no-files-found: warn
+      - name: Limites
+        if: always()
+        run: echo 'Gates sobre nova arvore. Nao substitui certificacao UI Premium real. Sem deploy, sem APK e sem SQL produtivo.'

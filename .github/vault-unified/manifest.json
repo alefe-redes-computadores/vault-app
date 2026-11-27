@@ -1,0 +1,1573 @@
+{
+  "base": "c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf",
+  "stability": "b5d956ce4a011f43f6ccb3a5ac6be284e41fbaf0",
+  "macro02": "471caebe7965eda437ee0b2ee274d20ba819b0b2",
+  "candidate": "4eb137de1313c1efeef2941b7c88bcd259192974",
+  "tree": "9a74ae8b01b2db12a1600706ebd9ac67abb772bd",
+  "contracts": [
+    "scripts/test-vault-m92-medication-premium-2.cjs",
+    "scripts/test-vault-m93-home-brain-documents.cjs",
+    "scripts/test-vault-m94-notifications-update.cjs",
+    "scripts/test-vault-v281-guided-close.cjs",
+    "scripts/test-vault-a7-m6-premium-closeout.cjs",
+    "scripts/test-vault-m153-p6-visual-360.cjs",
+    "scripts/test-vault-m148-p3.cjs",
+    "scripts/test-vault-m126-manufacturer-batch-closure.cjs",
+    "scripts/test-vault-m127-closure.cjs",
+    "scripts/test-vault-m128-manufacturer-edit.cjs",
+    "scripts/test-vault-m129-manufacturer-360.cjs",
+    "scripts/test-vault-m130-video-navigation-fenix.cjs",
+    "scripts/test-vault-m131-home-medication-density.cjs",
+    "scripts/test-vault-m132-mobile-medication-density.cjs",
+    "scripts/test-vault-m133-home-brain-grouping.cjs",
+    "scripts/test-vault-m134-fenix-branding.cjs",
+    "scripts/test-vault-m135-sync-integrity.cjs",
+    "scripts/test-vault-m136-visual-navigation.cjs",
+    "scripts/test-vault-m137-temporary-course-integrity.cjs",
+    "scripts/test-vault-m138-visual-identity.cjs",
+    "scripts/test-vault-m139-global-visual.cjs",
+    "scripts/test-vault-m140-supply.cjs",
+    "scripts/test-vault-m141-visual-viewport.cjs",
+    "scripts/test-vault-m141-stock-unit.cjs",
+    "scripts/test-vault-m142-documents.cjs",
+    "scripts/test-vault-m143-action-gate.cjs",
+    "scripts/test-vault-home-harmony.cjs",
+    "scripts/test-vault-m95-monthly-safety.cjs",
+    "scripts/test-vault-m96-care-episodes.cjs",
+    "scripts/test-vault-m97-cross-evolutions.cjs",
+    "scripts/test-vault-m105-medication-links.cjs",
+    "scripts/test-vault-m104-care-quality.cjs",
+    "scripts/test-vault-m103-p3-sync-truth.cjs",
+    "scripts/test-vault-m103-p2-dose-actions.cjs",
+    "scripts/test-vault-m103-p1-privacy-recovery.cjs",
+    "scripts/test-vault-m102-p4-followup-inbox.cjs",
+    "scripts/test-vault-m102-p3-fenix-brain.cjs",
+    "scripts/test-vault-m102-p2-face-performance.cjs",
+    "scripts/test-vault-m102-p1-avatar-brain.cjs",
+    "scripts/test-vault-m101-p4-quality.cjs",
+    "scripts/test-vault-m101-p3-native-hrv.cjs",
+    "scripts/test-vault-m101-p2-native-steps.cjs",
+    "scripts/test-vault-m101-p1-connect-coverage.cjs",
+    "scripts/test-vault-m100-p1-family-health.cjs",
+    "scripts/test-vault-m99-p3-final.cjs",
+    "scripts/test-vault-m99-p2-recovery.cjs",
+    "scripts/test-vault-m99-notifications.cjs",
+    "scripts/test-vault-m98-reports-360.cjs",
+    "scripts/test-vault-m90-update-center-closure.cjs",
+    "scripts/test-vault-m87-m89-update-center.cjs",
+    "scripts/test-vault-m77-m79-premium-closure.cjs",
+    "scripts/test-vault-m76-final-visual-ux.cjs",
+    "scripts/test-vault-m75-visible-coherence.cjs",
+    "scripts/test-vault-m74-local-integrity.cjs",
+    "scripts/test-vault-m72-reliability.cjs",
+    "scripts/test-vault-m71-final-visual-contract.cjs",
+    "scripts/test-vault-m69-premium-closure.cjs",
+    "scripts/test-vault-m70-video-functional-360.cjs",
+    "scripts/test-vault-m67-retro-navigation.cjs",
+    "scripts/test-vault-m67-final-certification.cjs",
+    "scripts/test-v91-sync-pipeline-performance-contract.mjs",
+    "scripts/test-v234-avatar-sync.cjs",
+    "scripts/test-vault-m66-sync-reliability.cjs",
+    "scripts/test-vault-m65-care-360.cjs",
+    "scripts/test-vault-m64-premium-performance.cjs",
+    "scripts/test-vault-m63-notifications-search.cjs",
+    "scripts/test-vault-m62-retro-batch.cjs",
+    "scripts/test-vault-m61-help.cjs",
+    "scripts/test-vault-m60-medication-form-ux.cjs",
+    "scripts/test-vault-m59-medication-journey.cjs",
+    "scripts/test-vault-m58-premium-daily-ux.cjs",
+    "scripts/test-vault-m57-android-export.cjs",
+    "scripts/test-vault-m56-form-selection.cjs",
+    "scripts/test-vault-m55-progressive-ux.cjs",
+    "scripts/test-vault-m54-dialog-guard.cjs",
+    "scripts/test-vault-m53-global-resilience.cjs",
+    "scripts/test-vault-m52-sync-resilience.cjs",
+    "scripts/test-vault-m50-documents-workspace.cjs",
+    "scripts/test-vault-m51-care-journey.cjs",
+    "scripts/test-vault-m49-list-navigation.cjs",
+    "scripts/test-vault-m48-mobile-stability.cjs",
+    "scripts/test-vault-m26-restock-navigation.cjs",
+    "scripts/test-vault-m25-premium-longlist-hotpath.cjs",
+    "scripts/test-vault-m24-r3-global-visual-hotpath.cjs",
+    "scripts/test-vault-m23-history-hotpath.cjs",
+    "scripts/test-vault-m22-timeline-reconciliation.cjs",
+    "scripts/test-vault-m21-committed-card-render.cjs",
+    "scripts/test-vault-m20-owner-day-dose-read.cjs",
+    "scripts/test-vault-m19-today-projection-hotpath.cjs",
+    "scripts/test-vault-m18-today-hotpath.cjs",
+    "scripts/test-vault-m17-today-dose-performance.cjs",
+    "scripts/test-vault-m18-medication-navigation-fenix.cjs",
+    "scripts/test-vault-m17-relational-hierarchy-fenix.cjs",
+    "scripts/test-vault-m16-today-data-evidence-fenix.cjs",
+    "scripts/test-vault-m15-appointment-timeline-fenix.cjs",
+    "scripts/test-vault-m14-home-today-fenix.cjs",
+    "scripts/test-vault-m13-detail-architecture-fenix.cjs",
+    "scripts/test-vault-m12-clinical-progressive-fenix.cjs",
+    "scripts/test-vault-m11-mobile-density-fenix.cjs",
+    "scripts/test-vault-m10-premium-ux-face.cjs",
+    "scripts/test-vault-m9-catalog-fenix.cjs",
+    "scripts/test-vault-m8-formats-fenix.cjs",
+    "scripts/test-vault-m7-medication-appearance-fenix.cjs",
+    "scripts/test-vault-m6-hierarchy-fenix.cjs",
+    "scripts/test-vault-m5-document-form-fenix.cjs",
+    "scripts/test-vault-m4-archive-avatar.cjs",
+    "scripts/test-vault-m3-medication-forms.cjs",
+    "scripts/test-vault-m2-pure-projections.cjs",
+    "scripts/test-vault-m1-structural.cjs",
+    "scripts/test-p15-r9-r10-home-today-clinical-render.cjs",
+    "scripts/test-p15-r9-r9-care-home-today-avatar.cjs",
+    "scripts/test-p15-r9-r8-appointment-visibility-evidence.cjs",
+    "scripts/test-p15-r9-r7-owner-timeline-ux.cjs",
+    "scripts/test-p15-r9-r6-modularity-brain-avatar.cjs",
+    "scripts/test-home-today-v9-contract.mjs",
+    "scripts/test-p15-r9-r5-performance-continuity.cjs",
+    "scripts/test-p15-r9-r4-evidence-home-fenix.cjs",
+    "scripts/test-p15-r9-r3-authority-home-today.cjs",
+    "scripts/test-p15-r8-r4-brain-ledger-real-contract.cjs",
+    "scripts/test-p15-r8-r3-brain-v5-compat.cjs",
+    "scripts/test-p15-r8-r2-v94-legacy-safety.cjs",
+    "scripts/test-p15-r8-home-rail-quality-a11y.cjs",
+    "scripts/test-p15-r7-medication-insights-modules.cjs",
+    "scripts/test-p15-r6-medication-routine-modules.cjs",
+    "scripts/test-v94-sos-after-discontinuation-contract.mjs",
+    "scripts/test-p15-r5-stock-suspension-ux-brain-avatar.cjs",
+    "scripts/test-p15-r4-prescription-history-stability.cjs",
+    "scripts/test-p15-r3-care-network-ownership-avatar-brain.cjs",
+    "scripts/test-p15-r2-clinical-cost-detail-adaptive.cjs",
+    "scripts/test-p15-r1-r2-v197-rescue.cjs",
+    "scripts/test-p15-r1-stable-modules.cjs",
+    "scripts/test-p14-r6-r4-v70-navigation.cjs",
+    "scripts/test-p14-r6-r3-historical-price.cjs",
+    "scripts/test-p14-r6-clinical-modules-brain-avatar.cjs",
+    "scripts/test-p14-r5-r2-v271-rescue.cjs",
+    "scripts/test-p14-r5-medication-scope-regulatory-ux.cjs",
+    "scripts/test-p14-r4-structural-hierarchy-brain-avatar.cjs",
+    "scripts/test-p14-r3-home-today-brain-avatar.cjs",
+    "scripts/test-p14-r2-medication-ux-avatar-brain.cjs",
+    "scripts/test-p14-focus-hierarchy-brain-avatar.cjs",
+    "scripts/test-p13-device-cert.cjs",
+    "scripts/test-v351-medication-preview-brain-avatar.cjs",
+    "scripts/test-v350-medication-identity-avatar-performance.cjs",
+    "scripts/test-v349-medication-catalog-avatar.cjs",
+    "scripts/test-v348-medication-form-architecture-avatar.cjs",
+    "scripts/test-v347-pending-agenda-brain-avatar.cjs",
+    "scripts/test-v346-today-home-projection-avatar.cjs",
+    "scripts/test-v345-page-modules-performance.cjs",
+    "scripts/test-v344-today-home-brain-avatar-performance.cjs",
+    "scripts/test-v343-medication-details-command-avatar.cjs",
+    "scripts/test-v342-medication-rendering-avatar.cjs",
+    "scripts/v341-release/test-v341.cjs",
+    "scripts/test-v334-visible-filters-hierarchy.cjs",
+    "scripts/test-v333-fenix-navigation-gpu.cjs",
+    "scripts/test-v332-operational-ux.cjs",
+    "scripts/test-v330-fenix-health-preview.cjs",
+    "scripts/test-v329-care-supply-safety.cjs",
+    "scripts/test-v328-medication-card-care-navigation.cjs",
+    "scripts/test-v327-document-archive-prescription-avatar.cjs",
+    "scripts/test-v326-access-supply-documents-brain-avatar.cjs",
+    "scripts/test-v325-personal-health-brain-avatar-performance.cjs",
+    "scripts/test-v324-medication-portfolio-brain-avatar.cjs",
+    "scripts/test-v323-temporary-treatment-360.cjs",
+    "scripts/test-v321-global-health-focus.cjs",
+    "scripts/test-v320-details-brain-focus.cjs",
+    "scripts/test-v319-medication-detail-progressive.cjs",
+    "scripts/test-v318-medication-compact-operations.cjs",
+    "scripts/test-v311-structural-clinical-pages.cjs",
+    "scripts/test-v312-treatment-dossier-continuity.cjs",
+    "scripts/test-v313-renewal-event-graph.cjs",
+    "scripts/test-v314-surgery-dossier-authority.cjs",
+    "scripts/test-v315-consultation-exam-dossiers.cjs",
+    "scripts/test-v316-medication-form-dossier.cjs",
+    "scripts/test-v317-general-document-form-dossier.cjs",
+    "scripts/test-v310-sync-offline-continuity.cjs",
+    "scripts/test-v309-brain-avatar-continuity.cjs",
+    "scripts/test-v308-today-dose-360.cjs",
+    "scripts/test-v302-global-ui-macro.cjs",
+    "scripts/test-v301-shared-clinical-ui.cjs",
+    "scripts/test-v300-medication-hierarchy-owner.cjs",
+    "scripts/test-v299-medication-details-list.cjs",
+    "scripts/test-v286-planned-purchase-native-agenda.cjs",
+    "scripts/test-v285-financial-horizons-consultation-avatar.cjs",
+    "scripts/test-v284-unified-care-agenda-avatar-native.cjs",
+    "scripts/test-v283-notification-times-reschedule.cjs",
+    "scripts/test-v282-prescription-planning-treatment-authority.cjs",
+    "scripts/test-v281-upcoming-dose-agenda-brain-avatar.cjs",
+    "scripts/test-v280-pending-dose-session-avatar.cjs",
+    "scripts/test-v279-care-access-authority-brain-avatar.cjs",
+    "scripts/test-v278-brain-canonical-dose-evidence.cjs",
+    "scripts/test-v275-home-notifications-sync.cjs",
+    "scripts/test-v274-medication-supply-avatar-workspace.cjs",
+    "scripts/test-v272-avatar-supply-dose-resilience.cjs",
+    "scripts/test-v271-supply-index-medication-surfaces-avatar.cjs",
+    "scripts/test-v270-care-plan-notifications-surfaces.cjs",
+    "scripts/test-v269-executive-care-plan-avatar.cjs",
+    "scripts/test-v268-reactive-history-consultation.cjs",
+    "scripts/test-v267-care-plan-history-consultation.cjs",
+    "scripts/test-v266-canonical-medication-queue.cjs",
+    "scripts/test-v265-brain-memory-medication-avatar.cjs",
+    "scripts/test-v264-care-plan-memory.cjs",
+    "scripts/test-v263-shared-decision-surfaces.cjs",
+    "scripts/test-v262-brain-explainable-priority.cjs",
+    "scripts/test-v261-brain-care-plan.cjs",
+    "scripts/surgery21/selftest.mjs",
+    "scripts/test-v260-global-closeout.cjs",
+    "scripts/test-v259-longitudinal-consultation-documents.cjs",
+    "scripts/test-v258-shared-care-command-surfaces.cjs",
+    "scripts/test-v257-brain-forecast-agenda-avatar.cjs",
+    "scripts/test-v256-event-authority-forms-avatar.cjs",
+    "scripts/test-v255-medication-workspace-avatar.cjs",
+    "scripts/test-v254-regulatory-coverage-notifications-avatar.cjs",
+    "scripts/test-v253-brain-readiness-calibration-avatar.cjs",
+    "scripts/test-v252-brain-associations-supply-routes.cjs",
+    "scripts/test-v251-clinical-report-forecast-avatar.cjs",
+    "scripts/test-v250-brain-portfolio-orchestration.cjs",
+    "scripts/test-v246-journey-memory-notification-avatar.cjs",
+    "scripts/test-v247-temporal-brain-sync-avatar.cjs",
+    "scripts/test-v248-brain-notifications-financial.cjs",
+    "scripts/test-v249-medication-cost-authority.cjs",
+    "scripts/test-v245-care-journeys-today-avatar.cjs",
+    "scripts/test-v244-decision-brief-avatar.cjs",
+    "scripts/test-v243-brain-memory-evidence-surfaces-avatar.cjs",
+    "scripts/test-v242-medication-agenda-presentation-avatar.cjs",
+    "scripts/test-v241-avatar-looks-fit.cjs",
+    "scripts/test-v240-avatar-live-preview.cjs",
+    "scripts/test-v239-inclusive-avatar-onboarding.cjs",
+    "scripts/test-v238-care-surfaces-avatar.cjs",
+    "scripts/test-v237-medication-care-path.cjs",
+    "scripts/test-v236-brain-next-core.cjs",
+    "scripts/test-v228-stability.cjs",
+    "scripts/test-v228-ui-contract.cjs",
+    "scripts/test-v228-alert-context.cjs",
+    "scripts/test-v228-final-experience.cjs",
+    "scripts/test-v229-course-prescription.cjs",
+    "scripts/test-v230-planned-course-transaction.cjs",
+    "scripts/test-v231-medication-course.cjs",
+    "scripts/test-v227-care-network-avatar.cjs",
+    "scripts/test-v226-dose-scheduler-brain-avatar.cjs",
+    "scripts/test-v225-care-rhythm-avatar.cjs",
+    "scripts/test-v224-clinical-journal-consultation-avatar.cjs",
+    "scripts/test-v223-today-longitudinal-avatar.cjs",
+    "scripts/test-v222-continuity-avatar-experience.cjs",
+    "scripts/test-v221-prescription-acquisition-avatar.cjs",
+    "scripts/test-v220-renewal-day-avatar.cjs",
+    "scripts/test-v219-continuity-supply-avatar.cjs",
+    "scripts/test-v218-overdue-access-avatar.cjs",
+    "scripts/test-v217-prescription-meaning-access-avatar.cjs",
+    "scripts/test-v216-prescription-stages-brain-avatar.cjs",
+    "scripts/test-v215-prescription-archive-withdrawal-avatar.cjs",
+    "scripts/test-v214-care-network-index-avatar-brain.cjs",
+    "scripts/test-v213-bidirectional-supply-avatar-brain.cjs",
+    "scripts/test-v212-clinical-projection-avatar-semantics.cjs",
+    "scripts/test-v211-health-dashboard-avatar-performance.cjs",
+    "scripts/test-v210-supply-relationship-visual-avatar.cjs",
+    "scripts/test-v209-overdue-withdrawal-brain-avatar.cjs",
+    "scripts/test-v208-shared-brain-avatar-expression.cjs",
+    "scripts/test-v207-brain-context-avatar-posture.cjs",
+    "scripts/test-v206-today-context-performance.cjs",
+    "scripts/test-v204-access-brain-reminders-avatar.cjs",
+    "scripts/test-v205-person-vault-notifications-avatar.cjs",
+    "scripts/test-v203-access-reschedule.cjs",
+    "scripts/test-v201-recovered.cjs",
+    "scripts/test-v202-avatar-preview.cjs",
+    "scripts/test-v200-care-network-performance-avatar.cjs",
+    "scripts/test-v199-relational-sync-notifications.cjs",
+    "scripts/test-v198-personal-vault-experience.cjs",
+    "scripts/test-v197-medication-treatment-details.cjs",
+    "scripts/test-v196-progressive-shell-avatar.cjs",
+    "scripts/test-v195-care-network-avatar-posture.cjs",
+    "scripts/test-v194-intelligence-command.cjs",
+    "scripts/test-v193-evolution-navigation.cjs",
+    "scripts/test-v192-care-records-avatar-face.cjs",
+    "scripts/test-v191-access-command-avatar-shoes.cjs",
+    "scripts/test-v190-treatment-command-avatar-legs.cjs",
+    "scripts/test-v189-supply-command-avatar-torso.cjs",
+    "scripts/test-v188-clinical-timeline-avatar-shoulders.cjs",
+    "scripts/test-v187-withdrawal-command-avatar-wrists.cjs",
+    "scripts/test-v186-medication-access-avatar.cjs",
+    "scripts/test-v185-clinical-agenda-avatar-joints.cjs",
+    "scripts/test-v184-pending-command-avatar-contours.cjs",
+    "scripts/test-v183-health-network-avatar-grip.cjs",
+    "scripts/test-v182-health-routine-avatar-face.cjs",
+    "scripts/test-v181-hydration-command-avatar.cjs",
+    "scripts/test-v180-treatment-care-graph.cjs",
+    "scripts/test-v179-sync-recovery-ux.cjs",
+    "scripts/test-v178-avatar-inspection.cjs",
+    "scripts/test-v177-avatar-render-budget.cjs",
+    "scripts/test-v176-document-command.cjs",
+    "scripts/test-v175-today-dose-command.cjs",
+    "scripts/test-v174-health-arrivals-insight.cjs",
+    "scripts/test-v173-avatar-silhouette.cjs",
+    "scripts/test-v172-health-overview.cjs",
+    "scripts/test-v171-avatar-face-identity.cjs",
+    "scripts/test-v170-avatar-identity-accessories.cjs",
+    "scripts/test-v169-avatar-anatomy-camera.cjs",
+    "scripts/test-v168-avatar-intelligence-experience.cjs",
+    "scripts/test-v167-avatar-planned-management.cjs",
+    "scripts/test-v166-planned-dose-experience.cjs",
+    "scripts/test-v165-contextual-health.cjs",
+    "scripts/test-v164-avatar-scene.cjs",
+    "scripts/test-v163-stock-integrity.cjs",
+    "scripts/test-v162-avatar-framing.cjs",
+    "scripts/test-v161-treatment-care.cjs",
+    "scripts/test-v160-search-schedules.cjs",
+    "scripts/test-v159-dose-review.cjs",
+    "scripts/test-v155-avatar-documents.cjs",
+    "scripts/test-v155-sos-clorpromazina.cjs",
+    "scripts/test-v156-clinical-experience.cjs",
+    "scripts/test-v157-notification-copy.cjs",
+    "scripts/test-v158-avatar-premium.cjs",
+    "scripts/test-v154-surgery-markers.cjs",
+    "scripts/test-v153-surgery-body.cjs",
+    "scripts/test-v152-avatar-agenda.cjs",
+    "scripts/test-v151-mood-persistence.cjs",
+    "scripts/test-v151-body-context.cjs",
+    "scripts/test-v149-cycle-summary.cjs",
+    "scripts/test-v148-measurement-context.cjs",
+    "scripts/test-v147-avatar-context.cjs",
+    "scripts/test-v146-avatar-taps.cjs",
+    "scripts/test-v145-metric-trend.cjs",
+    "scripts/test-v144-density-performance.cjs",
+    "scripts/test-v143-relational-avatar.cjs",
+    "scripts/test-v142-avatar-brain.cjs",
+    "scripts/test-v140-cycle-avatar.cjs",
+    "scripts/test-v139-final-experience.cjs",
+    "scripts/test-v138-avatar-brain.cjs",
+    "scripts/test-v137-consolidation.cjs",
+    "scripts/test-health-avatar-v118.cjs",
+    "scripts/test-v131-supply-integrity.cjs",
+    "scripts/test-v132-relational-integrity.cjs",
+    "scripts/test-v133-context-navigation.cjs",
+    "scripts/test-v134-dossier.cjs",
+    "scripts/test-v125.cjs",
+    "scripts/test-v124.cjs",
+    "scripts/test-v123.cjs",
+    "scripts/test-v122.cjs",
+    "scripts/test-v121.cjs",
+    "scripts/test-v120.cjs",
+    "scripts/test-brain-v119.cjs",
+    "scripts/test-v104-withdrawal-experience-contract.mjs",
+    "scripts/test-v69-final-release-contract.mjs",
+    "scripts/test-v66-selective-biometric-contract.mjs",
+    "scripts/test-v67-final-product-experience-contract.mjs",
+    "scripts/test-v68-resilience-recovery-contract.mjs",
+    "scripts/test-v66-biometric-legacy-closure-contract.mjs",
+    "scripts/test-pre-apk-intelligence-nav-contract.mjs",
+    "scripts/test-final-pwa-polish-sync-contract.mjs",
+    "scripts/test-brain-v4-final-integration-contract.mjs",
+    "scripts/test-brain-v4-experience-clinical-contract.mjs",
+    "scripts/test-brain-v4-core-contract.mjs",
+    "scripts/test-notification-entry-biometric-hotfix-contract.mjs",
+    "scripts/test-pre-apk-grouped-dose-notifications.mjs",
+    "scripts/test-pre-apk-global-audit-contract.mjs",
+    "scripts/test-pre-apk-v25-contract.mjs",
+    "scripts/test-v28-perfis-edge-to-edge-contract.mjs",
+    "scripts/test-v29-native-runtime-contract.mjs",
+    "scripts/test-v30-2-native-contract.mjs",
+    "scripts/test-v31-layout-nav-contract.mjs",
+    "scripts/test-v32-biometria-seguranca-contract.mjs",
+    "scripts/test-v33-fechamento-contract.mjs",
+    "scripts/test-v33-1-navigation-contract.mjs",
+    "scripts/test-v33-2-pending-dose-time-contract.mjs",
+    "scripts/test-v34-1-modal-layer-contract.mjs",
+    "scripts/test-v34-2-modal-portal-contract.mjs",
+    "scripts/test-v35-1-regulatory-border-contract.mjs",
+    "scripts/test-v36-1-event-contracts.mjs",
+    "scripts/test-v36-2-userid-contract.mjs",
+    "scripts/test-v36-notifications-contract.mjs",
+    "scripts/test-v37-home-navigation-contract.mjs",
+    "scripts/test-v40-bottomnav-normalization-contract.mjs",
+    "scripts/test-v41-biometric-lifecycle-contract.mjs",
+    "scripts/test-v42-1-lifecycle-deterministic-contract.mjs",
+    "scripts/test-v42-lifecycle-single-authority-contract.mjs",
+    "scripts/test-v43-overdue-dose-notifications-contract.mjs",
+    "scripts/test-v44-contextual-fab-contract.mjs",
+    "scripts/test-v45-hoje-doses-contract.mjs",
+    "scripts/test-v46-temporal-engine-contract.mjs",
+    "scripts/test-v47-clinical-stock-contract.mjs",
+    "scripts/test-v48-clinical-time-contract.mjs",
+    "scripts/test-v49-today-v3-contract.mjs",
+    "scripts/test-v50-1-sync-contract.mjs",
+    "scripts/test-v50-1-1-sync-terminal-state-contract.mjs",
+    "scripts/test-v50-brain-v2-contract.mjs",
+    "scripts/test-v51-notifications-v2-contract.mjs",
+    "scripts/test-v52-notification-brain-contract.mjs",
+    "scripts/test-v53-biometric-policy-contract.mjs",
+    "scripts/test-v54-financial-intelligence-contract.mjs",
+    "scripts/test-v55-health-intelligence-v3-contract.mjs",
+    "scripts/test-v56-final-stability-contract.mjs",
+    "scripts/test-v57-1-hotfix-contract.mjs",
+    "scripts/test-v57-brain-v3-contract.mjs",
+    "scripts/test-v58-contextual-brain-contract.mjs",
+    "scripts/test-v59-regulatory-identity-contract.mjs",
+    "scripts/test-v60-coherence-contract.mjs",
+    "scripts/test-v61-behavioral-memory-contract.mjs",
+    "scripts/test-v61-brain-memory-contract.mjs",
+    "scripts/test-v61-final-contract.mjs",
+    "scripts/test-v62-final-experience-contract.mjs",
+    "scripts/test-v63-sync-truth-contract.mjs",
+    "scripts/test-v64-super-final-contract.mjs",
+    "scripts/test-vault-auth-singleton-v63-contract.mjs",
+    "scripts/test-vault-offline-session-v62-contract.mjs",
+    "scripts/test-v71-1-empirical-repair-contract.mjs",
+    "scripts/test-v72-product-closure-contract.mjs",
+    "scripts/test-v100-dose-time-regulatory-gap-contract.mjs",
+    "scripts/test-v111-health-profile.mjs",
+    "scripts/test-v112-lifestyle-insights.mjs",
+    "scripts/test-v113-health-connect.mjs",
+    "scripts/test-v114-health-experience.mjs",
+    "scripts/test-v115-device-brain-trends.mjs",
+    "scripts/test-v101-behavior-priority.mjs",
+    "scripts/test-v102-health-supply-contract.mjs",
+    "scripts/test-v103-sus-knowledge-contract.mjs",
+    "scripts/test-v273-information-hierarchy-avatar.cjs",
+    "scripts/test-v276-temporal-dose-authority-avatar.cjs",
+    "scripts/test-v277-dose-slot-notification-authority.cjs",
+    "scripts/test-vault-m108-ux-pdf.cjs",
+    "scripts/test-vault-m109-medication-list-density.cjs",
+    "scripts/test-vault-m110-home-today.cjs",
+    "scripts/test-vault-m107-closure.cjs",
+    "scripts/test-vault-m111-native-updates.cjs",
+    "scripts/test-vault-m112-brain-v52.cjs",
+    "scripts/test-vault-m113-patterns-safety.cjs",
+    "scripts/test-vault-m114a-private-care.cjs",
+    "scripts/test-vault-m114b-care360.cjs",
+    "scripts/test-vault-m114c-private-session.cjs",
+    "scripts/test-vault-m115-continuity.cjs",
+    "scripts/test-vault-m116-human-support.cjs",
+    "scripts/test-vault-m117-update-ux.cjs",
+    "scripts/test-vault-m118-global-ux.cjs",
+    "scripts/test-vault-m119-trust-spine.cjs",
+    "scripts/test-vault-m120-daily-command.cjs",
+    "scripts/test-vault-m121-continuity-360.cjs",
+    "scripts/test-vault-m122-fenix-lens.cjs",
+    "scripts/test-vault-m123-global-closure.cjs",
+    "scripts/test-vault-m124-monthly-temporary.cjs",
+    "scripts/verify-vault-android-m123.cjs",
+    "scripts/test-vault-m125-continuity-triage.cjs",
+    "scripts/test-vault-brain-v7-universal.cjs",
+    "scripts/test-vault-supply-shield-ss7.cjs",
+    "scripts/test-vault-visual-studio-v8.cjs",
+    "scripts/test-vault-v8p2-integration.cjs",
+    "scripts/test-vault-m143-p1-r3.cjs",
+    "scripts/test-vault-m143-p2-consolidated.cjs",
+    "scripts/test-vault-m143-p3-closure.cjs",
+    "scripts/test-vault-m144-integration.cjs",
+    "scripts/test-vault-m145-video-navigation.cjs",
+    "scripts/test-vault-m146-premium-ux.cjs",
+    "scripts/test-vault-m144-consolidated.cjs",
+    "scripts/test-vault-m147-p0.cjs",
+    "scripts/test-vault-m147-p1.cjs",
+    "scripts/test-vault-m148-p1.cjs",
+    "scripts/test-vault-m148-p2.cjs",
+    "scripts/test-vault-m149.cjs",
+    "scripts/test-vault-m150-p1.cjs",
+    "scripts/test-vault-m150-p2.cjs",
+    "scripts/test-vault-m152b-final.cjs",
+    "scripts/test-vault-m150-p3.cjs",
+    "scripts/test-vault-m150-p4.cjs",
+    "scripts/test-vault-m150-p4-r2.cjs",
+    "scripts/test-vault-m150-p4-r3.cjs",
+    "scripts/test-vault-m150-p5-p1.cjs",
+    "scripts/test-vault-m150-p5-p2.cjs",
+    "scripts/test-vault-m150-p5-p3.cjs",
+    "scripts/test-vault-m150-p5-p4.cjs",
+    "scripts/test-vault-m150-p5-p5.cjs",
+    "scripts/test-vault-m153-p1-governance.cjs",
+    "scripts/test-vault-m153-p2-rls-lot.cjs",
+    "scripts/test-vault-m153-p3-android-stability.cjs",
+    "scripts/test-vault-m153-p4-knowledge.cjs",
+    "scripts/test-ux-p6-clinical-experience.cjs",
+    "scripts/test-vault-m153-p7-build2117.cjs",
+    "scripts/test-vault-m153-p71b-closure.cjs",
+    "scripts/test-vault-m153-p71-visual-apk.cjs",
+    "scripts/test-vault-ci360-p1-evidence.cjs",
+    "scripts/test-vault-ci360-p2-safety.cjs",
+    "scripts/test-vault-ci360-p3-longitudinal.cjs",
+    "scripts/test-vault-ci360-p4-pharmalens.cjs",
+    "scripts/test-vault-m153-p6-visual-recovery.cjs",
+    "scripts/test-vault-m153-p6-visual-continuity.cjs",
+    "scripts/test-vault-m153-p7-relacional-r2.cjs",
+    "scripts/test-vault-m153-p6-r5-regression.cjs",
+    "scripts/test-vault-m153-p7-r3-ux.cjs",
+    "scripts/test-vault-m153-p7-r4-ux.cjs",
+    "scripts/test-vault-ci360-p6-a1-withdrawal-evidence.cjs",
+    "scripts/test-vault-ci360-p6-consolidated.cjs",
+    "scripts/test-vault-ci360-p6-p2-r2-link-review.cjs",
+    "scripts/test-vault-ci360-p6-p2-r3-temporary-schedule.cjs",
+    "scripts/test-vault-ci360-p6-p2-m1-medication-consultation.cjs",
+    "scripts/test-vault-ci360-p6-p2-m2-careflow.cjs",
+    "scripts/test-vault-ci360-m3-p1.cjs",
+    "scripts/test-vault-ci360-m3-p2.cjs",
+    "scripts/test-vault-ci360-m3-p3.cjs",
+    "scripts/test-vault-careflow-p0p1-r1.cjs",
+    "scripts/test-vault-careflow-r2-contexto.cjs",
+    "scripts/test-vault-careflow-r3-rotas.cjs",
+    "scripts/test-vault-r5-integracao-clinica.cjs",
+    "scripts/test-vault-r6-unificacao-canonica.cjs",
+    "scripts/test-vault-m1-exames-offline.cjs",
+    "scripts/test-vault-m2-exams-360.cjs",
+    "scripts/test-vault-m3-clinical-assets.cjs",
+    "scripts/test-vault-m4-clinical-journey.cjs",
+    "scripts/test-vault-a7-macro1.cjs",
+    "scripts/test-vault-a7-macro2.cjs",
+    "scripts/test-vault-a7-macro3.cjs",
+    "scripts/test-vault-a7-work-v28-continuity.cjs",
+    "scripts/test-vault-m4-p2-links-medication-ux.cjs",
+    "scripts/test-vault-m5-reab-macro1.cjs",
+    "scripts/test-vault-m5-reab-macro2.cjs",
+    "scripts/test-vault-r4-respiro-global.cjs",
+    "scripts/test-vault-ci360-p6-p3-premium-pdf.cjs",
+    "scripts/test-vault-ci360-p6-p3-d1.cjs",
+    "scripts/test-vault-ci360-p6-p3b-integrity.cjs",
+    "scripts/test-vault-ci360-p6-p4a-episode.cjs",
+    "scripts/test-vault-ci360-p6-p3-d3.cjs",
+    "scripts/test-vault-ci360-p6-p4-macro1.cjs",
+    "scripts/test-vault-ci360-p6-p5-macro2.cjs",
+    "scripts/test-vault-ia20-p1.cjs",
+    "scripts/test-vault-ia20-p2.cjs",
+    "scripts/test-vault-ia20-p3.cjs",
+    "scripts/test-vault-ia20-p3b-documentos.cjs",
+    "scripts/test-vault-ci360-p6-p6-macro3.cjs",
+    "scripts/test-vault-ux360-public-identity-r2.cjs",
+    "scripts/test-vault-quality-gate-qg1.cjs",
+    "scripts/test-vault-a3-p1-continuity.cjs",
+    "scripts/test-vault-a3-macro2.cjs",
+    "scripts/test-vault-a4-regimen-360.cjs",
+    "scripts/test-vault-a4-macro2.cjs",
+    "scripts/test-vault-ci360-p6-p4b-pharmalens.cjs",
+    "scripts/test-vault-ci360-p6-p4c-catalogo.cjs",
+    "scripts/test-vault-ci360-p6-p4d-catalogo.cjs",
+    "scripts/test-vault-ci360-d4-p1-jornada.cjs",
+    "scripts/test-vault-ux360-r4-video.cjs",
+    "scripts/test-vault-ux360-r5-geometry.cjs",
+    "scripts/test-vault-stability-h01-h04.cjs",
+    "scripts/test-vault-stability-h05-h06.cjs",
+    "scripts/test-vault-stability-h07.cjs",
+    "scripts/test-vault-ci360-d4-p2-decisoes.cjs",
+    "scripts/test-vault-ci360-d4-p3-agenda.cjs",
+    "scripts/test-vault-ci360-d4-p5-inicio.cjs",
+    "scripts/test-vault-ia20-p4-home-viva.cjs",
+    "scripts/test-vault-ia20-p5-qg3.cjs",
+    "scripts/test-vault-ui360-r4-final.cjs",
+    "scripts/test-vault-ui360-r5.cjs",
+    "scripts/test-vault-medication-document-sync-p0.cjs",
+    "scripts/test-vault-p0-consulta-sync-owner.cjs",
+    "scripts/test-vault-a5-v28.cjs",
+    "scripts/test-vault-v34-closeout.cjs",
+    "scripts/test-vault-v34x-substituta.cjs",
+    "scripts/test-vault-v34y-integrity.cjs",
+    "scripts/test-vault-v34z-final-closure.cjs",
+    "scripts/test-vault-v34zf-bridge.cjs",
+    "scripts/test-vault-a8-vaccination-360.cjs",
+    "scripts/test-vault-a8-a9-integrated-360.cjs",
+    "scripts/test-vault-a7-m5-clinical-continuity-360.cjs",
+    "scripts/test-vault-a10-integral-360.cjs",
+    "scripts/test-vault-guardian-ga01-gp2-clinical.cjs",
+    "scripts/test-vault-ga02-ga07-guardian.cjs",
+    "scripts/test-vault-a11-integral-360.cjs",
+    "scripts/test-vault-update360-premium.cjs",
+    "scripts/test-vault-version-governance.cjs",
+    "scripts/test-vault-android-promotion-policy.cjs",
+    "scripts/test-vault-guardian3-ux.cjs",
+    "scripts/test-vault-frente-b-video-relacional.cjs",
+    "scripts/test-vault-vital-integral.cjs",
+    "scripts/test-vault-macro02-a10-dose-origin.cjs",
+    "scripts/test-vault-macro02-atomic-transport.cjs",
+    "scripts/test-vault-macro02-backup-snapshot.cjs",
+    "scripts/test-vault-macro02-canonical-writer.cjs",
+    "scripts/test-vault-macro02-compound-r6.cjs",
+    "scripts/test-vault-macro02-cutover-projection.cjs",
+    "scripts/test-vault-macro02-cutover-recovery.cjs",
+    "scripts/test-vault-macro02-dormant-authority.cjs",
+    "scripts/test-vault-macro02-dose-premium-p1.cjs",
+    "scripts/test-vault-macro02-dose-premium-p2.cjs",
+    "scripts/test-vault-macro02-dose-premium-p3.cjs",
+    "scripts/test-vault-macro02-enrollment-authority.cjs",
+    "scripts/test-vault-macro02-historical-consumers.cjs",
+    "scripts/test-vault-macro02-home-review.cjs",
+    "scripts/test-vault-macro02-host-integration.cjs",
+    "scripts/test-vault-macro02-host-review-p4.cjs",
+    "scripts/test-vault-macro02-ingress.cjs",
+    "scripts/test-vault-macro02-metadata-intent.cjs",
+    "scripts/test-vault-macro02-operational-recovery.cjs",
+    "scripts/test-vault-macro02-premium-closure.cjs",
+    "scripts/test-vault-macro02-residual-transaction.cjs",
+    "scripts/test-vault-macro02-restore-staging.cjs",
+    "scripts/test-vault-macro02-stability-reconciliation.cjs",
+    "scripts/test-vault-macro02-stock-chain-recovery.cjs",
+    "scripts/test-vault-macro02-stock-cycle.cjs"
+  ],
+  "custom": [
+    "app/page.tsx",
+    "lib/sync/pull.ts",
+    "scripts/test-v63-release-gate.mjs",
+    "scripts/test-vault-a11-integral-360.cjs",
+    "scripts/test-vault-stability-360.cjs"
+  ],
+  "delta": {
+    "app/globals.css": {
+      "mode": "100644",
+      "blob": "0b514d61c97c1b149d580eb4af6080b43352249b",
+      "origin": "stability"
+    },
+    "app/hoje/page.tsx": {
+      "mode": "100644",
+      "blob": "dd05c133b2c22f0878cd2de50f75de84b493ba05",
+      "origin": "macro02"
+    },
+    "app/page.tsx": {
+      "mode": "100644",
+      "blob": "ed4e1531864c63c9d5e6c0621b4bd7fe72eae55b",
+      "origin": "reconciled"
+    },
+    "app/recuperacao/page.tsx": {
+      "mode": "100644",
+      "blob": "c2ca45db00e596033212353d9b6d679cb9c22755",
+      "origin": "macro02"
+    },
+    "app/saude/careflow/page.tsx": {
+      "mode": "100644",
+      "blob": "392b3c4ff0a6752dd122b4f928ff1dcffe0a8de4",
+      "origin": "stability"
+    },
+    "app/saude/cirurgias/detalhes/page.tsx": {
+      "mode": "100644",
+      "blob": "559b9427fc7093368c46bf59efcf7758efca4436",
+      "origin": "stability"
+    },
+    "app/saude/engenharia-clinica/page.tsx": {
+      "mode": "100644",
+      "blob": "9b1759309bcd95f9f55a16b94c1aa0874f14ca4f",
+      "origin": "stability"
+    },
+    "app/saude/exames/pedidos/page.tsx": {
+      "mode": "100644",
+      "blob": "cd2923e38bfbc80537b0026bc51c65a6d36ea062",
+      "origin": "stability"
+    },
+    "app/saude/fornecimento/page.tsx": {
+      "mode": "100644",
+      "blob": "675ec4b2d464f5faa553bab9ddd4efb5474ac309",
+      "origin": "stability"
+    },
+    "app/saude/jornada/page.tsx": {
+      "mode": "100644",
+      "blob": "fc10e1f5dd93d8e0f4ba8477f20b806b8ef2be62",
+      "origin": "stability"
+    },
+    "app/saude/linha-clinica/page.tsx": {
+      "mode": "100644",
+      "blob": "4fca852c0f8296e5336312433883d42a3f60e742",
+      "origin": "stability"
+    },
+    "app/saude/mapa/page.tsx": {
+      "mode": "100644",
+      "blob": "4e5ff81fe4969c84299b8e970eb392f57d856d45",
+      "origin": "stability"
+    },
+    "app/saude/medicamentos/page.tsx": {
+      "mode": "100644",
+      "blob": "55969e413e13f2691141c901caf3f0d9aee7c1cc",
+      "origin": "stability"
+    },
+    "app/saude/medicamentos/revisao-retroativa/page.tsx": {
+      "mode": "100644",
+      "blob": "e6fd4035c470dd871bdb8baad9596bc5a787d8f4",
+      "origin": "macro02"
+    },
+    "app/saude/minha-saude/page.tsx": {
+      "mode": "100644",
+      "blob": "1ae7fe30b0715e92bf029d47fe4ab2997853053d",
+      "origin": "stability"
+    },
+    "app/saude/registros/page.tsx": {
+      "mode": "100644",
+      "blob": "0e1957409c9b89d5dd0026807f7ff3ebaa07da2c",
+      "origin": "stability"
+    },
+    "app/saude/registros/relatorio/page.tsx": {
+      "mode": "100644",
+      "blob": "092042dd885b82a5548e70b7b0e0bb57ffd2346a",
+      "origin": "stability"
+    },
+    "app/saude/relatorios/page.tsx": {
+      "mode": "100644",
+      "blob": "4e712116faa620209360a3b4697fb430e8a81fc1",
+      "origin": "stability"
+    },
+    "app/saude/tratamentos/detalhes/page.tsx": {
+      "mode": "100644",
+      "blob": "989b30dc5f17e4f9d2a2d1935b31b62aaba378c8",
+      "origin": "stability"
+    },
+    "app/saude/tratamentos/page.tsx": {
+      "mode": "100644",
+      "blob": "b485ab6d408faf4989d5ecdaf8eedb25d390a6b1",
+      "origin": "stability"
+    },
+    "components/PendingDosesModal.tsx": {
+      "mode": "100644",
+      "blob": "481c279c727a0f1eda1594e91454639eef0028a0",
+      "origin": "macro02"
+    },
+    "components/Providers.tsx": {
+      "mode": "100644",
+      "blob": "a124f5e67d10844cac6957ef6d4e8b4f65770fce",
+      "origin": "macro02"
+    },
+    "components/health-intelligence/BrainEvidenceWindowCI360.tsx": {
+      "mode": "100644",
+      "blob": "b0e1de5f11cfa4eb64eff09424a691b70ec94b50",
+      "origin": "stability"
+    },
+    "components/home/ClinicalEpisodePulseP4.tsx": {
+      "mode": "100644",
+      "blob": "2f83c2b60215f338db32b06a7aa346f4f53d6ced",
+      "origin": "stability"
+    },
+    "components/saude/AccessCommandOverview.tsx": {
+      "mode": "100644",
+      "blob": "b65ebc94aa366699a6f23890538a45695c271a08",
+      "origin": "stability"
+    },
+    "components/saude/BrainReturnCardD3.tsx": {
+      "mode": "100644",
+      "blob": "9d5cbed3e0ad5edebd8d9d3db7579ed488ab5e97",
+      "origin": "stability"
+    },
+    "components/saude/CanonicalExamOrdersM2.tsx": {
+      "mode": "100644",
+      "blob": "3541681f74f5b6f86a4f92fcc08eeae4f086ecde",
+      "origin": "stability"
+    },
+    "components/saude/CareFlowSummaryM2.tsx": {
+      "mode": "100644",
+      "blob": "c1ce550cae0d04cbc41e33fad3bfcc4ab603c365",
+      "origin": "stability"
+    },
+    "components/saude/CareJourney360.tsx": {
+      "mode": "100644",
+      "blob": "53497ccdea7f84f6a089dc09dcbedb9e2a807ac3",
+      "origin": "stability"
+    },
+    "components/saude/ClinicalJourneyM4.tsx": {
+      "mode": "100644",
+      "blob": "0dbfd03fc534bfdb1813d44857d619872f7390f1",
+      "origin": "stability"
+    },
+    "components/saude/ClinicalSectionNav.tsx": {
+      "mode": "100644",
+      "blob": "efccccf54c81ad10fc4618d4ba0bbf74d7b440ca",
+      "origin": "stability"
+    },
+    "components/saude/ConsultationChangeM121.tsx": {
+      "mode": "100644",
+      "blob": "18cd8e73bfcf31b07fecd8b63ce855f1918b95a3",
+      "origin": "stability"
+    },
+    "components/saude/DocumentArchiveOverview.tsx": {
+      "mode": "100644",
+      "blob": "d03ca3bbb06f886d59b71c2cad88101799cf62ae",
+      "origin": "stability"
+    },
+    "components/saude/HealthHubLauncherR5.tsx": {
+      "mode": "100644",
+      "blob": "607c53d0694b780461000e64f922aebf12bce54a",
+      "origin": "stability"
+    },
+    "components/saude/HospitalizationA5Workspace.tsx": {
+      "mode": "100644",
+      "blob": "f9bd2d5b845c27ab0d197e15d553a8d0826aa333",
+      "origin": "stability"
+    },
+    "components/saude/LazyQuickDoseModal.tsx": {
+      "mode": "100644",
+      "blob": "ae911d12188d038a934cbc09366cb2763fc2dc0d",
+      "origin": "macro02"
+    },
+    "components/saude/Macro02ActiveDeviceVerificationR5.tsx": {
+      "mode": "100644",
+      "blob": "ff2f335932a60db9618f830746cb961a0bd685c6",
+      "origin": "macro02"
+    },
+    "components/saude/Macro02AuthorityHoldR5.tsx": {
+      "mode": "100644",
+      "blob": "f22f2be1c581c245d7ed6b7d33a6748cb1b232a9",
+      "origin": "macro02"
+    },
+    "components/saude/Macro02PreparationR6.tsx": {
+      "mode": "100644",
+      "blob": "b39a5b5da25d31f953ad70b9e6428574ea92c018",
+      "origin": "macro02"
+    },
+    "components/saude/MedicationOperationalStrip.tsx": {
+      "mode": "100644",
+      "blob": "6281a75e854484ce039c355fac693e3e315f0cee",
+      "origin": "stability"
+    },
+    "components/saude/MedicationSheet360R3.tsx": {
+      "mode": "100644",
+      "blob": "c135aaa4658064c116356937c31070f5e43ed93c",
+      "origin": "stability"
+    },
+    "components/saude/QuickDoseModal.tsx": {
+      "mode": "100644",
+      "blob": "73e415bfa79b1f8c54e494b57ce423fedbbad359",
+      "origin": "macro02"
+    },
+    "components/saude/RehabM5Workspace.tsx": {
+      "mode": "100644",
+      "blob": "caac883c4002730c56d2f33dd0dcbb6914ce953d",
+      "origin": "stability"
+    },
+    "components/saude/SOSDoseModal.tsx": {
+      "mode": "100644",
+      "blob": "f242e1b8b84e770f7e5fbee41be104a6ad46f3ac",
+      "origin": "macro02"
+    },
+    "components/saude/TreatmentIdentityR03.tsx": {
+      "mode": "100644",
+      "blob": "1192326ebc0a76619ce76977034066d7a0d32dc8",
+      "origin": "stability"
+    },
+    "components/saude/TreatmentRelationOption.tsx": {
+      "mode": "100644",
+      "blob": "1a225e3e94d8b25897338eb2fbe34a793dba6534",
+      "origin": "stability"
+    },
+    "hooks/useMacro02ModeR5.ts": {
+      "mode": "100644",
+      "blob": "688b38c6ad8c9e4a432e045776d535dc969c7ab2",
+      "origin": "macro02"
+    },
+    "hooks/useSupabaseRealtime.ts": {
+      "mode": "100644",
+      "blob": "a8aaceb52c5498509fbb2aa0bfad21be8faebba3",
+      "origin": "macro02"
+    },
+    "hooks/useSyncQueue.ts": {
+      "mode": "100644",
+      "blob": "b82f91de84f16cd34bc58c5bed87ce6c95fdb0b5",
+      "origin": "macro02"
+    },
+    "lib/careflow-m2/pdf-library.ts": {
+      "mode": "100644",
+      "blob": "7f6c84dd5aaa0913ec9454b5151c2409cd763971",
+      "origin": "stability"
+    },
+    "lib/clinical-a1/repository.ts": {
+      "mode": "100644",
+      "blob": "45317d78d6c33b149f724eb74e4ed712271526ec",
+      "origin": "macro02"
+    },
+    "lib/clinical-report-360-pdf.ts": {
+      "mode": "100644",
+      "blob": "c4b32811c1cdca7998bc2126d42b9d8ca019e594",
+      "origin": "stability"
+    },
+    "lib/db/index.ts": {
+      "mode": "100644",
+      "blob": "70fc74cb35ff87fedf35d88a9f27045b68cf880a",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/active-receipt-recovery-r7.ts": {
+      "mode": "100644",
+      "blob": "695767adaf1368fe9d62bc6ab1fac959cb618823",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/authority-session.ts": {
+      "mode": "100644",
+      "blob": "bc5d76ba6c65aa8e369210eb97e099bb5d5c3045",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/backup-contract.ts": {
+      "mode": "100644",
+      "blob": "194aa34acb805a970a71d8910eaf2881dcd2a489",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/backup-recovery.ts": {
+      "mode": "100644",
+      "blob": "9506f272fcc9304a2043e3784a86c39a046b2cff",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/clinical-backup-evidence.ts": {
+      "mode": "100644",
+      "blob": "9aed2c2451dd7288ab697765e72caf7e71668eb7",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/clinical-backup-tables.ts": {
+      "mode": "100644",
+      "blob": "8df23e50eb22aeed60ae1bb3982217939dbdcb52",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-active-queue-r5.ts": {
+      "mode": "100644",
+      "blob": "d5d0688f620243a45c1dfb27a24d9741c85e7312",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-compound-r6.ts": {
+      "mode": "100644",
+      "blob": "8722bbb319b33c49f61d50982ea26946221ff7d3",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-device-authority-r5.ts": {
+      "mode": "100644",
+      "blob": "122a99e06810e2304d68994599c6ed8d112e9ef1",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-enrollment-authority.ts": {
+      "mode": "100644",
+      "blob": "2cb4fcefc4949904f111ee71d47d326a258ddc34",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-fence-read.ts": {
+      "mode": "100644",
+      "blob": "618d759f1c7fb3f9baef89d8fdabca95ff71c362",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-local-snapshot.ts": {
+      "mode": "100644",
+      "blob": "2cec1fb86df9d70e1163307b391100670548cd61",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-metadata-batch.ts": {
+      "mode": "100644",
+      "blob": "d347824d37b1a378ff6bf5b5d98fb33da02490b4",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-metadata-intent.ts": {
+      "mode": "100644",
+      "blob": "b322297f1677ea967508246246455e42bf557d68",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-metadata-pending.ts": {
+      "mode": "100644",
+      "blob": "0f20f120831325c9e9c820e29b6530205848bf21",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-metadata-transport-r5.ts": {
+      "mode": "100644",
+      "blob": "9d2e1a76bb50322f4020fcdfb5f743805acadb66",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-operational-recovery.ts": {
+      "mode": "100644",
+      "blob": "768223fd8ad9c18cf516bfa272f1bfa826d50d1b",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-projection-lab.ts": {
+      "mode": "100644",
+      "blob": "ee079f75d4a82ccbb010a1ff82c71609e16a38d9",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-recovery-transaction.ts": {
+      "mode": "100644",
+      "blob": "85a735c56d6fc30f687078203e593613280716de",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-recovery.ts": {
+      "mode": "100644",
+      "blob": "fbadbe433eb9e7a7fc52e858de9d056eb1ae7d78",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-residual-transaction.ts": {
+      "mode": "100644",
+      "blob": "9cf988ca6d40417b43f338c8bc3fe9de6f3a9322",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/cutover-storage-codec.ts": {
+      "mode": "100644",
+      "blob": "7b3e1f592d660b579fc1128a8bbfcfecae2753ea",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/dormant-release-authority.ts": {
+      "mode": "100644",
+      "blob": "8b0b1cd20bad69bb777d5d08d7c9a9deb0fe0c13",
+      "origin": "macro02"
+    },
+    "lib/dose-premium/receipt-recovery.ts": {
+      "mode": "100644",
+      "blob": "01238da81a3f156306bdc3b5962b431e87fa3654",
+      "origin": "macro02"
+    },
+    "lib/export.ts": {
+      "mode": "100644",
+      "blob": "4b0852b1a394b3f898a219dadb023328ef18edf0",
+      "origin": "macro02"
+    },
+    "lib/health-hub/r5.ts": {
+      "mode": "100644",
+      "blob": "322f662eedcfd10151b56c0ee4b2869da304ced9",
+      "origin": "stability"
+    },
+    "lib/health-intelligence/capability-catalog.ts": {
+      "mode": "100644",
+      "blob": "b757d71bcf4cfdf8c2d00d4476d460e697f30813",
+      "origin": "stability"
+    },
+    "lib/health-intelligence/medication-care-opportunities.ts": {
+      "mode": "100644",
+      "blob": "e822fc8cf9079be8bf19fba6a71e69c3a489b741",
+      "origin": "stability"
+    },
+    "lib/health-intelligence/medication-treatment-links-p7.ts": {
+      "mode": "100644",
+      "blob": "c1d80778f2ee4a7d64b134a00a6a1bc7aee58a6e",
+      "origin": "stability"
+    },
+    "lib/help/catalog.ts": {
+      "mode": "100644",
+      "blob": "dfff69ceeeb76ec80dcc67d76050aae41792b66c",
+      "origin": "stability"
+    },
+    "lib/m3/careflow-timeline.ts": {
+      "mode": "100644",
+      "blob": "793a6d5c6e61e75eaf5556d2e1d1149dad877b93",
+      "origin": "stability"
+    },
+    "lib/m3/medical-pdf-p3.ts": {
+      "mode": "100644",
+      "blob": "45d9ceb963545b8e046c50740c43acd9ac7a6de6",
+      "origin": "stability"
+    },
+    "lib/medication-catalog/persisted-snapshot.ts": {
+      "mode": "100644",
+      "blob": "c9772b873127faddbd9ac5c2aa243aa59ab3d1a8",
+      "origin": "macro02"
+    },
+    "lib/medications/regulatory-copy-ux360.ts": {
+      "mode": "100644",
+      "blob": "0c12874a1c350b9df598a75631fdf2237736b8f5",
+      "origin": "stability"
+    },
+    "lib/navigation/clinical-directory-m150.ts": {
+      "mode": "100644",
+      "blob": "49b8a13fe751dfc8e4e1ac36591a76c88344fca5",
+      "origin": "stability"
+    },
+    "lib/repositories/doseLogs.ts": {
+      "mode": "100644",
+      "blob": "8ffe97bccc0633008fb560d2e950d5596c23ab98",
+      "origin": "macro02"
+    },
+    "lib/repositories/medicamentos.ts": {
+      "mode": "100644",
+      "blob": "ea3cc18a56219fc7a0f0656e1370b0574af9522f",
+      "origin": "macro02"
+    },
+    "lib/repositories/renovacoes.ts": {
+      "mode": "100644",
+      "blob": "591698304b7dd00bcaadf379d97346c83f74ba1e",
+      "origin": "macro02"
+    },
+    "lib/repositories/retiradas.ts": {
+      "mode": "100644",
+      "blob": "0c0fea01478df2b80ff57f6e8f7822c69b0e12fc",
+      "origin": "macro02"
+    },
+    "lib/sync/enfileirarOperacao.ts": {
+      "mode": "100644",
+      "blob": "f45c196809b0a4ede40103cd0565ba6751490106",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-atomic.ts": {
+      "mode": "100644",
+      "blob": "8ebd603163d090dc978ed4f196a6fc6635215899",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-authority.ts": {
+      "mode": "100644",
+      "blob": "13733168c8e187b8273b43602e6c5f966e9543e9",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-backup-recovery.ts": {
+      "mode": "100644",
+      "blob": "7588241f0447c7ba7e403e1e5e63e00428858269",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-compound-r6.ts": {
+      "mode": "100644",
+      "blob": "6ece78e7d2a60a6deedee3031c15b04696443bf6",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-cutover-fence.ts": {
+      "mode": "100644",
+      "blob": "6055f3374243ec0d54a218460c82e7c5b6a98d4b",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-cutover-local.ts": {
+      "mode": "100644",
+      "blob": "cb72a5d3e32f6f7011c87cb2f0ee3dccfe115bc9",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-cutover-projection-lab.ts": {
+      "mode": "100644",
+      "blob": "4a594725fc29097253f240775d8d4a8136ba2794",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-device-r5.ts": {
+      "mode": "100644",
+      "blob": "30625ce45df28dc07d5fb77046ada99bd377e924",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-enrollment-r5.ts": {
+      "mode": "100644",
+      "blob": "3470aeee27a0dc561a46a22d8482c3f94e001453",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-metadata-r5.ts": {
+      "mode": "100644",
+      "blob": "33cc25318d281fbedffe0d149beea60988c09758",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-operational-recovery.ts": {
+      "mode": "100644",
+      "blob": "2e257ed9939c2ae02f9d30da0a301c966c00fdde",
+      "origin": "macro02"
+    },
+    "lib/sync/macro02-residual-write.ts": {
+      "mode": "100644",
+      "blob": "1bcf288e3ceed156ba3ac1cbd02ba62c05d3c64c",
+      "origin": "macro02"
+    },
+    "lib/sync/pull.ts": {
+      "mode": "100644",
+      "blob": "fee16d57c9d30bdf977c56ef9bba7d658626afce",
+      "origin": "reconciled"
+    },
+    "lib/sync/recent-dose-refresh.ts": {
+      "mode": "100644",
+      "blob": "1bba2290e98c7c176ccd452ab394577aab26ab80",
+      "origin": "macro02"
+    },
+    "lib/types.ts": {
+      "mode": "100644",
+      "blob": "41c50f1fac242ac45ff94cc25f8cba10fab45f7d",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/activation-authority-r5.sql": {
+      "mode": "100644",
+      "blob": "cdf6568acb66c42c2a475d4b386480e59a8e6032",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/activation-install-r5.sql": {
+      "mode": "100644",
+      "blob": "08cb0d54271b55d8c49fdce3f5551fe4502d3a4b",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/active-enrollment-r7-tests.sql": {
+      "mode": "100644",
+      "blob": "1df66fb6be34f4bc9f1291e2eba1769033310bf0",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/active-fixture-r7.sql": {
+      "mode": "100644",
+      "blob": "85d5471fdd53396332a4ed4c772bc90895f60ca2",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/active-fixtures-r7.cjs": {
+      "mode": "100644",
+      "blob": "ba77613ed05a210eb559277f1c4cb86f24f4daa0",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/active-postimages-r7-tests.sql": {
+      "mode": "100644",
+      "blob": "34f4628b62b7f4553c04a53b9c46ae776c91b653",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/compound-receipts-r7.sql": {
+      "mode": "100644",
+      "blob": "4f4495081c533c910bc0c42709c8109ab9d9b0d3",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/compound-writer-r6.sql": {
+      "mode": "100644",
+      "blob": "ba2a35ce0f8a7a2723ebafc6f117ca3c71839a9e",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/device-authority-r5.cjs": {
+      "mode": "100644",
+      "blob": "da9fd39e8575419b7796b7ee46faa97816f15d2e",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/dexie-operational-r3.cjs": {
+      "mode": "100644",
+      "blob": "2afe0b13d2e3bd14609b1422f50c7c9c9502acf9",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/dexie-residual-r3.cjs": {
+      "mode": "100644",
+      "blob": "77bc24bf0af46ce9eb865cb4197b160d21db2f7c",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/dexie-schema.cjs": {
+      "mode": "100644",
+      "blob": "47f7c3d4f868fb33d5d1295877828b8655fa3cd7",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fence-draft.sql": {
+      "mode": "100644",
+      "blob": "f8fec85bdee0cb8046abe18cb8f5800721d3ebac",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fence-race.py": {
+      "mode": "100644",
+      "blob": "3c2f68166ac4e1ba3e6283504aba70185a9d3cd0",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fence-read.cjs": {
+      "mode": "100644",
+      "blob": "da0e095dda09a707385dfc20e2fbd18f959bd1ec",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fence-recovery-r3-candidate.sql": {
+      "mode": "100644",
+      "blob": "60e366246779929c614cd794e402bb7c02b6e255",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fence-recovery-r3-tests.sql": {
+      "mode": "100644",
+      "blob": "6d708e2c46e06d76e0468ce870823c0063eeb5ca",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fence-tests.sql": {
+      "mode": "100644",
+      "blob": "ecf5fc5caf719f41aa5060b3c8886370eea29e58",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/fixture.sql": {
+      "mode": "100644",
+      "blob": "d452862ae056ba08c9a0a99f943baf1068e044b4",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/metadata-policy-r4-tests.sql": {
+      "mode": "100644",
+      "blob": "0ccca6a0ff3f90301b0f042292c23a8fe8ee8b18",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/metadata-policy-r4.sql": {
+      "mode": "100644",
+      "blob": "d9d07fc8699188891ea6376aa0ab1987a2d3c903",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/metadata-transport-r5.cjs": {
+      "mode": "100644",
+      "blob": "ec606fcd26e185f236bcb5a42bb08d7d4ca1c8c0",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/metadata-writer-r5.sql": {
+      "mode": "100644",
+      "blob": "74806bf586fbbdd5c86fc52b47a3995e72a3b4ba",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/migration-03-r6-candidate.sql": {
+      "mode": "100644",
+      "blob": "47a687affd1c1e855bcbbb4857ac8eac823856e2",
+      "origin": "cas-m03-r2"
+    },
+    "scripts/macro02-activation-lab/run-active-r7-pg.sh": {
+      "mode": "100644",
+      "blob": "f2482720a5e32525be5fd173ffcbb26a00e0e1c7",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/run-metadata-policy-r4-pg.sh": {
+      "mode": "100644",
+      "blob": "0cc54c7532e874ef53194e999b73f724f7a53618",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/run-pg.sh": {
+      "mode": "100644",
+      "blob": "e05f9e4f35048509f9ff3a6d1feec72d6905ddce",
+      "origin": "macro02"
+    },
+    "scripts/macro02-activation-lab/run-recovery-r3-pg.sh": {
+      "mode": "100644",
+      "blob": "1a605fad2e30fdb3198a7820ad7a09bfbf65ed05",
+      "origin": "macro02"
+    },
+    "scripts/macro02-tests/dormant-dexie.cjs": {
+      "mode": "100644",
+      "blob": "016f5257af9700dbe22d040f5419c2a169199a6e",
+      "origin": "macro02"
+    },
+    "scripts/test-v142-avatar-brain.cjs": {
+      "mode": "100644",
+      "blob": "a368e9d3bd11808f86bd2506e8c2560445e7b483",
+      "origin": "macro02"
+    },
+    "scripts/test-v163-stock-integrity.cjs": {
+      "mode": "100644",
+      "blob": "059adfa3909e19e9cbcadddfe9a6c618a4aa624e",
+      "origin": "macro02"
+    },
+    "scripts/test-v165-contextual-health.cjs": {
+      "mode": "100644",
+      "blob": "f0487261570ab4d66ef48b2ad57cd121b0292a4f",
+      "origin": "stability"
+    },
+    "scripts/test-v199-relational-sync-notifications.cjs": {
+      "mode": "100644",
+      "blob": "c2b0dd184d77adf8d4f10111ad9dd27b88861170",
+      "origin": "stability"
+    },
+    "scripts/test-v203-access-reschedule.cjs": {
+      "mode": "100644",
+      "blob": "99e392d667dd0737dc2d77c4cfda4831d60f0d53",
+      "origin": "macro02"
+    },
+    "scripts/test-v299-medication-details-list.cjs": {
+      "mode": "100644",
+      "blob": "76ec8b2d4b1b4ba674ccb05e7f161b5ffe363aa8",
+      "origin": "stability"
+    },
+    "scripts/test-v318-medication-compact-operations.cjs": {
+      "mode": "100644",
+      "blob": "6a6c110aef212a5379fdc81ba826daced0700431",
+      "origin": "stability"
+    },
+    "scripts/test-v327-document-archive-prescription-avatar.cjs": {
+      "mode": "100644",
+      "blob": "942f904267bab38a1086407593e0f18bd0a2b79f",
+      "origin": "stability"
+    },
+    "scripts/test-v63-release-gate.mjs": {
+      "mode": "100644",
+      "blob": "fa24030397dd6a4b0a27b262927b830d307c0822",
+      "origin": "reconciled"
+    },
+    "scripts/test-vault-a11-integral-360.cjs": {
+      "mode": "100644",
+      "blob": "94522ed3d624697cf3f010445e5547c3916126fc",
+      "origin": "reconciled"
+    },
+    "scripts/test-vault-a7-m6-premium-closeout.cjs": {
+      "mode": "100644",
+      "blob": "1cba604cfbe0c6b107d0aae7e7858db0a03c6c82",
+      "origin": "stability"
+    },
+    "scripts/test-vault-careflow-p0p1-r1.cjs": {
+      "mode": "100644",
+      "blob": "b047e1f0eba0711a23995a036ed903b8e5b43f5c",
+      "origin": "stability"
+    },
+    "scripts/test-vault-guardian-ux360-macro-a.cjs": {
+      "mode": "100644",
+      "blob": "dcbd008e3fe3c598bfb3006bb53026cd2fc8b3ba",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m110-home-today.cjs": {
+      "mode": "100644",
+      "blob": "e646bb51a5e8be240d48d36cb3e8285de9906f3c",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m131-home-medication-density.cjs": {
+      "mode": "100644",
+      "blob": "fb530efcd7be50132f75297d58a4b9ee138c0bd9",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m132-mobile-medication-density.cjs": {
+      "mode": "100644",
+      "blob": "949ceefa09a56f04510008a63cd90c48dbb6ff89",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m141-visual-viewport.cjs": {
+      "mode": "100644",
+      "blob": "c3e61095400bebd689c44981544aa373df433a90",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m146-premium-ux.cjs": {
+      "mode": "100644",
+      "blob": "3cf759e852cd7ebf0eed58ac7ddf2a0713825bd4",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m148-p1.cjs": {
+      "mode": "100644",
+      "blob": "428ff98c7082f4d0cb82f45c8331055b4a9602cb",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m150-p5-p4.cjs": {
+      "mode": "100644",
+      "blob": "15fada3816710c543f1a1ad485f9b8d60fa5a8bf",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m153-p6-visual-360.cjs": {
+      "mode": "100644",
+      "blob": "f2c8cbe557333dbce522d08ac1e2915a3f7fb7d9",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m153-p7-relacional-r2.cjs": {
+      "mode": "100644",
+      "blob": "4ce92690a13222f0892e8e730ae73dc85cb88e98",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m6-hierarchy-fenix.cjs": {
+      "mode": "100644",
+      "blob": "0231a05512d47fb1e3f508ab45eaa41954118c29",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m65-care-360.cjs": {
+      "mode": "100644",
+      "blob": "e7b6cae4effd9f5a4f6d06466ec0c86e81db6906",
+      "origin": "stability"
+    },
+    "scripts/test-vault-m66-sync-reliability.cjs": {
+      "mode": "100644",
+      "blob": "00f000d39950d9caeba0134bbf5a610efb22de67",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-m92-medication-premium-2.cjs": {
+      "mode": "100644",
+      "blob": "612b9d2f2b73f9b8a57b417002c19322d5e69ab2",
+      "origin": "stability"
+    },
+    "scripts/test-vault-macro02-canonical-writer.cjs": {
+      "mode": "100644",
+      "blob": "3b45f80386f435c03030915b294fc32e7f1a5de7",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-compound-r6.cjs": {
+      "mode": "100644",
+      "blob": "4036123618a069f7f54069b546dd7259ea0219a5",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-cutover-projection.cjs": {
+      "mode": "100644",
+      "blob": "b5a5a8084b250abfb122c07ccfd87bd5d850c1b8",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-cutover-recovery.cjs": {
+      "mode": "100644",
+      "blob": "59d6008c25956bb848b56f91fbd2f6c7a2537c30",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-dormant-authority.cjs": {
+      "mode": "100644",
+      "blob": "018fed3e6da80eb8d2a152664a49baeb002722d4",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-enrollment-authority.cjs": {
+      "mode": "100644",
+      "blob": "4d350f2b22dbcbd542e1fdde6ea6aac42fa85596",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-home-review.cjs": {
+      "mode": "100644",
+      "blob": "3879e954eab9e0510605d8516b8d07f3be92cf2e",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-ingress.cjs": {
+      "mode": "100644",
+      "blob": "7c333363079ba8aed89cfedea5e4d9d105a75b96",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-metadata-intent.cjs": {
+      "mode": "100644",
+      "blob": "8fb57854e5df158a2097b7b45482a3023d73405e",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-operational-recovery.cjs": {
+      "mode": "100644",
+      "blob": "ad462d512050e385cb18626cfd27cbec110e09e4",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-residual-transaction.cjs": {
+      "mode": "100644",
+      "blob": "c7046056dd274c94cb4b98380f88fcb778f4f9e8",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-stability-reconciliation.cjs": {
+      "mode": "100644",
+      "blob": "5b1c26fb1144a2f6ad91451e335c23a7a4a16c2b",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-macro02-stock-cycle.cjs": {
+      "mode": "100644",
+      "blob": "3d20dd16ca1f488dee7cc18513bfdaced8462973",
+      "origin": "macro02"
+    },
+    "scripts/test-vault-stability-360.cjs": {
+      "mode": "100644",
+      "blob": "81751c988a87b3e37a3cef49a051d7116cdc6ab6",
+      "origin": "reconciled"
+    },
+    "scripts/test-vault-stability-h01-h04.cjs": {
+      "mode": "100644",
+      "blob": "03fe2f01debaf0067801277b440cc8976c3be099",
+      "origin": "stability"
+    },
+    "scripts/test-vault-stability-h05-h06.cjs": {
+      "mode": "100644",
+      "blob": "44144d19a559df96e9cfed0425a95933c08c94c6",
+      "origin": "stability"
+    },
+    "scripts/test-vault-stability-h07.cjs": {
+      "mode": "100644",
+      "blob": "e41e4ead502fe157cf77700aff5dd3789e19e6a0",
+      "origin": "stability"
+    },
+    "scripts/test-vault-ui360-r3.cjs": {
+      "mode": "100644",
+      "blob": "54ce3dcee8c359d9d23b460c767903b7c200907d",
+      "origin": "stability"
+    },
+    "scripts/test-vault-ui360-r4-final.cjs": {
+      "mode": "100644",
+      "blob": "d14ed6732669e550075d2bb823a44e60056d1665",
+      "origin": "stability"
+    },
+    "scripts/test-vault-ux360-r5-geometry.cjs": {
+      "mode": "100644",
+      "blob": "1aaf1ce56818e9de615f40f0c862973c8f3d6d39",
+      "origin": "stability"
+    },
+    "scripts/test-vault-v34x-substituta.cjs": {
+      "mode": "100644",
+      "blob": "835e1c11262bb630f88c9a8fdcfb1e65b8600f23",
+      "origin": "stability"
+    },
+    "scripts/test-vault-v34y-integrity.cjs": {
+      "mode": "100644",
+      "blob": "ace829cc60d86f774f6a607c257fadde459c36d7",
+      "origin": "stability"
+    },
+    "scripts/vault-macro02-test-pure-loader.cjs": {
+      "mode": "100644",
+      "blob": "95a40aaaac518b16febe7639be96e4139ddb8745",
+      "origin": "macro02"
+    },
+    "supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql": {
+      "mode": "100644",
+      "blob": "3d8ea7ad33ecad3d37f3344257dea3293b518dc7",
+      "origin": "stability"
+    },
+    "scripts/macro02-activation-lab/cas-r04-m03-fixture.sql": {
+      "mode": "100644",
+      "blob": "847761de92f4516108f92839a6cc9743b2419da4",
+      "origin": "cas-m03-r2"
+    },
+    "scripts/macro02-activation-lab/cas-r04-m03-seed.sql": {
+      "mode": "100644",
+      "blob": "88308b738735098fc2008d46793968c5556fd7ec",
+      "origin": "cas-m03-r2"
+    },
+    "scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql": {
+      "mode": "100644",
+      "blob": "679f375f9e982b562100f7bc28a3d702a4f215a5",
+      "origin": "cas-m03-r2"
+    },
+    "scripts/macro02-activation-lab/cas-r04-m03-active.sql": {
+      "mode": "100644",
+      "blob": "2f92715b68c7874a3d532fbd7619c9566c65f6ca",
+      "origin": "cas-m03-r2"
+    }
+  },
+  "previous_candidate": "ff4f583ddc3c121b1fd9d94a0b3bcccfc4d70318",
+  "r2_delta": [
+    "scripts/macro02-activation-lab/cas-r04-m03-active.sql",
+    "scripts/macro02-activation-lab/cas-r04-m03-fixture.sql",
+    "scripts/macro02-activation-lab/cas-r04-m03-legacy-frozen.sql",
+    "scripts/macro02-activation-lab/cas-r04-m03-seed.sql",
+    "scripts/macro02-activation-lab/migration-03-r6-candidate.sql"
+  ],
+  "production": "LOCKED"
+}
