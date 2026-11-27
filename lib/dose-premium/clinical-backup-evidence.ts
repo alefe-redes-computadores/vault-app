@@ -2,7 +2,8 @@ import {type PendingItem} from './atomic-envelope';
 import {recoveryOperationR7} from './active-receipt-recovery-r7';
 import {countMacro02Pending} from './authority-session';
 const record=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==='object'&&!Array.isArray(x);
-export const MACRO02_CLINICAL_BACKUP_TABLES=['doseLogs','medicamentos','renovacoes','retiradas','persons','documents','medicos','farmacias','hospitais','locais','tratamentos','cids','fornecimentos','fornecimento_ciclos','fornecimento_itens','fornecimento_documentos','a1_treatment_phases','a1_prescription_links','a1_supply_locations'] as const;
+import {MACRO02_CLINICAL_BACKUP_TABLES} from './clinical-backup-tables';
+export {MACRO02_CLINICAL_BACKUP_TABLES} from './clinical-backup-tables';
 /** Exact historical outbox evidence. Never import these rows into the live queue.
  * An old backup without this section is readable, but cannot prove completeness. */
 export function inspectClinicalBackupEvidence(value:unknown,uid:string,expected:readonly PendingItem[]){

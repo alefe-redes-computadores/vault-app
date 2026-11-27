@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { db } from "@/lib/db";
 import {mergeTreatmentRemoteR03,refreshTreatmentVisualProjectionR03} from "@/lib/sync/treatment-visual-transport-r03";
+import {metadataPendingProtection} from "@/lib/dose-premium/cutover-metadata-pending";
 import {readMacro02DoseReceipts} from "@/lib/sync/macro02-dose-receipts";
 import { checkDoseIngress, canAcceptDoseDelete, verifyRemoteDoseReceipt } from "@/lib/dose-premium/ingress-guard";
 import { recordPullTable } from "@/lib/sync/diagnostics";
@@ -112,6 +113,14 @@ export function useSupabaseRealtime(userId?: string) {
           const owner = incoming.user_id || previous.user_id || local?.user_id;
           if (owner !== userId) return;
 
+          // A compound anchor can represent rows other than its own payload.id.
+          // Inspect the complete outbox inside the same local transaction.
+          const protectedTable=config.queue==='doseLogs'||config.queue==='medicamentos'||config.queue==='renovacoes'||config.queue==='retiradas'?config.queue:null;
+          if(protectedTable){
+            const protection=metadataPendingProtection(await db.syncQueue.toArray(),userId);
+            if(protection.ambiguous){recordPullTable(payload.table,0,false);return;}
+            if(protection.has(protectedTable,id))return;
+          }
           const pending = await db.syncQueue
             .filter(
               (item) =>
@@ -149,7 +158,7 @@ export function useSupabaseRealtime(userId?: string) {
           if (payload.table === "dose_logs") {
             try { await db.transaction("rw", [db.doseLogs, db.syncQueue], merge); }
             catch { recordPullTable("dose_logs", 0, false); }
-          } else if(payload.table==='medicamentos'||payload.table==='retiradas'){try{await db.transaction('rw',[payload.table==='medicamentos'?db.medicamentos:db.retiradas,db.syncQueue],merge);}catch{recordPullTable('medicamentos',0,false);}}else await merge();
+          } else if(payload.table==='medicamentos'||payload.table==='retiradas'||payload.table==='renovacoes'){try{await db.transaction('rw',[payload.table==='medicamentos'?db.medicamentos:payload.table==='retiradas'?db.retiradas:db.renovacoes,db.syncQueue],merge);}catch{recordPullTable(payload.table,0,false);}}else await merge();
         }
       )
       .subscribe();

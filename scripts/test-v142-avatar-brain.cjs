@@ -14,11 +14,12 @@ function load(file){const filename=path.resolve(file);if(cache.has(filename))ret
  if(name==='@/lib/sync/macro02-authority')return {prepareMacro02ClinicalWrite:async uid=>{
    const {acceptMacro02Capability,selectMacro02Writer,assertSameMacro02Authority}=load('lib/dose-premium/account-authority.ts');
    const {countMacro02Pending}=load('lib/dose-premium/authority-session.ts');
+   const epoch='00000000-0000-4000-8000-000000000142';
    const ctx={accountId:uid,sessionEpoch:crypto.randomUUID(),clientProtocol:2};
-   const evidence=acceptMacro02Capability({version:1,account_id:uid,writer:'premium',epoch:'synthetic-v142',fence_id:'synthetic-v142',issued_at_ms:0,expires_at_ms:300000,minimum_protocol:2},ctx,0,0);
+   const evidence=acceptMacro02Capability({version:1,account_id:uid,writer:'premium',epoch,fence_id:'synthetic-v142',issued_at_ms:0,expires_at_ms:300000,minimum_protocol:2},ctx,0,0);
    const pending=async()=>countMacro02Pending(await db.syncQueue.toArray(),uid);
    const selected=selectMacro02Writer(ctx,evidence,0,await pending());assert.equal(selected.kind,'allow');assert.equal(selected.writer,'premium');
-   return {writer:'premium',assertCurrent:async()=>assertSameMacro02Authority(selected,ctx,evidence,0,await pending())};
+   return {writer:'premium',epoch,assertCurrent:async()=>assertSameMacro02Authority(selected,ctx,evidence,0,await pending())};
  }};
  if(name==='@/lib/sync/enfileirarOperacao'){const real=load('lib/sync/enfileirarOperacao.ts');return {...real,enfileirarOperacao:async(...args)=>{if(failQueue)throw Error('queue unavailable');return real.enfileirarOperacao(...args);}};}
  return name.startsWith('@/')?load(name.slice(2)+'.ts'):name.startsWith('.')?load(path.resolve(path.dirname(filename),name)+'.ts'):require(name);};

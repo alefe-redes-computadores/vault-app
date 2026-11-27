@@ -13,6 +13,12 @@ GRANT USAGE ON SCHEMA auth TO postgres,anon,authenticated,service_role;
 CREATE TABLE auth.users(id uuid PRIMARY KEY);
 INSERT INTO auth.users VALUES('00000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000009');
 GRANT REFERENCES ON auth.users TO postgres;
+-- Production catalog: postgres can SELECT id; neither client nor worker can.
+-- Mirror only the required identity column in this synthetic laboratory.
+GRANT SELECT (id) ON auth.users TO postgres;
+DO $$ BEGIN
+ IF NOT has_column_privilege('postgres','auth.users','id','SELECT') OR has_column_privilege('authenticated','auth.users','id','SELECT') OR has_column_privilege('anon','auth.users','id','SELECT') THEN RAISE EXCEPTION 'LAB_AUTH_ACL'; END IF;
+END $$;
 SET ROLE postgres;
 CREATE TABLE public.persons(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,name text NOT NULL,email text,phone text,avatar_url text,color text DEFAULT '#60A5FA',is_default boolean DEFAULT false,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
 CREATE TABLE public.medicos(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,nome text NOT NULL,especialidade text,crm text,telefone text,email text,observacoes text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),categoria_profissional text,conselho_tipo text,conselho_numero text,conselho_uf text,a1_identity_revision bigint NOT NULL DEFAULT 0);

@@ -1,0 +1,2 @@
+// Shared dependency-free clinical inventory. No receipt or transport imports.
+export const MACRO02_CLINICAL_BACKUP_TABLES=['doseLogs','medicamentos','renovacoes','retiradas','persons','documents','medicos','farmacias','hospitais','locais','tratamentos','cids','fornecimentos','fornecimento_ciclos','fornecimento_itens','fornecimento_documentos','a1_treatment_phases','a1_prescription_links','a1_supply_locations'] as const;

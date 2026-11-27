@@ -1,4 +1,4 @@
-import {MACRO02_CLINICAL_BACKUP_TABLES} from './clinical-backup-evidence';
+import {MACRO02_CLINICAL_BACKUP_TABLES} from './clinical-backup-tables';
 import {countMacro02Pending} from './authority-session';
 import type {PendingItem} from './atomic-envelope';
 
