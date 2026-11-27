@@ -41,6 +41,8 @@ jobs:
 
       - name: Executar gate V63 estrito e TypeScript integral
         shell: bash
+        env:
+          VAULT_V63_COLLECT_ALL: "1"
         run: |
           set -euo pipefail
           mkdir -p artifacts

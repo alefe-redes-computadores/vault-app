@@ -34,6 +34,8 @@ export type Medication360Value = {
   stockReview: string | null;
   regulatory: { label: string; detail: string; source: string | null; verified: boolean; authority: string; declared: string | null };
   prescriptionDate: string | null;
+  /** Presentation only: document linkage is not proof of current validity. */
+  prescriptionDocumentLinked?: boolean;
   renewalDate: string | null;
   treatments: Medication360Treatment[];
   conflicts: Medication360Conflict[];
@@ -167,6 +169,10 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
             {value.regulatoryClass && <Field icon={<ShieldCheck size={14}/>} label="Lista regulatória" value={value.regulatoryClass}/>}
             <Field icon={<FilePenLine size={14}/>} label="Tipo declarado" value={value.regulatory.declared||"Não informado"}/>
             <Field icon={<CalendarClock size={14}/>} label="Data da receita" value={toBrazilianDate(value.prescriptionDate)}/>
+            {typeof value.prescriptionDocumentLinked === "boolean" && <div data-vault-h01-document-evidence className="col-span-2 min-w-0">
+              <Field icon={<FileCheck2 size={14}/>} label="Vínculo documental" value={value.prescriptionDocumentLinked ? "Documento vinculado" : "Não localizado nos vínculos"}/>
+              <p className="mt-1 text-[10px] text-ink-muted">Vínculo documental não comprova validade atual.</p>
+            </div>}
           </div>
           <p className="rounded-xl border border-surface-border/50 bg-surface/40 p-3 text-[11px] text-ink-secondary">{value.regulatory.detail} · {value.regulatory.verified?"Classificação regulatória confirmada na referência do catálogo.":"Classificação não confirmada pelo catálogo; pode refletir o cadastro declarado."}</p>
           <p className="text-xs text-ink-muted">Renovação registrada: {toBrazilianDate(value.renewalDate)}</p>

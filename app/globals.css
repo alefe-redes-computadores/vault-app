@@ -665,3 +665,31 @@ html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header)
 .vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid):has([data-vault-executive-density="compact"]) > div:nth-child(2) { padding-block: 5px; }
 .vault-h01-medications-route article[data-vault-medication-flow="true"]:has(.vault-h01-final-grid) [data-vault-executive-density="compact"] [data-vault-h01-chips] { gap: 2px 4px; }
 .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r5-context="tratamento"] { text-align: start; letter-spacing: normal; }
+
+/* H01-FINAL-R3: reclaim horizontal text flow rather than shrinking type or hit areas.
+ * Measured R2 deficit: +5.75px median at 320/100%, +3.625px at 360/125%.
+ * Only Compactos <=375px; Conforto and wider cards retain certified axes. */
+@media (max-width: 375px) {
+  .vault-h01-medications-route .vault-h01-final-grid [data-vault-executive-density="compact"] [data-vault-med360-entry="name"] > span:first-child {
+    display: block; width: 100%; text-align: start; overflow-wrap: anywhere;
+  }
+  .vault-h01-medications-route .vault-h01-final-grid [data-vault-executive-density="compact"] [data-vault-med360-entry="name"] > span:first-child > span {
+    display: inline; white-space: normal; overflow-wrap: anywhere;
+  }
+  .vault-h01-medications-route .vault-h01-final-grid [data-vault-executive-density="compact"] [data-vault-med360-entry="name"] > span:first-child > span + span {
+    margin-inline-start: 4px;
+  }
+  /* The title button and its accessible name are preserved; the decorative chevron
+   * must not strand a strength on another line. The separate menu stays 44px. */
+  .vault-h01-medications-route .vault-h01-final-grid [data-vault-executive-density="compact"] [data-vault-med360-entry="name"] > span:first-child > svg[aria-hidden="true"] { display: none; }
+  /* Standard regime + one treatment share a lane, with natural wrapping INSIDE
+   * the treatment pill. All extra chips/alerts keep their original flexible flow. */
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips]:has(> [data-vault-med360-treatment-tags] > button[data-vault-r5-context="tratamento"]:only-child):not(:has(> button:not([data-vault-r5-context="regime"]))) {
+    display: grid; grid-template-columns: max-content minmax(0,1fr); align-items: start; gap: 2px 4px;
+  }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips]:has(> [data-vault-med360-treatment-tags] > button[data-vault-r5-context="tratamento"]:only-child):not(:has(> button:not([data-vault-r5-context="regime"]))) [data-vault-r5-context="tratamento"] {
+    min-width: 0; max-width: 100%; width: max-content; justify-self: start;
+  }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r5-context="tratamento"] > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips] > .sr-only { position: absolute; }
+}

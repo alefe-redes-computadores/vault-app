@@ -1411,6 +1411,7 @@ export default function MedicamentosListPage() {
           stockReview: stockReview || null,
           regulatory: { label: regulatoryCopy.label, detail: regulatoryProfile?.detail || "Sem regra confirmada na referência", source: regulatoryCopy.source, verified: regulatoryCopy.official, authority: catalogIdentity?.authorityState === "confirmed" ? "Referência confirmada" : catalogIdentity?.authorityState === "compatible" ? "Referência compatível" : catalogIdentity?.authorityState === "possible_divergence" ? "Divergência a conferir" : "Não validada", declared: med.tipo_receita || null },
           prescriptionDate: med.data_receita || null,
+          prescriptionDocumentLinked: reconciliationP6.hasDocumentEvidence,
           renewalDate: med.proxima_renovacao || null,
           treatments: cardTreatments.map(t => ({id:t.id,name:t.nome,color:resolveTreatmentColor(t)})),
           conflicts: knowledge.conflicts.map(f => ({declared:f.value,reference:f.officialValue || "Referência diferente",limitation:f.limitation})),

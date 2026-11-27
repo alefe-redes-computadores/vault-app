@@ -84,15 +84,59 @@ const aliasCases=[['exact self',C,C,F,F],['encoded self',C.replace('detalhes','%
 for(const [name,target,current,fallback,want] of aliasCases)check('M150 '+name,()=>assert.equal(safeAlias(target,current,fallback),want));
 
 // Real conditional JSX, independent of any DB or network.
-{const src=read('app/saude/medicamentos/page.tsx');const ast=ts.createSourceFile('medications.tsx',src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);assert.equal(ast.parseDiagnostics.length,0);
-const markers=['data-vault-v34x-receita-cadastro','data-vault-v34x-receita-documento','data-vault-r5-comfort-context'];const nodes={};function walk(n){if(ts.isJsxElement(n)){const attrs=n.openingElement.attributes.properties;for(const marker of markers)if(attrs.some(a=>a.name?.getText(ast)===marker)){assert(!nodes[marker]);let p=n.parent;while(p&&!ts.isJsxExpression(p))p=p.parent;assert(p&&p.expression);nodes[marker]=p.expression.getText(ast);}}ts.forEachChild(n,walk)}walk(ast);assert.equal(Object.keys(nodes).length,3);
-const expressions=markers.map(m=>'('+nodes[m]+')').join(',\n');const js=ts.transpileModule('const result=['+expressions+'];',{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-const jsx=(type,props)=>({type,props:props||{}}),find=(tree,marker,value,out=[])=>{if(Array.isArray(tree))tree.forEach(x=>find(x,marker,value,out));else if(tree&&typeof tree==='object'){if(Object.hasOwn(tree.props||{},marker)&&(value===undefined||tree.props[marker]===value))out.push(tree);find(tree.props?.children,marker,value,out)}return out};const text=x=>Array.isArray(x)?x.map(text).join(' '):x&&typeof x==='object'?text(x.props?.children):typeof x==='string'?x:'';
-function render(compact,declared,linked,last='Fabricante recente',label='Etiqueta antiga'){const calls=[];const ctx={exports:{},compactCards:compact,med:{nome:'Sintético',data_receita:declared?'2026-11-25':'',laboratorio_etiqueta:label,tipo_aquisicao:'sus'},reconciliationP6:{hasDocumentEvidence:linked},latestManufacturer:last,supplyRoute:{mode:'sus'},FileCheck2:'FileCheck2',Factory:'Factory',ShoppingBag:'ShoppingBag',openMedicationSheet360:x=>calls.push(x),require:id=>{assert.equal(id,'react/jsx-runtime');return {jsx,jsxs:jsx}}};const tree=new Function(...Object.keys(ctx),js+'\nreturn result;')(...Object.values(ctx));return {tree,calls};}
-const test=(name,fn)=>check('MED02 '+name,fn);
-for(const compact of [true,false])for(const declared of [true,false])for(const linked of [true,false])test(JSON.stringify({compact,declared,linked}),()=>{const {tree,calls}=render(compact,declared,linked);const h=find(tree,markers[0]),d=find(tree,markers[1]),button=find(tree,'data-vault-r5-context','receita'),mf=find(tree,'data-vault-r5-context','fabricante');assert.equal(h.length,declared?1:0);assert.equal(d.length,compact&&!declared&&linked?1:0);assert.equal(button.length,!compact&&linked?1:0);assert.equal(mf.length,compact?0:1);if(mf.length){assert(text(mf[0]).includes('Fabricante recente'));assert(!text(mf[0]).includes('Etiqueta antiga'));mf[0].props.onClick({preventDefault(){},stopPropagation(){}});assert.deepEqual(calls,['ficha']);}if(button.length){button[0].props.onClick({preventDefault(){},stopPropagation(){}});assert.equal(calls.at(-1),'receita');}if(!linked)assert.equal(d.length+button.length,0);if(linked&&!declared)assert.equal(d.length+button.length,1);if(declared)assert(text(h[0]).includes('25/11/2026'));});
-test('declared manufacturer retained if completed acquisition absent',()=>{const {tree}=render(false,false,false,'','Etiqueta antiga');const m=find(tree,'data-vault-r5-context','fabricante');assert.equal(m.length,1);assert(text(m[0]).includes('Etiqueta antiga'))});
-test('no manufacturer invented',()=>assert.equal(find(render(false,false,false,'','').tree,'data-vault-r5-context','fabricante').length,0));
+{const src=read('app/saude/medicamentos/page.tsx'),sheetSrc=read('components/saude/MedicationSheet360R3.tsx');
+const ast=ts.createSourceFile('medications.tsx',src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),sheet=ts.createSourceFile('sheet.tsx',sheetSrc,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(ast.parseDiagnostics.length,0);assert.equal(sheet.parseDiagnostics.length,0);
+const nodes={},projections={},definitions={};
+function setUnique(obj,key,val){assert(!Object.hasOwn(obj,key),'duplicate '+key);obj[key]=val;}
+function attr(n,key){const a=(ts.isJsxElement(n)?n.openingElement:n).attributes.properties.find(a=>a.name?.getText(n.getSourceFile())===key);return a;}
+function attrIs(n,key,val){const a=attr(n,key);return !!a&&!!a.initializer&&ts.isStringLiteral(a.initializer)&&a.initializer.text===val;}
+function enclosingExpression(n){let p=n.parent;while(p&&!ts.isJsxExpression(p))p=p.parent;assert(p&&p.expression);return p.expression.getText(p.getSourceFile());}
+function walkPage(n){
+ if(ts.isJsxElement(n)){
+  if(attr(n,'data-vault-v34x-receita-cadastro'))setUnique(nodes,'date',enclosingExpression(n));
+  if(attr(n,'data-vault-r5-comfort-context'))setUnique(nodes,'comfort',enclosingExpression(n));
+  if(attrIs(n,'data-vault-med360-entry','name'))setUnique(nodes,'header',n.getText(ast));
+ }
+ if(ts.isVariableDeclaration(n)&&['manufacturerH01','manufacturerEvidenceH01'].includes(n.name.getText(ast))){assert(n.initializer);setUnique(definitions,n.name.getText(ast),n.initializer.getText(ast));}
+ if(ts.isCallExpression(n)&&n.expression.getText(ast)==='setMedicationSheet360'&&n.arguments.length===1&&ts.isObjectLiteralExpression(n.arguments[0])){
+  for(const p of n.arguments[0].properties)if(ts.isPropertyAssignment(p)&&['prescriptionDate','prescriptionDocumentLinked','manufacturer','declaredManufacturer'].includes(p.name.getText(ast)))setUnique(projections,p.name.getText(ast),p.initializer.getText(ast));
+ }
+ ts.forEachChild(n,walkPage);
+}
+function walkSheet(n){
+ if(ts.isJsxElement(n)&&attr(n,'data-vault-h01-document-evidence'))setUnique(nodes,'drawerDoc',enclosingExpression(n));
+ if(ts.isJsxSelfClosingElement(n)&&n.tagName.getText(sheet)==='Field'&&attrIs(n,'label','Data da receita'))setUnique(nodes,'drawerDate',n.getText(sheet));
+ if(ts.isFunctionDeclaration(n)&&n.name?.text==='toBrazilianDate')setUnique(definitions,'dateFormatter',n.getText(sheet));
+ ts.forEachChild(n,walkSheet);
+}
+walkPage(ast);walkSheet(sheet);
+assert.deepEqual(Object.keys(nodes).sort(),['comfort','date','drawerDate','drawerDoc','header']);
+assert.deepEqual(Object.keys(projections).sort(),['declaredManufacturer','manufacturer','prescriptionDate','prescriptionDocumentLinked']);
+assert.deepEqual(Object.keys(definitions).sort(),['dateFormatter','manufacturerEvidenceH01','manufacturerH01']);
+assert(sheetSrc.includes('onClick={()=>navigate(value.detailHref)}')&&sheetSrc.includes('Abrir detalhes completos'),'document details remain reachable');
+const code=definitions.dateFormatter+'\nconst manufacturerH01='+definitions.manufacturerH01+';\nconst manufacturerEvidenceH01='+definitions.manufacturerEvidenceH01+';\nconst value={'+Object.entries(projections).map(([k,v])=>k+':('+v+')').join(',')+'};\nconst result=['+['date','comfort','header','drawerDate','drawerDoc'].map(k=>'('+nodes[k]+')').join(',\n')+'];';
+const transpiled=ts.transpileModule(code,{reportDiagnostics:true,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}});assert.equal((transpiled.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error).length,0);
+const jsx=(type,props)=>({type,props:props||{}}),find=(tree,marker,val,out=[])=>{if(Array.isArray(tree))tree.forEach(x=>find(x,marker,val,out));else if(tree&&typeof tree==='object'){if(Object.hasOwn(tree.props||{},marker)&&(val===undefined||tree.props[marker]===val))out.push(tree);find(tree.props?.children,marker,val,out)}return out};
+const visible=x=>Array.isArray(x)?x.map(visible).join(' '):typeof x==='string'?x:x&&typeof x==='object'&&!String(x.props?.className||'').split(/\s+/).includes('sr-only')?visible(x.props?.children):'';
+function render(compact,declared,linked,last='Fabricante recente',label='Etiqueta antiga'){
+ const calls=[];const ctx={exports:{},compactCards:compact,med:{nome:'Sintético',dosagem:'1 mg',data_receita:declared?'2026-11-25':'',laboratorio_etiqueta:label,tipo_aquisicao:'sus'},reconciliationP6:{hasDocumentEvidence:linked},latestManufacturer:last,supplyRoute:{mode:'sus'},showActiveIngredient:true,activeIngredient:'Componente QA',catalogIdentity:undefined,medicationListDisplayNameM150P3:name=>name,FileCheck2:'FileCheck2',CalendarClock:'CalendarClock',Factory:'Factory',ShoppingBag:'ShoppingBag',ChevronRight:'ChevronRight',Field:'Field',openMedicationSheet360:x=>calls.push(x),require:id=>{assert.equal(id,'react/jsx-runtime');return {jsx,jsxs:jsx}}};
+ const {result,value}=new Function(...Object.keys(ctx),transpiled.outputText+'\nreturn {result,value};')(...Object.values(ctx));return {tree:result,value,calls};
+}
+const test=(name,fn)=>check('MED02 '+name,fn);const event=()=>({preventDefault(){},stopPropagation(){}});
+for(const compact of [true,false])for(const declared of [true,false])for(const linked of [true,false])test(JSON.stringify({compact,declared,linked}),()=>{
+ const {tree,value,calls}=render(compact,declared,linked);
+ const dates=find(tree,'data-vault-v34x-receita-cadastro'),docs=find(tree,'data-vault-v34x-receita-documento'),button=find(tree,'data-vault-r5-context','receita'),mf=find(tree,'data-vault-h01-manufacturer'),header=find(tree,'data-vault-med360-entry','name');
+ assert.equal(dates.length,!compact&&declared?1:0);assert.equal(docs.length,!compact&&linked?1:0);assert.equal(button.length,docs.length);assert.equal(mf.length,1);assert.equal(header.length,1);
+ assert(visible(mf[0]).includes('Fabricante recente'));assert(!visible(mf[0]).includes('Etiqueta antiga'));assert(mf[0].props.title.includes('Etiqueta antiga')&&mf[0].props.title.includes('Fabricante recente'));
+ assert.equal(find(header[0],'data-vault-h01-manufacturer').length,1);assert.equal(header[0].type,'button');header[0].props.onClick(event());assert.deepEqual(calls,['ficha']);
+ if(button.length){assert.equal(button[0],docs[0]);button[0].props.onClick(event());assert.equal(calls.at(-1),'receita');}
+ if(dates.length)assert(visible(dates[0]).includes('25/11/2026'));
+ assert.equal(value.prescriptionDate,declared?'2026-11-25':null);assert.equal(value.prescriptionDocumentLinked,linked);assert.equal(value.manufacturer,'Fabricante recente');assert.equal(value.declaredManufacturer,'Etiqueta antiga');
+ const drawerDate=find(tree,'label','Data da receita'),drawerDoc=find(tree,'data-vault-h01-document-evidence');assert.equal(drawerDate.length,1);assert.equal(drawerDate[0].props.value,declared?'25/11/2026':'Não informada');assert.equal(drawerDoc.length,1);const field=find(drawerDoc[0],'label','Vínculo documental');assert.equal(field.length,1);assert.equal(field[0].props.value,linked?'Documento vinculado':'Não localizado nos vínculos');
+});
+test('declared manufacturer retained if completed acquisition absent',()=>{for(const compact of [true,false]){const {tree,value}=render(compact,false,false,'','Etiqueta antiga');const m=find(tree,'data-vault-h01-manufacturer');assert.equal(m.length,1);assert(visible(m[0]).includes('Etiqueta antiga'));assert.equal(value.manufacturer,null);assert.equal(value.declaredManufacturer,'Etiqueta antiga');}});
+test('no manufacturer invented',()=>{for(const compact of [true,false]){const {tree,value}=render(compact,false,false,'','');assert.equal(find(tree,'data-vault-h01-manufacturer').length,0);assert.equal(value.manufacturer,null);assert.equal(value.declaredManufacturer,null);}});
 }
 
 assert.equal(n,82,'All 42 R3 + 40 new R4 checks must execute');

@@ -126,6 +126,19 @@ def check_modal(p,authority):
     else:expect(premium).to_have_count(0)
     dialog.get_by_role('button',name='Fechar',exact=True).click();expect(dialog).not_to_be_visible(timeout=10000)
 
+def check_sheet(p,day,kind,linked):
+    c=h.card(p,h.NAMES[kind]);c.locator('[data-vault-med360-entry="name"]').click()
+    sheet=p.locator('[data-vault-med360-sheet]');expect(sheet).to_be_visible(timeout=15000)
+    require('Laboratório QA' in sheet.inner_text(),'manufacturer missing in real drawer')
+    sheet.get_by_role('tab',name='Receita',exact=True).click()
+    evidence=sheet.locator('[data-vault-h01-document-evidence]');expect(evidence).to_be_visible()
+    expect(evidence.get_by_text('Documento vinculado' if linked else 'Não localizado nos vínculos',exact=True)).to_be_visible()
+    date_field=sheet.get_by_text('Data da receita',exact=True).locator('xpath=../..')
+    expected=datetime.fromisoformat(day).strftime('%d/%m/%Y') if linked else 'Não informada'
+    expect(date_field.get_by_text(expected,exact=True)).to_be_visible()
+    expect(sheet.get_by_role('button',name='Abrir detalhes completos')).to_be_visible()
+    sheet.get_by_role('button',name='Fechar Gaveta de medicamentos',exact=True).click();expect(sheet).not_to_be_visible(timeout=10000)
+
 def main():
     global AUTH_MODE
     a=argparse.ArgumentParser();a.add_argument('--out',type=Path,required=True);a.add_argument('--evidence',type=Path,required=True);a.add_argument('--sha',required=True);a.add_argument('--phase',choices=['before','after'],required=True);a.add_argument('--baseline',type=Path);a.add_argument('--day',required=True);args=a.parse_args()
@@ -148,6 +161,13 @@ def main():
                             k=str(scale);result={};report['cases'][key][k]=result
                             for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
                                 scale_text(p,1);p.get_by_role('button',name=label,exact=True).click();expect(h.card(p,h.NAMES['normal']).locator(f'[data-vault-executive-density="{mode}"]')).to_be_visible();scale_text(p,scale)
+                                if after and scale==1:
+                                    for fixture,linked in [('normal',True),('zero',False)]:
+                                        try:check_sheet(p,args.day,fixture,linked)
+                                        except Exception as exc:
+                                            report['failures'][f'{key}-{mode}-drawer-{fixture}']=str(exc);print('H01_DRAWER_FAIL',key,mode,fixture,str(exc),flush=True)
+                                            drawer=p.locator('[data-vault-med360-sheet]')
+                                            if drawer.is_visible():drawer.get_by_role('button',name='Fechar Gaveta de medicamentos',exact=True).click();expect(drawer).not_to_be_visible(timeout=10000)
                                 top=top_geometry(p);data={'top':top,'cards':{}};result[mode]=data
                                 p.screenshot(path=str(args.evidence/f'{key}-{scale}-{mode}-top.png'),animations='disabled')
                                 if after:require(not top['overflow'],'viewport overflow')
