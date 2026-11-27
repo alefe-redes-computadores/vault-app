@@ -62,8 +62,11 @@ def h06(ctx,p,out):
  home=ctx.new_page();home.goto(q.ORIGIN+'/');q.wait_nav(home);homeicon=home.locator(f'svg[data-vault-treatment-id="{q.TREAT_A}"]').first;assert_icon(homeicon,'brain','rgb(139, 92, 246)',q.TREAT_A)
  h.shot(p,out,'H06-before-list',first);h.shot(med,out,'H06-before-medication-chip',chip);h.shot(home,out,'H06-before-home',homeicon)
  # Use the real editor and repository; fixture backend refuses clinical writes, so local pending is expected.
- edit=ctx.new_page();edit.goto(q.ORIGIN+'/saude/tratamentos/editar?id='+q.TREAT_A);q.wait_nav(edit)
+ edit=ctx.new_page();edit.goto(q.ORIGIN+'/saude/tratamentos/editar?id='+q.TREAT_A);q.path_is(edit,'/saude/tratamentos/editar')
+ # Focused editor explicitly hides global navigation. Assert the actual editor.
  picker=edit.locator('[data-vault-treatment-picker]');expect(picker).to_be_visible(timeout=45000)
+ expect(edit.get_by_role('button',name='Voltar',exact=True)).to_be_visible(timeout=45000)
+ expect(edit.get_by_role('navigation',name='Navegação principal')).to_have_count(0)
  edit.get_by_role('group',name='Cor do tratamento').get_by_role('button',name='Verde',exact=True).click()
  picker.get_by_role('button',name='Escolher na biblioteca',exact=True).click();choice=picker.locator('[data-vault-treatment-choice="moon"]').last;expect(choice).to_be_enabled();choice.click();h.shot(edit,out,'H06-editor-choice',choice)
  edit.get_by_role('button',name='Salvar alterações',exact=True).click();q.path_is(edit,'/saude/tratamentos/detalhes')

@@ -145,8 +145,18 @@ def map_cases(p,out,width,after):
  search.fill('Hoje');expect(p.locator('[data-vault-clinical-map-entry="hoje"]')).to_have_count(1);search.fill('')
  for id,term,label in [('internacoes','internação','Internações'),('reabilitacao','fisioterapia','Reabilitação')]:
   search.fill(term);link=p.locator(f'[data-vault-clinical-map-entry="{id}"]');expect(link).to_be_visible(timeout=30000);shot(p,out,f'{width}-map-search-{id}',link)
-  link.click();q.path_is(p,'/saude/'+id);q.wait_nav(p);expect(p.get_by_role('heading',name=re.compile(label,re.I)).first).to_be_visible(timeout=45000);shot(p,out,f'{width}-actual-route-{id}',p.get_by_role('heading',name=re.compile(label,re.I)).first)
-  search=go_map(p)
+  # These two list workspaces are not in BottomNav's allowed routes. Their real
+  # ListPageHeader owns the contextual return; assert the link and execute it.
+  require(link.evaluate("e=>new URL(e.href).searchParams.get('return_to')")== '/saude/mapa','missing map return target '+id)
+  link.click();q.path_is(p,'/saude/'+id)
+  heading=p.get_by_role('heading',name=re.compile(label,re.I)).first;expect(heading).to_be_visible(timeout=45000)
+  back=p.locator('header').filter(has=heading).get_by_role('button',name='Voltar',exact=True);expect(back).to_be_visible(timeout=45000)
+  expect(p.get_by_role('navigation',name='Navegação principal')).to_have_count(0)
+  shot(p,out,f'{width}-actual-route-{id}',heading)
+  back.click();q.path_is(p,'/saude/mapa');q.wait_nav(p)
+  search=p.get_by_role('searchbox',name='Buscar áreas de saúde');expect(search).to_be_enabled(timeout=30000)
+  shot(p,out,f'{width}-actual-return-{id}',search);search.fill('')
+  expect(p.locator('[data-vault-clinical-map-entry="reabilitacao"]')).to_have_count(1,timeout=30000)
  # Pin through real control, verify shared favorites on both screens and return to map.
  pin=p.get_by_role('button',name='Fixar Reabilitação',exact=True);expect(pin).to_be_visible(timeout=30000);pin.click();expect(p.get_by_role('region',name='Favoritos').get_by_role('link',name='Reabilitação',exact=True)).to_be_visible(timeout=30000)
  p.goto(q.ORIGIN+'/saude/minha-saude');launcher=p.locator('[data-vault-ui360-r5-launcher]').first;expect(launcher.get_by_role('region',name='Módulos fixados').get_by_role('button',name='Abrir Reabilitação',exact=True)).to_be_visible(timeout=45000);shot(p,out,f'{width}-hub-favorite',launcher.get_by_role('region',name='Módulos fixados'))
