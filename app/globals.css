@@ -533,6 +533,9 @@ html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header)
   letter-spacing: .015em;
   text-transform: none;
   overflow-wrap: anywhere;
-  align-self: start;
+  align-self: center;
+}
+@media (max-width: 350px) {
+  [data-vault-h05-stats] > div { padding-inline: 6px; }
 }
 [data-vault-h05-stats] > div > p:last-child { margin-top: 0; overflow-wrap: anywhere; }

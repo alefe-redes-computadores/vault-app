@@ -26,4 +26,20 @@ check('pending icon and current color update from same scoped record without nam
 check('confirmed new revision and stale projection cannot change displayed identity',()=>{const next={...a,cor:'#16A34A',visual_icon:'unassigned',visual_icon_expanded:'moon',visual_icon_revision:3,visual_icon_operation_id:'10000000-0000-4000-8000-000000000002',visual_icon_updated_at:'2026-11-27T12:00:00Z'};set([next,b]);assert.equal(color(a),'#16A34A');assert.equal(icon(a).props['data-vault-treatment-icon'],'moon');assert.equal(icon(a).props['data-vault-treatment-revision'],3);});
 check('all changed current color consumers use same authority',()=>{for(const p of ['app/page.tsx','app/saude/medicamentos/page.tsx','app/saude/tratamentos/page.tsx','app/saude/tratamentos/detalhes/page.tsx','components/saude/TreatmentRelationOption.tsx','components/saude/MedicationSheet360R3.tsx'])assert(read(p).includes('useTreatmentIdentityColorResolverR03'),p);assert(read('app/page.tsx').includes('entity={primaryMedicationCareOpportunity.treatmentId?{id:primaryMedicationCareOpportunity.treatmentId}:null}'));assert(!read('app/page.tsx').includes('const linked=tratamentos.find((t:any)=>Boolean(match)'));});
 check('H05 opt-in only; all real links and optional counters retained',()=>{const detail=read('app/saude/tratamentos/detalhes/page.tsx'),nav=read('components/saude/ClinicalSectionNav.tsx'),css=read('app/globals.css');for(const id of ['visao','medicamentos','rede','linha','financeiro'])assert(detail.includes(`id:"tratamento-${id}"`));assert(detail.includes('priorityCount={5} alignTreatmentTabs'));assert(detail.includes('data-vault-h05-stats'));assert(nav.includes('alignTreatmentTabs&&compactFive?item.id:undefined'));assert(nav.includes('item.badge!==undefined&&item.badge!==null?'));assert(css.includes('grid-template-rows: 24px minmax(2.4em, auto) 20px'));assert(css.includes('[data-vault-h05-stats] > div'));});
+check('H06 canonical P7 Home uses both explicit relation directions with owner scope',()=>{
+ const links=load('lib/health-intelligence/medication-treatment-links-p7.ts');
+ const m={id:'med',user_id:'account',person_id:'person',tratamento_ids:['b','foreign','other']};
+ const m2={id:'med',user_id:'account',person_id:'other',tratamento_ids:[]};
+ const missing={id:'med',user_id:'account',tratamento_ids:['a']};
+ const records=[{...a,medicamento_ids:['med']},b,{...foreign,medicamento_ids:['med']},{...other,medicamento_ids:['med']}];
+ const out=links.indexMedicationCareLinksP7([m,m2,missing],records);
+ assert.deepEqual(out.get(m).map(x=>x.id),['a','b']);assert.deepEqual(out.get(m2).map(x=>x.id),['other']);assert.equal(out.has(missing),false);
+ const opportunities=read('lib/health-intelligence/medication-care-opportunities.ts');
+ assert(opportunities.includes('indexMedicationCareLinksP7(medicamentos, tratamentos)'));
+ assert(opportunities.includes('treatmentLinksByMedication.get(medicamento) ?? []'));
+ assert(opportunities.includes('indexed.get(JSON.stringify([medicamento.user_id, medicamento.person_id, id]))'));
+ assert(opportunities.includes('indexed.delete(key); ambiguous.add(key)'));
+ assert(opportunities.includes('entry.order < active.order'));
+});
+check('H05 narrow metrics center wrapped labels, preserving equal tracks',()=>{const css=read('app/globals.css');assert(/\[data-vault-h05-stats\] > div > div:first-child > span \{[^}]*align-self: center;/.test(css));assert(css.includes('[data-vault-h05-stats] > div { padding-inline: 6px; }'));});
 console.log('H05_H06_DIRECTED_PASS='+n);

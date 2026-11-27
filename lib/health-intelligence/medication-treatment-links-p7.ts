@@ -41,3 +41,31 @@ export function indexMedicationTreatmentsP7(input: {
   }
   return result;
 }
+
+/** Home continuity uses exactly the same explicit scoped relationships as medication chips.
+ * Group once per owner/person, never link across people or infer from names. */
+export function indexMedicationCareLinksP7(
+  medications: readonly Medicamento[], treatments: readonly Tratamento[]
+): Map<Medicamento, MedicationTreatmentChipP7[]> {
+  const result = new Map<Medicamento, MedicationTreatmentChipP7[]>();
+  const groups = new Map<string, {userId: string; personId: string; medications: Medicamento[]; treatments: Tratamento[]}>();
+  for (const medication of medications) {
+    if (!medication.id || !medication.user_id || !medication.person_id) continue;
+    const key = JSON.stringify([medication.user_id, medication.person_id]);
+    let group = groups.get(key);
+    if (!group) {
+      group = {userId: medication.user_id, personId: medication.person_id, medications: [], treatments: []};
+      groups.set(key, group);
+    }
+    group.medications.push(medication);
+  }
+  for (const treatment of treatments) {
+    if (!treatment.id || !treatment.user_id || !treatment.person_id) continue;
+    groups.get(JSON.stringify([treatment.user_id, treatment.person_id]))?.treatments.push(treatment);
+  }
+  for (const group of groups.values()) {
+    const links = indexMedicationTreatmentsP7(group);
+    for (const medication of group.medications) if (medication.id) result.set(medication, links.get(medication.id) ?? []);
+  }
+  return result;
+}
