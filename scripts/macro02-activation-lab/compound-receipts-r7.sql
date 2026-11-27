@@ -18,7 +18,24 @@ REVOKE ALL ON FUNCTION vault_macro02_private.read_active_receipts_r7(uuid,uuid[]
 GRANT CREATE ON SCHEMA vault_macro02_private TO vault_macro02_worker;
 ALTER FUNCTION vault_macro02_private.read_active_receipts_r7(uuid,uuid[]) OWNER TO vault_macro02_worker;
 REVOKE CREATE ON SCHEMA vault_macro02_private FROM vault_macro02_worker;
+SET LOCAL ROLE vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.read_active_receipts_r7(uuid,uuid[]) TO authenticated;
+RESET ROLE;
 CREATE FUNCTION public.vault_macro02_read_active_receipts_r7(p_epoch uuid,p_ids uuid[]) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT vault_macro02_private.read_active_receipts_r7(p_epoch,p_ids) $$;
 REVOKE ALL ON FUNCTION public.vault_macro02_read_active_receipts_r7(uuid,uuid[]) FROM PUBLIC,anon,authenticated,service_role,vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION public.vault_macro02_read_active_receipts_r7(uuid,uuid[]) TO authenticated;
+
+-- Fail the entire migration if old entrypoints remain callable, or if the
+-- new entrypoints are not owned by the restricted worker with exact access.
+DO $$ DECLARE f regprocedure; r text; BEGIN
+ IF current_user <> 'postgres' THEN RAISE EXCEPTION 'M02_R8_ROLE_NOT_RESET'; END IF;
+ FOREACH f IN ARRAY ARRAY['vault_macro02_private.commit_dose(jsonb)'::regprocedure,'vault_macro02_private.commit_stock(jsonb)'::regprocedure,'public.vault_macro02_commit_dose(jsonb)'::regprocedure,'public.vault_macro02_commit_stock(jsonb)'::regprocedure] LOOP
+  FOREACH r IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+   IF has_function_privilege(r,f,'EXECUTE') THEN RAISE EXCEPTION 'M02_R8_LEGACY_ACL % %',f,r; END IF;
+  END LOOP;
+ END LOOP;
+ FOREACH f IN ARRAY ARRAY['vault_macro02_private.commit_atomic_r5(uuid,jsonb)'::regprocedure,'vault_macro02_private.commit_metadata_r5(jsonb)'::regprocedure,'vault_macro02_private.read_atomic_receipts_r5(uuid,uuid[])'::regprocedure,'vault_macro02_private.commit_compound_r6(jsonb)'::regprocedure,'vault_macro02_private.read_active_receipts_r7(uuid,uuid[])'::regprocedure] LOOP
+  IF (SELECT proowner FROM pg_proc WHERE oid=f) <> 'vault_macro02_worker'::regrole OR NOT has_function_privilege('authenticated',f,'EXECUTE') OR has_function_privilege('anon',f,'EXECUTE') OR has_function_privilege('service_role',f,'EXECUTE') THEN RAISE EXCEPTION 'M02_R8_WRITER_ACL %',f; END IF;
+ END LOOP;
+ IF has_schema_privilege('vault_macro02_worker','vault_macro02_private','CREATE') OR EXISTS(SELECT 1 FROM pg_roles WHERE rolname='vault_macro02_worker' AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcanlogin)) THEN RAISE EXCEPTION 'M02_R8_WORKER_ESCALATION'; END IF;
+END $$;

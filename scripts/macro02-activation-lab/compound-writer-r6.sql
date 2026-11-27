@@ -126,7 +126,9 @@ REVOKE ALL ON FUNCTION vault_macro02_private.commit_compound_r6(jsonb) FROM PUBL
 GRANT CREATE ON SCHEMA vault_macro02_private TO vault_macro02_worker;
 ALTER FUNCTION vault_macro02_private.commit_compound_r6(jsonb) OWNER TO vault_macro02_worker;
 REVOKE CREATE ON SCHEMA vault_macro02_private FROM vault_macro02_worker;
+SET LOCAL ROLE vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.commit_compound_r6(jsonb) TO authenticated;
+RESET ROLE;
 CREATE FUNCTION public.vault_macro02_commit_compound_r6(p_intent jsonb) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT vault_macro02_private.commit_compound_r6(p_intent) $$;
 REVOKE ALL ON FUNCTION public.vault_macro02_commit_compound_r6(jsonb) FROM PUBLIC,anon,authenticated,service_role,vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION public.vault_macro02_commit_compound_r6(jsonb) TO authenticated;

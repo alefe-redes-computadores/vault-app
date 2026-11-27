@@ -63,12 +63,18 @@ BEGIN
  RAISE EXCEPTION 'M02_R5_VERSION';
 END $$;
 REVOKE ALL ON FUNCTION vault_macro02_private.commit_atomic_r5(uuid,jsonb) FROM PUBLIC,anon,authenticated,service_role,vault_macro02_worker;
-REVOKE ALL ON FUNCTION vault_macro02_private.commit_dose(jsonb),vault_macro02_private.commit_stock(jsonb),public.vault_macro02_commit_dose(jsonb),public.vault_macro02_commit_stock(jsonb) FROM PUBLIC,anon,authenticated,service_role;
+-- postgres has SET membership, not inherited worker ownership privileges.
+SET LOCAL ROLE vault_macro02_worker;
+REVOKE ALL ON FUNCTION vault_macro02_private.commit_dose(jsonb),vault_macro02_private.commit_stock(jsonb) FROM PUBLIC,anon,authenticated,service_role;
+RESET ROLE;
+REVOKE ALL ON FUNCTION public.vault_macro02_commit_dose(jsonb),public.vault_macro02_commit_stock(jsonb) FROM PUBLIC,anon,authenticated,service_role;
 GRANT CREATE ON SCHEMA vault_macro02_private TO vault_macro02_worker;
 ALTER FUNCTION vault_macro02_private.commit_atomic_r5(uuid,jsonb) OWNER TO vault_macro02_worker;
 ALTER FUNCTION vault_macro02_private.commit_metadata_r5(jsonb) OWNER TO vault_macro02_worker;
 REVOKE CREATE ON SCHEMA vault_macro02_private FROM vault_macro02_worker;
+SET LOCAL ROLE vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.commit_atomic_r5(uuid,jsonb),vault_macro02_private.commit_metadata_r5(jsonb) TO authenticated;
+RESET ROLE;
 CREATE FUNCTION public.vault_macro02_commit_atomic_r5(p_epoch uuid,p_intent jsonb) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT vault_macro02_private.commit_atomic_r5(p_epoch,p_intent) $$;
 CREATE FUNCTION public.vault_macro02_commit_metadata_r5(p_intent jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$ BEGIN
  IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_intent->'changes') x WHERE x->>'kind'='acquisition-unquantified') THEN RAISE EXCEPTION 'M02_R7_COMPOUND_REQUIRED';END IF;
@@ -91,7 +97,9 @@ REVOKE ALL ON FUNCTION vault_macro02_private.read_atomic_receipts_r5(uuid,uuid[]
 GRANT CREATE ON SCHEMA vault_macro02_private TO vault_macro02_worker;
 ALTER FUNCTION vault_macro02_private.read_atomic_receipts_r5(uuid,uuid[]) OWNER TO vault_macro02_worker;
 REVOKE CREATE ON SCHEMA vault_macro02_private FROM vault_macro02_worker;
+SET LOCAL ROLE vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION vault_macro02_private.read_atomic_receipts_r5(uuid,uuid[]) TO authenticated;
+RESET ROLE;
 CREATE FUNCTION public.vault_macro02_read_atomic_receipts_r5(p_epoch uuid,p_ids uuid[]) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT vault_macro02_private.read_atomic_receipts_r5(p_epoch,p_ids) $$;
 REVOKE ALL ON FUNCTION public.vault_macro02_read_atomic_receipts_r5(uuid,uuid[]) FROM PUBLIC,anon,authenticated,service_role,vault_macro02_worker;
 GRANT EXECUTE ON FUNCTION public.vault_macro02_read_atomic_receipts_r5(uuid,uuid[]) TO authenticated;
