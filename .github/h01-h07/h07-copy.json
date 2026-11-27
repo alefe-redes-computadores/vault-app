@@ -1,0 +1,577 @@
+{
+  "mode": "STATIC_UI_COPY_ONLY_AST",
+  "files": [
+    "app/saude/careflow/page.tsx",
+    "app/saude/cirurgias/detalhes/page.tsx",
+    "app/saude/engenharia-clinica/page.tsx",
+    "app/saude/exames/pedidos/page.tsx",
+    "app/saude/fornecimento/page.tsx",
+    "app/saude/jornada/page.tsx",
+    "app/saude/linha-clinica/page.tsx",
+    "app/saude/medicamentos/page.tsx",
+    "app/saude/minha-saude/page.tsx",
+    "app/saude/registros/page.tsx",
+    "app/saude/registros/relatorio/page.tsx",
+    "app/saude/relatorios/page.tsx",
+    "components/health-intelligence/BrainEvidenceWindowCI360.tsx",
+    "components/home/ClinicalEpisodePulseP4.tsx",
+    "components/saude/AccessCommandOverview.tsx",
+    "components/saude/BrainReturnCardD3.tsx",
+    "components/saude/CanonicalExamOrdersM2.tsx",
+    "components/saude/CareFlowSummaryM2.tsx",
+    "components/saude/CareJourney360.tsx",
+    "components/saude/ClinicalJourneyM4.tsx",
+    "components/saude/ConsultationChangeM121.tsx",
+    "components/saude/DocumentArchiveOverview.tsx",
+    "components/saude/HospitalizationA5Workspace.tsx",
+    "components/saude/MedicationSheet360R3.tsx",
+    "components/saude/RehabM5Workspace.tsx",
+    "lib/careflow-m2/pdf-library.ts",
+    "lib/clinical-report-360-pdf.ts",
+    "lib/health-hub/r5.ts",
+    "lib/health-intelligence/capability-catalog.ts",
+    "lib/help/catalog.ts",
+    "lib/m3/careflow-timeline.ts",
+    "lib/m3/medical-pdf-p3.ts",
+    "lib/navigation/clinical-directory-m150.ts",
+    "lib/sync/pull.ts",
+    "scripts/test-v327-document-archive-prescription-avatar.cjs",
+    "scripts/test-vault-a7-m6-premium-closeout.cjs",
+    "scripts/test-vault-careflow-p0p1-r1.cjs",
+    "scripts/test-vault-m141-visual-viewport.cjs",
+    "scripts/test-vault-m65-care-360.cjs"
+  ],
+  "edits": [
+    {
+      "file": "app/saude/careflow/page.tsx",
+      "line": 40,
+      "start": 6948,
+      "end": 7004,
+      "old": "'Modo Médico 360 · Conferir informações para a consulta'",
+      "new": "'Modo Médico · Conferir informações para a consulta'",
+      "context": "JSX_EXPRESSION_LABEL"
+    },
+    {
+      "file": "app/saude/careflow/page.tsx",
+      "line": 37,
+      "start": 5087,
+      "end": 5106,
+      "old": "Jornada Clínica 360",
+      "new": "Jornada Clínica",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/careflow/page.tsx",
+      "line": 14,
+      "start": 874,
+      "end": 893,
+      "old": "'Linha Clínica 360'",
+      "new": "'Linha Clínica'",
+      "context": "STATIC_UI_FIELD"
+    },
+    {
+      "file": "app/saude/cirurgias/detalhes/page.tsx",
+      "line": 980,
+      "start": 22324,
+      "end": 22362,
+      "old": "Jornada Cirúrgica 360 · fatos e equipe",
+      "new": "Jornada Cirúrgica · fatos e equipe",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/engenharia-clinica/page.tsx",
+      "line": 97,
+      "start": 10145,
+      "end": 10167,
+      "old": "Engenharia Clínica 360",
+      "new": "Engenharia Clínica",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/exames/pedidos/page.tsx",
+      "line": 135,
+      "start": 10113,
+      "end": 10131,
+      "old": "VAULT · Exames 360",
+      "new": "VAULT · Exames",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/fornecimento/page.tsx",
+      "line": 1256,
+      "start": 72630,
+      "end": 72666,
+      "old": "Acesso 360 · abrir panorama completo",
+      "new": "Acesso · abrir panorama completo",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/jornada/page.tsx",
+      "line": 12,
+      "start": 908,
+      "end": 935,
+      "old": "Abrir Jornada Cirúrgica 360",
+      "new": "Abrir Jornada Cirúrgica",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/linha-clinica/page.tsx",
+      "line": 89,
+      "start": 7696,
+      "end": 7713,
+      "old": "Linha clínica 360",
+      "new": "Linha clínica",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/medicamentos/page.tsx",
+      "line": 1516,
+      "start": 66562,
+      "end": 66583,
+      "old": "`Abrir menu 360 de ${",
+      "new": "`Abrir menu de ${",
+      "context": "JSX_EXPRESSION_LABEL"
+    },
+    {
+      "file": "app/saude/medicamentos/page.tsx",
+      "line": 1504,
+      "start": 64732,
+      "end": 64755,
+      "old": "`Abrir Gaveta 360 de ${",
+      "new": "`Abrir Gaveta de medicamentos de ${",
+      "context": "JSX_EXPRESSION_LABEL"
+    },
+    {
+      "file": "app/saude/minha-saude/page.tsx",
+      "line": 533,
+      "start": 40181,
+      "end": 40202,
+      "old": "\"Mapa do cuidado 360\"",
+      "new": "\"Mapa do cuidado\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "app/saude/registros/page.tsx",
+      "line": 511,
+      "start": 18750,
+      "end": 18806,
+      "old": "Central de Relatórios 360 · PDF, CSV e JSON\n            ",
+      "new": "Central de Relatórios · PDF, CSV e JSON\n            ",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/registros/relatorio/page.tsx",
+      "line": 68,
+      "start": 7166,
+      "end": 7217,
+      "old": "Central de Relatórios 360 · exportar e compartilhar",
+      "new": "Central de Relatórios · exportar e compartilhar",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/relatorios/page.tsx",
+      "line": 87,
+      "start": 6941,
+      "end": 6966,
+      "old": "Central de Relatórios 360",
+      "new": "Central de Relatórios",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "app/saude/relatorios/page.tsx",
+      "line": 62,
+      "start": 4774,
+      "end": 4801,
+      "old": "`Relatório clínico 360 · ${",
+      "new": "`Relatório clínico · ${",
+      "context": "STATIC_UI_FIELD"
+    },
+    {
+      "file": "components/health-intelligence/BrainEvidenceWindowCI360.tsx",
+      "line": 21,
+      "start": 1197,
+      "end": 1240,
+      "old": "\"Janela factual do Brain · complemento 360\"",
+      "new": "\"Janela factual do Brain · complemento\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "components/home/ClinicalEpisodePulseP4.tsx",
+      "line": 46,
+      "start": 3295,
+      "end": 3330,
+      "old": "Brain 360 · Acompanhamento opcional",
+      "new": "Brain · Acompanhamento opcional",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/AccessCommandOverview.tsx",
+      "line": 16,
+      "start": 1965,
+      "end": 1975,
+      "old": "Acesso 360",
+      "new": "Acesso",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/BrainReturnCardD3.tsx",
+      "line": 23,
+      "start": 993,
+      "end": 1024,
+      "old": "\"Brain 360 — Cartão de Retorno\"",
+      "new": "\"Brain — Cartão de Retorno\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "components/saude/CanonicalExamOrdersM2.tsx",
+      "line": 25,
+      "start": 1415,
+      "end": 1436,
+      "old": "Pedidos de exames 360",
+      "new": "Pedidos de exames",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/CareFlowSummaryM2.tsx",
+      "line": 9,
+      "start": 989,
+      "end": 1001,
+      "old": "CareFlow 360",
+      "new": "CareFlow",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/CareFlowSummaryM2.tsx",
+      "line": 9,
+      "start": 727,
+      "end": 771,
+      "old": "\"Abrir CareFlow 360: exames e monitoramento\"",
+      "new": "\"Abrir CareFlow: exames e monitoramento\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "components/saude/CareJourney360.tsx",
+      "line": 28,
+      "start": 1592,
+      "end": 1611,
+      "old": "Mapa do cuidado 360",
+      "new": "Mapa do cuidado",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/CareJourney360.tsx",
+      "line": 25,
+      "start": 1099,
+      "end": 1120,
+      "old": "\"Mapa do cuidado 360\"",
+      "new": "\"Mapa do cuidado\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "components/saude/ClinicalJourneyM4.tsx",
+      "line": 57,
+      "start": 6296,
+      "end": 6323,
+      "old": "VAULT · Jornada Clínica 360",
+      "new": "VAULT · Jornada Clínica",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/ConsultationChangeM121.tsx",
+      "line": 28,
+      "start": 3892,
+      "end": 3921,
+      "old": "Usar período no Relatório 360",
+      "new": "Usar período no Relatório",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/DocumentArchiveOverview.tsx",
+      "line": 7,
+      "start": 1426,
+      "end": 1436,
+      "old": "Acervo 360",
+      "new": "Acervo",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "components/saude/HospitalizationA5Workspace.tsx",
+      "line": 179,
+      "start": 17032,
+      "end": 17049,
+      "old": "'Internações 360'",
+      "new": "'Internações'",
+      "context": "JSX_EXPRESSION_LABEL"
+    },
+    {
+      "file": "components/saude/MedicationSheet360R3.tsx",
+      "line": 110,
+      "start": 7463,
+      "end": 7482,
+      "old": "\"Fechar Gaveta 360\"",
+      "new": "\"Fechar Gaveta de medicamentos\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "components/saude/RehabM5Workspace.tsx",
+      "line": 108,
+      "start": 9109,
+      "end": 9127,
+      "old": "\"Reabilitação 360\"",
+      "new": "\"Reabilitação\"",
+      "context": "JSX_LABEL"
+    },
+    {
+      "file": "components/saude/RehabM5Workspace.tsx",
+      "line": 106,
+      "start": 8895,
+      "end": 8967,
+      "old": "Entre na sua conta e selecione uma pessoa para acessar Reabilitação 360.",
+      "new": "Entre na sua conta e selecione uma pessoa para acessar Reabilitação.",
+      "context": "JSX_TEXT"
+    },
+    {
+      "file": "lib/careflow-m2/pdf-library.ts",
+      "line": 42,
+      "start": 3251,
+      "end": 3282,
+      "old": "'VAULT / RELATORIO CLINICO 360'",
+      "new": "'VAULT / RELATORIO CLINICO'",
+      "context": "PDF_VISIBLE_TEXT"
+    },
+    {
+      "file": "lib/clinical-report-360-pdf.ts",
+      "line": 63,
+      "start": 4654,
+      "end": 4685,
+      "old": "`VAULT — relatório clínico 360`",
+      "new": "`VAULT — relatório clínico`",
+      "context": "PDF_VISIBLE_TEXT"
+    },
+    {
+      "file": "lib/clinical-report-360-pdf.ts",
+      "line": 40,
+      "start": 2507,
+      "end": 2530,
+      "old": "\"Relatorio clinico 360\"",
+      "new": "\"Relatorio clinico\"",
+      "context": "PDF_VISIBLE_TEXT"
+    },
+    {
+      "file": "lib/health-hub/r5.ts",
+      "line": 64,
+      "start": 10254,
+      "end": 10277,
+      "old": "\"Jornada Cirúrgica 360\"",
+      "new": "\"Jornada Cirúrgica\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/health-hub/r5.ts",
+      "line": 61,
+      "start": 9626,
+      "end": 9645,
+      "old": "\"Linha Clínica 360\"",
+      "new": "\"Linha Clínica\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/health-hub/r5.ts",
+      "line": 50,
+      "start": 7604,
+      "end": 7619,
+      "old": "\"Vacinação 360\"",
+      "new": "\"Vacinação\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/health-hub/r5.ts",
+      "line": 31,
+      "start": 3971,
+      "end": 3995,
+      "old": "\"Engenharia Clínica 360\"",
+      "new": "\"Engenharia Clínica\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/health-hub/r5.ts",
+      "line": 29,
+      "start": 3599,
+      "end": 3622,
+      "old": "\"Relatório Clínico 360\"",
+      "new": "\"Relatório Clínico\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/health-hub/r5.ts",
+      "line": 21,
+      "start": 2100,
+      "end": 2112,
+      "old": "\"Exames 360\"",
+      "new": "\"Exames\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/health-intelligence/capability-catalog.ts",
+      "line": 28,
+      "start": 1389,
+      "end": 1443,
+      "old": "\"Saúde → Linha de Cuidado → Central de Relatórios 360\"",
+      "new": "\"Saúde → Linha de Cuidado → Central de Relatórios\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/help/catalog.ts",
+      "line": 27,
+      "start": 2876,
+      "end": 3111,
+      "old": "\"Avisos reais de estoque ou divergência de receita abrem a aba correspondente na Gaveta 360. As ferramentas da lista ficam no painel superior de filtros, sem rodapé redundante. Nada registra tomada, receita ou estoque automaticamente.\"",
+      "new": "\"Avisos reais de estoque ou divergência de receita abrem a aba correspondente na Gaveta de medicamentos. As ferramentas da lista ficam no painel superior de filtros, sem rodapé redundante. Nada registra tomada, receita ou estoque automaticamente.\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/help/catalog.ts",
+      "line": 26,
+      "start": 2542,
+      "end": 2825,
+      "old": "\"O nome e a seta junto à dosagem abrem a Gaveta 360: ficha (com tratamentos), rotina, estoque, receita e ações. O espaço livre do cartão abre os Detalhes por ID; o menu ••• abre a Gaveta sem ocupar a área livre. A tarja mostra a classificação regulatória conforme fonte ou cadastro.\"",
+      "new": "\"O nome e a seta junto à dosagem abrem a Gaveta de medicamentos: ficha (com tratamentos), rotina, estoque, receita e ações. O espaço livre do cartão abre os Detalhes por ID; o menu ••• abre a Gaveta sem ocupar a área livre. A tarja mostra a classificação regulatória conforme fonte ou cadastro.\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/help/catalog.ts",
+      "line": 25,
+      "start": 2278,
+      "end": 2487,
+      "old": "\"Conforto mostra princípio ativo e tratamentos; Compacto conserva identidade, horários e ações com menos altura. Ambos usam a Gaveta 360. A fabricante/procedência fica na Ficha, sem botão duplicado no cartão.\"",
+      "new": "\"Conforto mostra princípio ativo e tratamentos; Compacto conserva identidade, horários e ações com menos altura. Ambos usam a Gaveta de medicamentos. A fabricante/procedência fica na Ficha, sem botão duplicado no cartão.\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/m3/careflow-timeline.ts",
+      "line": 41,
+      "start": 4469,
+      "end": 4514,
+      "old": "'VAULT · CAREFLOW 360 | LINHA DO TEMPO LOCAL'",
+      "new": "'VAULT · CAREFLOW | LINHA DO TEMPO LOCAL'",
+      "context": "PDF_VISIBLE_TEXT"
+    },
+    {
+      "file": "lib/m3/medical-pdf-p3.ts",
+      "line": 43,
+      "start": 2961,
+      "end": 2985,
+      "old": "'VAULT  /  CAREFLOW 360'",
+      "new": "'VAULT  /  CAREFLOW'",
+      "context": "PDF_VISIBLE_TEXT"
+    },
+    {
+      "file": "lib/navigation/clinical-directory-m150.ts",
+      "line": 82,
+      "start": 6148,
+      "end": 6171,
+      "old": "\"Jornada Cirúrgica 360\"",
+      "new": "\"Jornada Cirúrgica\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/navigation/clinical-directory-m150.ts",
+      "line": 79,
+      "start": 5666,
+      "end": 5685,
+      "old": "\"Linha Clínica 360\"",
+      "new": "\"Linha Clínica\"",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/navigation/clinical-directory-m150.ts",
+      "line": 72,
+      "start": 4930,
+      "end": 4956,
+      "old": "'Pedidos e resultados 360'",
+      "new": "'Pedidos e resultados'",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/navigation/clinical-directory-m150.ts",
+      "line": 69,
+      "start": 4502,
+      "end": 4519,
+      "old": "'Modo Médico 360'",
+      "new": "'Modo Médico'",
+      "context": "STATIC_CATALOG_LABEL"
+    },
+    {
+      "file": "lib/sync/pull.ts",
+      "line": 316,
+      "start": 7606,
+      "end": 7637,
+      "old": "\"Reabilitação 360 indisponível\"",
+      "new": "\"Reabilitação indisponível\"",
+      "context": "SYNC_USER_ERROR"
+    }
+  ],
+  "testEdits": [
+    {
+      "file": "scripts/test-v327-document-archive-prescription-avatar.cjs",
+      "start": 3078,
+      "end": 3090,
+      "old": "'Acervo 360'",
+      "new": "'Acervo'",
+      "sources": [
+        "components/saude/DocumentArchiveOverview.tsx"
+      ]
+    },
+    {
+      "file": "scripts/test-vault-a7-m6-premium-closeout.cjs",
+      "start": 6317,
+      "end": 6357,
+      "old": "'Jornada Cirúrgica 360 · fatos e equipe'",
+      "new": "'Jornada Cirúrgica · fatos e equipe'",
+      "sources": [
+        "app/saude/cirurgias/detalhes/page.tsx"
+      ]
+    },
+    {
+      "file": "scripts/test-vault-careflow-p0p1-r1.cjs",
+      "start": 4829,
+      "end": 4846,
+      "old": "'Modo Médico 360'",
+      "new": "'Modo Médico'",
+      "sources": [
+        "app/saude/careflow/page.tsx",
+        "lib/navigation/clinical-directory-m150.ts"
+      ]
+    },
+    {
+      "file": "scripts/test-vault-m141-visual-viewport.cjs",
+      "start": 2722,
+      "end": 2760,
+      "old": "'Acesso 360 · abrir panorama completo'",
+      "new": "'Acesso · abrir panorama completo'",
+      "sources": [
+        "app/saude/fornecimento/page.tsx"
+      ]
+    },
+    {
+      "file": "scripts/test-vault-m65-care-360.cjs",
+      "start": 5329,
+      "end": 5350,
+      "old": "'Mapa do cuidado 360'",
+      "new": "'Mapa do cuidado'",
+      "sources": [
+        "app/saude/minha-saude/page.tsx",
+        "components/saude/CareJourney360.tsx"
+      ]
+    }
+  ],
+  "residual": [
+    {
+      "file": "app/saude/exames/novo/page.tsx",
+      "line": 1296,
+      "reason": "UNREVIEWED_NOMENCLATURE",
+      "text": "'Novos exames devem ser registrados no Pedido 360.'"
+    }
+  ],
+  "productionWrites": 0
+}
