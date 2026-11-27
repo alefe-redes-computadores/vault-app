@@ -1,0 +1,250 @@
+name: VAULT Residual Premium UX360 V63 reconciliation - NO RELEASE
+on:
+  push:
+    branches: ['vault-lab/residual-premium-ux360-r03-final-1bd868d24b06']
+permissions:
+  contents: read
+concurrency:
+  group: vault-residual-r5-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  residual-r5:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      VAULT_V63_COLLECT_ALL: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin exact R5 candidate outside disposable CI envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '9dc9b340ef2283d25a7480e6a1591d921781f7ec'
+          test "$(git rev-parse '9dc9b340ef2283d25a7480e6a1591d921781f7ec^')" = 'd24d8724af4971a0be41e7812d7069b9198a2238'
+          test "$(git rev-parse '9dc9b340ef2283d25a7480e6a1591d921781f7ec^{tree}')" = 'cfaf2c6974e3b8f0942fce19cf5383b9ecb46cd0'
+          git -c advice.detachedHead=false checkout --detach '9dc9b340ef2283d25a7480e6a1591d921781f7ec'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "CANDIDATE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/residual-r5"
+          printf 'CANDIDATE=%s\nTREE=%s\nPUBLICATION=LOCKED\nDELTA_PATHS=2\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" > "$RUNNER_TEMP/residual-r5/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Locked dependencies (no real credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/residual-r5/npm-ci.log"
+      - name: Semantic reconciliation and complete independent gates
+        shell: bash
+        run: |
+          # GitHub bash starts with errexit. Disable it deliberately while collecting,
+          # then use explicit exit codes and mandatory receipts to block any failure.
+          set +e
+          set -uo pipefail
+          d="$RUNNER_TEMP/residual-r5"; rc=0
+          run() {
+            local name="$1"; shift
+            "$@" 2>&1 | tee "$d/$name.log"
+            local statuses=("${PIPESTATUS[@]}")
+            local s=${statuses[0]}
+            printf '%s_EXIT=%s TEE_EXIT=%s\n' "$name" "$s" "${statuses[1]}" >> "$d/status.txt" || exit 2
+            if [ "$s" -ne 0 ] || [ "${statuses[1]}" -ne 0 ]; then rc=1; fi
+            return 0
+          }
+          require_marker() {
+            local file="$1"; shift
+            if ! grep -Fq "$*" "$d/$file.log"; then
+              printf 'MISSING_MARKER=%s:%s\n' "$file" "$*" >> "$d/status.txt" || exit 2
+              rc=1
+            fi
+          }
+          run premium-ux360 node scripts/test-vault-residual-premium-ux360.cjs
+          require_marker premium-ux360 'PREMIUM_UX360_CONTRACT_PASS checks='
+          run v319 node scripts/test-v319-medication-detail-progressive.cjs
+          run m108 node scripts/test-vault-m108-ux-pdf.cjs
+          run ingredient-authority node scripts/residual-ingredient-contract.cjs
+          require_marker ingredient-authority 'RESIDUAL_INGREDIENT_AUTHORITY_PASS detail=18 list=72 hook=9 mutants=19 MODE=ACTUAL_PROJECTION_JSX_DOUBLES_NO_DB'
+          for zone in UTC America/Sao_Paulo America/New_York; do
+            run "residual-consumers-${zone//\//_}" env TZ="$zone" node scripts/test-vault-residual-consumers.cjs
+            run "macro02-a10-${zone//\//_}" env TZ="$zone" node scripts/test-vault-macro02-a10-dose-origin.cjs
+            run "macro02-v252-${zone//\//_}" env TZ="$zone" node scripts/test-v252-brain-associations-supply-routes.cjs
+            require_marker "residual-consumers-${zone//\//_}" 'RESIDUAL_CONSUMERS_PASS=82 '
+            require_marker "macro02-a10-${zone//\//_}" 'MACRO02_A10_DOSE_ORIGIN_GATE_OK | assertions=57'
+            require_marker "macro02-v252-${zone//\//_}" 'MACRO02_V252_EXPLICIT_TIME_GATE_OK'
+          done
+          # Transport is also independent so an upstream R03 failure cannot mask its result.
+          run r03-cas node scripts/test-vault-stb11-cas-transport-r03.cjs
+          require_marker r03-cas 'CAS_TRANSPORT_TOTAL=18'
+          run v63 node scripts/test-v63-release-gate.mjs
+          require_marker v63 'V63_COLETA_INTEGRAL_APROVADA | executadas=581 | falhas=0'
+          require_marker v63 'R03_IDENTITY_PASS=49 FAIL=0'
+          require_marker v63 'CAS_TRANSPORT_TOTAL=18'
+          for marker in 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'V63_R06_STATIC_OFFLINE_EXTENSION=PASS' 'MACRO02_A10_DOSE_ORIGIN_GATE_OK | assertions=57' 'MACRO02_PLANNED_WRITER_PROJECTION_OK' 'MACRO02_V252_EXPLICIT_TIME_GATE_OK' 'MACRO02_BACKUP_SNAPSHOT_GATE_OK' 'MACRO02_DORMANT_AUTHORITY_GATE_OK' 'MACRO02_RESTORE_STAGE_GATE_OK' 'RESIDUAL_CONSUMERS_PASS=82'; do
+            require_marker v63 "$marker"
+          done
+          run v70-super node scripts/test-v70-super-integrity-ux-contract.mjs
+          run v70-final node scripts/test-v70-final-completeness-contract.mjs
+          run tsc node node_modules/typescript/bin/tsc --noEmit --incremental false
+          printf 'RESIDUAL_R5_UX_GATE_EXIT=%s\n' "$rc" >> "$d/status.txt" || exit 2
+          cat "$d/status.txt" || exit 2
+          exit "$rc"
+      - name: Logs only (no release or APK)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-r5-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-r5/
+          if-no-files-found: error
+          retention-days: 7
+
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Isolate QA code and pin exact R5 tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/residual-browser"
+          test "$(git rev-parse HEAD^)" = '9dc9b340ef2283d25a7480e6a1591d921781f7ec'
+          test "$(git rev-parse '9dc9b340ef2283d25a7480e6a1591d921781f7ec^{tree}')" = 'cfaf2c6974e3b8f0942fce19cf5383b9ecb46cd0'
+          cp .github/residual-qa/qa_browser.py "$RUNNER_TEMP/qa_browser.py"
+          test "$(sha256sum "$RUNNER_TEMP/qa_browser.py" | cut -d' ' -f1)" = '23969d39cc20cca08b689fc00c8f0034f918cffb1b58bff556b40f76ab64c50e'
+          git checkout --detach '9dc9b340ef2283d25a7480e6a1591d921781f7ec'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf 'CANDIDATE=%s\nTREE=%s\nPUBLICATION=LOCKED\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" > "$RUNNER_TEMP/residual-browser/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Build exact Web export with synthetic loopback configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/residual-browser/npm-ci.log"
+          npm run build 2>&1 | tee "$RUNNER_TEMP/residual-browser/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$RUNNER_TEMP/residual-browser/static.log"
+          grep -Fq 'STATIC_EXPORT=WEB_PASS' "$RUNNER_TEMP/residual-browser/static.log"
+      - name: Install pinned Chromium test tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/browser-venv"
+          "$RUNNER_TEMP/browser-venv/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/browser-venv/bin/python" -m playwright install --with-deps chromium
+      - name: Real browser, cumulative cases on changed runtime, local synthetic data
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/browser-venv/bin/python" "$RUNNER_TEMP/qa_browser.py" --out out --sha '9dc9b340ef2283d25a7480e6a1591d921781f7ec' --evidence "$RUNNER_TEMP/residual-browser" 2>&1 | tee "$RUNNER_TEMP/residual-browser/chromium.log"
+      - name: Only sanitized synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-browser-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-browser/
+          if-no-files-found: error
+          retention-days: 7
+
+  android-debug:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: android
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '9dc9b340ef2283d25a7480e6a1591d921781f7ec'
+          test "$(git rev-parse '9dc9b340ef2283d25a7480e6a1591d921781f7ec^{tree}')" = 'cfaf2c6974e3b8f0942fce19cf5383b9ecb46cd0'
+          git checkout --detach '9dc9b340ef2283d25a7480e6a1591d921781f7ec'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p "$RUNNER_TEMP/residual-android"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android export, Capacitor and debug build only
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/residual-android"
+          npm ci --no-audit --no-fund 2>&1 | tee "$d/npm-ci.log"
+          node scripts/ci-build-export-resilient.cjs 2>&1 | tee "$d/export.log"
+          node scripts/verify-static-release-stability.cjs android 2>&1 | tee "$d/static.log"
+          grep -Fq 'STATIC_EXPORT=ANDROID_PASS' "$d/static.log"
+          if test -d android; then npx cap sync android; else npx cap add android; fi
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          path=Path('android/app/src/main/AndroidManifest.xml')
+          ns='http://schemas.android.com/apk/res/android'; ET.register_namespace('android',ns)
+          t=ET.parse(path); a=next(x for x in t.getroot().findall('./application/activity') if x.get('{'+ns+'}name','').endswith('MainActivity'))
+          k=lambda s:'{'+ns+'}'+s
+          if not any(x.get(k('scheme'))=='vault' and x.get(k('host'))=='callback' for x in a.findall('./intent-filter/data')):
+              i=ET.SubElement(a,'intent-filter',{k('label'):'vault_auth'})
+              ET.SubElement(i,'action',{k('name'):'android.intent.action.VIEW'})
+              for c in ('DEFAULT','BROWSABLE'): ET.SubElement(i,'category',{k('name'):'android.intent.category.'+c})
+              ET.SubElement(i,'data',{k('scheme'):'vault',k('host'):'callback'})
+              t.write(path,encoding='utf-8',xml_declaration=True)
+          EOF
+          test -f assets/icon.png && test -f assets/splash.png
+          npx @capacitor/assets generate --android
+          npx cap sync android
+          node scripts/validate-android-bridge-v29.mjs
+          node scripts/patch-android-edge-to-edge-v28.mjs
+          node scripts/patch-android-health-connect-v113.mjs
+          node scripts/patch-android-exact-alarms-m99.mjs
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+          cd android
+          bash gradlew assembleDebug --no-daemon 2>&1 | tee "$d/gradle-debug.log"
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > "$d/debug-sha256.txt"
+          printf 'ANDROID_DEBUG=PASS; NATIVE_PHYSICAL=NOT_RUN; RELEASE=LOCKED\n' > "$d/status.txt"
+      - name: Logs only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-ux-android-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-android/
+          if-no-files-found: error
+          retention-days: 7
