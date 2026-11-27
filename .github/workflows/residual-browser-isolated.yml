@@ -1,0 +1,161 @@
+name: VAULT Stability consolidated final gate - NO RELEASE
+on:
+  push:
+    branches: ['vault-lab/stability-r04-final-gate-03ec3c50']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: vault-stability-r04-final-gate
+  cancel-in-progress: false
+jobs:
+  accepted-delta:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require successful exact delta run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/actions/runs/46011015272 > "$RUNNER_TEMP/delta.json"
+          jq -e '.status=="completed" and .conclusion=="success" and .head_sha=="2fb0b5a09debad6e9478fd028651778ae1cea560"' "$RUNNER_TEMP/delta.json"
+          gh api repos/${{ github.repository }}/actions/runs/46011015272/jobs > "$RUNNER_TEMP/jobs.json"
+          jq -e '([.jobs[]|select(.name=="cas-delta" and .conclusion=="success")]|length)==1 and ([.jobs[]|select(.name=="chromium" and .conclusion=="success")]|length)==1' "$RUNNER_TEMP/jobs.json"
+  v63-final:
+    needs: accepted-delta
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      VAULT_V63_COLLECT_ALL: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin consolidated candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test "$(git rev-parse '03ec3c5014256fa754a7459e39e090f89af1c8f7^{tree}')" = 'ada65b46d73a42d0fbad862107f9b153123870ff'
+          git checkout --detach '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p "$RUNNER_TEMP/stability-final"
+          printf 'CANDIDATE=%s\nTREE=%s\nDELTA_RUN=46011015272\nPRODUCTION=LOCKED\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" > "$RUNNER_TEMP/stability-final/status.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Final mandatory release registry, no suite removed
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/stability-final"
+          npm ci --no-audit --no-fund 2>&1 | tee "$d/npm.log"
+          set +e
+          node scripts/test-v63-release-gate.mjs 2>&1 | tee "$d/v63.log"
+          a=("${PIPESTATUS[@]}")
+          set -e
+          test "${a[0]}" = 0 && test "${a[1]}" = 0
+          for marker in 'V63_COLETA_INTEGRAL_APROVADA | executadas=581 | falhas=0' 'STATIC_OFFLINE_CONTRACTS=69/69 PASS' 'R03_IDENTITY_PASS=49 FAIL=0' 'CAS_TRANSPORT_TOTAL=20' 'STB13_GEOMETRY_BEHAVIOR_PASS=29' 'STB_DIRECTED_PASS=173 FAIL=0'; do
+            grep -Fq "$marker" "$d/v63.log"
+          done
+          echo FINAL_V63_PASS >> "$d/status.txt"
+      - name: Final V70 mandatory contracts
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/stability-final"
+          node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee "$d/v70-super.log"
+          node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee "$d/v70-final.log"
+      - name: Evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stability-final-gate-${{ github.run_id }}
+          path: ${{ runner.temp }}/stability-final/
+          if-no-files-found: error
+          retention-days: 30
+
+  android-debug:
+    needs: accepted-delta
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: android
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test "$(git rev-parse '03ec3c5014256fa754a7459e39e090f89af1c8f7^{tree}')" = 'ada65b46d73a42d0fbad862107f9b153123870ff'
+          git checkout --detach '03ec3c5014256fa754a7459e39e090f89af1c8f7'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p "$RUNNER_TEMP/residual-android"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android export, Capacitor and debug build only
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/residual-android"
+          npm ci --no-audit --no-fund 2>&1 | tee "$d/npm-ci.log"
+          node scripts/ci-build-export-resilient.cjs 2>&1 | tee "$d/export.log"
+          node scripts/verify-static-release-stability.cjs android 2>&1 | tee "$d/static.log"
+          grep -Fq 'STATIC_EXPORT=ANDROID_PASS' "$d/static.log"
+          if test -d android; then npx cap sync android; else npx cap add android; fi
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          path=Path('android/app/src/main/AndroidManifest.xml')
+          ns='http://schemas.android.com/apk/res/android'; ET.register_namespace('android',ns)
+          t=ET.parse(path); a=next(x for x in t.getroot().findall('./application/activity') if x.get('{'+ns+'}name','').endswith('MainActivity'))
+          k=lambda s:'{'+ns+'}'+s
+          if not any(x.get(k('scheme'))=='vault' and x.get(k('host'))=='callback' for x in a.findall('./intent-filter/data')):
+              i=ET.SubElement(a,'intent-filter',{k('label'):'vault_auth'})
+              ET.SubElement(i,'action',{k('name'):'android.intent.action.VIEW'})
+              for c in ('DEFAULT','BROWSABLE'): ET.SubElement(i,'category',{k('name'):'android.intent.category.'+c})
+              ET.SubElement(i,'data',{k('scheme'):'vault',k('host'):'callback'})
+              t.write(path,encoding='utf-8',xml_declaration=True)
+          EOF
+          test -f assets/icon.png && test -f assets/splash.png
+          npx @capacitor/assets generate --android
+          npx cap sync android
+          node scripts/validate-android-bridge-v29.mjs
+          node scripts/patch-android-edge-to-edge-v28.mjs
+          node scripts/patch-android-health-connect-v113.mjs
+          node scripts/patch-android-exact-alarms-m99.mjs
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+          cd android
+          bash gradlew assembleDebug --no-daemon 2>&1 | tee "$d/gradle-debug.log"
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > "$d/debug-sha256.txt"
+          printf 'ANDROID_DEBUG=PASS; NATIVE_PHYSICAL=NOT_RUN; RELEASE=LOCKED\n' > "$d/status.txt"
+      - name: Logs only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-ux-android-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-android/
+          if-no-files-found: error
+          retention-days: 30
