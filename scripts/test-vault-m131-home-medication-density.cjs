@@ -21,7 +21,7 @@ ok(!med.includes('<p className="min-w-0 truncate text-[10px] leading-snug text-i
 const strip=med.indexOf('<MedicationOperationalStrip today={todayStatus}'),action=med.indexOf('aria-label="Ações do medicamento"');
 ok(strip>0&&strip<action&&(med.match(/<MedicationOperationalStrip today=\{todayStatus\}/g)||[]).length===1,"estado de dose/estoque vem antes de ações, sem duplicação");
 ok(med.includes('setQuickDoseMedId(med.id!)')&&med.includes('router.push(careAction.href)')&&med.includes('<MedicationRestockAction name={med.nome}'),"dose, ação contextual e reposição preservadas");
-ok(((med.includes('regulatoryCopyUX360(regulatoryProfile')&&med.includes('data-vault-ux360-regulatory-label')&&med.includes('regulatoryCopy.label')&&med.includes('regulatoryCopy.official')&&med.includes('regulatoryCopy.declared')) &&
+ok(((med.includes('regulatoryCopyUX360(regulatoryProfile')&&med.includes('data-vault-ux360-regulatory-label')&&med.includes('regulatoryCopy.label')&&med.includes('regulatoryCopy.official')&&med.includes('regulatoryCopy.cardDeclaration && !prescriptionReview360')&&med.includes('data-vault-h01-declaration')&&med.includes('regulatoryCopy.declarationConflict')&&med.includes('openMedicationSheet360("receita")')) &&
   /setSelectedRegulatoryScope\(\{\s*medicationId:\s*med\.id[^}]*userId:\s*treatmentOwner\?\.id[^}]*personId:\s*activePersonId/.test(med) &&
   med.includes('med.id === selectedRegulatoryScope.medicationId') &&
   med.includes('med.user_id === selectedRegulatoryScope.userId') &&

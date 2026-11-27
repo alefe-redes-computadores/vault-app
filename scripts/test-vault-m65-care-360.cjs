@@ -62,7 +62,7 @@ let destinations=[];const render=(compact=true)=>{cursor=0;return Comp({command:
 check(Comp({command:null,onNavigate:()=>{}})===null,'nenhum cartão para pessoa sem contexto');
 slots=[];let view=render(true);let buttons=tree(view).filter(x=>x.type==='button');
 check(buttons.length===4,'três cartões compactos e controle de expansão');
-check(text(view).includes('Mapa do cuidado 360') && text(view).includes('não confirmação de ações'),'UI identifica escopo e limite');
+check(text(view).includes('Mapa do cuidado') && text(view).includes('não confirmação de ações'),'UI identifica escopo e limite');
 const firstHref=tiles[0].href;buttons[0].props.onClick();check(destinations.length===1&&destinations[0]===firstHref,'ação delega ao dono e usa rota canônica');
 const expand=buttons.at(-1);check(expand.props['aria-expanded']===false,'recolhimento acessível');
 expand.props.onClick();view=render(true);buttons=tree(view).filter(x=>x.type==='button');check(buttons.length===8,'expansão apresenta todos os sete módulos sem nova busca');

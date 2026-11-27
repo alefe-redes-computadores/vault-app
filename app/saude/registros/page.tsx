@@ -508,7 +508,7 @@ export default function RegistrosSaudePage() {
               className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/[.06] px-3 text-xs font-semibold text-amber-200 print:hidden"
             >
               <FileDown size={15} />
-              Central de Relatórios 360 · PDF, CSV e JSON
+              Central de Relatórios · PDF, CSV e JSON
             </button>
             <button
               type="button"

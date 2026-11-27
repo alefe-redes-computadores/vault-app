@@ -37,7 +37,7 @@ rows=build({...input,careflow:[foreignParent,{...item,parent_id:'foreign-parent'
 check(!rows.find(x=>x.sourceId==='exam-item-1').href.includes('careflow-pedido-foreign-parent'),'parent fora do escopo não gera link');
 const hub=read(paths[0]),medical=read(paths[1]),timeline=read(paths[2]),detail=read(paths[3]),symptoms=read(paths[4]),exams=read(paths[5]),dossier=read(paths[6]),dossierModel=read('lib/m3/medical-dossier-p3.ts');
 check(hub.includes('min-[360px]:grid-cols-2')&&hub.includes('metrics.filter(m=>m.count>0)'),'hub responsivo sem zeros mortos');
-check(!hub.includes('withdrawalConflictsM2')&&hub.includes('Modo Médico 360'),'alerta de retiradas duplicado saiu só do hub');
+check(!hub.includes('withdrawalConflictsM2')&&hub.includes('Modo Médico'),'alerta de retiradas duplicado saiu só do hub');
 check(medical.includes("period==='custom'")&&medical.includes('aria-pressed={period===days}')&&medical.includes('Personalizado'),'período 7/30/90 e personalizado visível');
 check(medical.includes("mode:'detailed'")&&medical.includes('normalized')&&medical.includes('groups.map'),'busca sobre leitura detalhada e categorias agrupadas');
 check(medical.includes('withReturnTarget')&&medical.includes('medicalReturn')&&medical.includes("secoes:sections.join(',')"),'retorno com escopo de filtros preservado');

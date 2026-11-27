@@ -40,7 +40,7 @@ export async function makeMedicalPdfP3(report:MedicalDossierP3):Promise<Blob>{
     pdf.setFillColor(12,25,34);pdf.rect(0,0,width,15,'F');
     pdf.setFillColor(52,211,153);pdf.rect(0,0,3,15,'F');
     pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(247,254,251);
-    pdf.text('VAULT  /  CAREFLOW 360',left,10);
+    pdf.text('VAULT  /  CAREFLOW',left,10);
     pdf.setTextColor(29,48,57);y=top;
   }
   function room(h:number){if(y+h>bottom){pdf.addPage();page();}}

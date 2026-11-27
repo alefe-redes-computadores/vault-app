@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
+import { TreatmentIdentityIconR03, useTreatmentIdentityColorResolverR03 } from "@/components/saude/TreatmentIdentityR03";
 import { catalogPackagesForMedicationUXR4 } from "@/lib/medications/catalog-packaging-ux-r4";
 import { ArrowUpRight, Brain, CalendarClock, ChevronRight, Clock3, Factory, FileCheck2, FilePenLine, History, Layers3, Package, Pill, Repeat2, ShieldCheck, ShoppingBag, X } from "lucide-react";
 
@@ -79,6 +79,7 @@ function toBrazilianDate(input:string|null){
 }
 /** Apenas projeção de dados e handlers do cadastro. Nunca cria tomada, receita, estoque ou retirada. */
 export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medication360Value|null;onClose:()=>void;onNavigate:(href:string)=>void}){
+  const resolveTreatmentColor=useTreatmentIdentityColorResolverR03();
   const [tab,setTab]=useState<Medication360Tab>("ficha");
   const [keptConflictKeys,setKeptConflictKeys]=useState<string[]>([]);
   const closeRef=useRef<HTMLButtonElement>(null);
@@ -106,7 +107,7 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
           <p className="mt-1 line-clamp-2 break-words text-[11px] text-ink-muted">{value.activeIngredient || "Princípio ativo não confirmado no catálogo"}</p>
           <span className={`mt-1.5 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium ${value.regulatory.verified && /notifica[cç][aã]o\s+a/i.test(value.regulatory.label) ? "border-amber-400/30 bg-amber-400/[.06] text-amber-200" : value.regulatory.verified && /notifica[cç][aã]o\s+b/i.test(value.regulatory.label) ? "border-sky-400/30 bg-sky-400/[.06] text-sky-200" : "border-surface-border/50 bg-surface/60 text-ink-secondary"}`}><ShieldCheck size={12}/>{value.regulatory.label}</span>
         </div>
-        <button ref={closeRef} type="button" onClick={onClose} aria-label="Fechar Gaveta 360" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border text-ink-secondary active:scale-95"><X size={17}/></button>
+        <button ref={closeRef} type="button" onClick={onClose} aria-label="Fechar Gaveta de medicamentos" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border text-ink-secondary active:scale-95"><X size={17}/></button>
       </header>
       <div role="tablist" aria-label="Assuntos do medicamento" className="grid shrink-0 grid-cols-5 gap-1 border-y border-surface-border/45 px-2 py-2">
         {sections.map(({id,title,Icon})=><button key={id} role="tab" type="button" aria-selected={tab===id} aria-controls="med360-tabpanel" onClick={()=>setTab(id)}
@@ -133,8 +134,9 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
           <section className="space-y-2 border-t border-surface-border/40 pt-3" aria-label="Tratamentos vinculados">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-primary"><Brain size={16} className="text-ink-muted"/>Tratamentos vinculados</h3>
           {value.treatments.length ? value.treatments.map((t,i)=>{
+            const color=resolveTreatmentColor(t);
             return <div key={`${t.id||"noid"}-${i}`} className={rowClass}>
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-surface-border/50 bg-surface" style={t.color?{color:t.color}:undefined}><TreatmentIdentityIconR03 entity={t} size={16}/></span>
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-surface-border/50 bg-surface" style={color?{color,borderColor:`${color}55`,backgroundColor:`${color}12`}:undefined}><TreatmentIdentityIconR03 entity={t} size={16}/></span>
             <span className="min-w-0 flex-1 break-words text-xs font-semibold text-ink-primary">{t.name}</span>
             {t.id && <button type="button" onClick={()=>navigate(`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id!)}`)} className="grid size-11 shrink-0 place-items-center rounded-lg border border-surface-border/60" aria-label={`Abrir tratamento ${t.name}`}><ChevronRight size={17}/></button>}
           </div>;}):<p className="rounded-xl border border-surface-border/40 bg-surface/35 p-3 text-xs text-ink-muted">Nenhum tratamento explicitamente vinculado a este medicamento.</p>}

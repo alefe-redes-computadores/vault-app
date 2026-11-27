@@ -52,7 +52,7 @@ check('Atalhos A7 preservam autoridades originais',()=>{
  const a=fs.readFileSync('app/saude/cirurgias/detalhes/page.tsx','utf8');
  const b=fs.readFileSync('components/saude/HospitalizationA5Workspace.tsx','utf8');
  const c=fs.readFileSync('app/saude/careflow/page.tsx','utf8');
- assert.ok(a.includes('Jornada Cirúrgica 360 · fatos e equipe'));
+ assert.ok(a.includes('Jornada Cirúrgica · fatos e equipe'));
  assert.ok(b.includes('Ver Jornada Cirúrgica vinculada')&&b.includes('linked.some('));
  assert.ok(c.includes('Jornada Cirúrgica<ChevronRight')&&c.includes('Internações<ChevronRight'));
 });

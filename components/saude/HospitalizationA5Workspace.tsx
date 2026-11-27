@@ -176,7 +176,7 @@ export function HospitalizationA5Workspace({view,selectedId}:{view:View;selected
   <p className="mt-5 text-xs text-ink-muted" role="status">{loading||data===undefined?'Carregando registros da pessoa selecionada…':'Selecione uma pessoa válida para continuar.'}</p></main>;
  return <main className="min-h-screen bg-void px-3 pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-3 text-ink-primary sm:px-4">
   <div className="mx-auto w-full max-w-3xl space-y-3">
-   <ListPageHeader title={view==='new'?'Nova internação':view==='edit'?'Editar internação':view==='details'?'Detalhes da internação':'Internações 360'}
+   <ListPageHeader title={view==='new'?'Nova internação':view==='edit'?'Editar internação':view==='details'?'Detalhes da internação':'Internações'}
     subtitle="Histórico factual da pessoa ativa" showBack backUrl={view==='list'?'/saude/careflow':'/saude/internacoes'}
     icon={<Hospital size={19}/>} iconColor="text-emerald-300" suppressCreate/>
    {view==='list'&&<>

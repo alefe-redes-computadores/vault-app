@@ -103,9 +103,9 @@ export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string
   go(`/saude/reabilitacao/detalhes?id=${encodeURIComponent(id)}`);
  },'Programa registrado localmente.');};
  if(loading||info===undefined||info.scope!==scope)return <main className="p-5 text-sm text-ink-muted" role="status">Carregando reabilitação…</main>;
- if(!uid||!personId)return <main className="p-5 text-sm text-ink-muted">Entre na sua conta e selecione uma pessoa para acessar Reabilitação 360.</main>;
+ if(!uid||!personId)return <main className="p-5 text-sm text-ink-muted">Entre na sua conta e selecione uma pessoa para acessar Reabilitação.</main>;
  return <main className="mx-auto min-h-screen max-w-3xl space-y-4 bg-void px-4 pb-32 pt-5 text-ink-primary">
-  <ListPageHeader title="Reabilitação 360" subtitle="Ciclos, sessões e evolução documentada" backUrl={view==='list'?'/saude/rede':'/saude/reabilitacao'}
+  <ListPageHeader title="Reabilitação" subtitle="Ciclos, sessões e evolução documentada" backUrl={view==='list'?'/saude/rede':'/saude/reabilitacao'}
     icon={<Activity size={18}/>} iconColor="text-teal-300" suppressCreate={view!=='list'} />
   {message&&<div role="status" className="rounded-xl border border-teal-300/20 bg-teal-400/10 p-3 text-xs text-ink-primary">{message}</div>}
   {view==='list'&&<>

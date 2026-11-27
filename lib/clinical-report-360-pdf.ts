@@ -37,7 +37,7 @@ export async function exportClinicalReport360Pdf(report: Report360): Promise<voi
     y+=2;
   }
   header();
-  pdf.setFont("helvetica","bold");pdf.setFontSize(17);pdf.text("Relatorio clinico 360",left,y);y+=9;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(17);pdf.text("Relatorio clinico",left,y);y+=9;
   paragraph(`Pessoa: ${report.personName} | Período: ${report.start} a ${report.end}`,9);
   paragraph(`Modo: ${report.mode==="factual"?"Somente registros factuais":report.mode==="brain"?"Factual com Brain persistido":"Resumo para consulta e anexos"} | Gerado no dispositivo em: ${new Date().toLocaleString("pt-BR")}`,8);
   paragraph("Documento preparado localmente a partir dos registros informados. Não equivale a diagnóstico, orientação de dosagem ou conferência de ingestão.",8);
@@ -60,5 +60,5 @@ export async function exportClinicalReport360Pdf(report: Report360): Promise<voi
   paragraph("Compartilhe somente após conferir pessoa, período, conteúdo e destinatário. O VAULT não envia nada automaticamente.",8);
   const count=pdf.getNumberOfPages();
   for(let i=1;i<=count;i++){pdf.setPage(i);pdf.setFont("helvetica","normal");pdf.setTextColor(110,120,124);pdf.setFontSize(8);pdf.text(`VAULT · ${report.start} a ${report.end} · Página ${i}/${count}`,left,292);}
-  await deliverPdf(pdf,`VAULT-relatorio-360-${report.start}-${report.end}.pdf`,`VAULT — relatório clínico 360`);
+  await deliverPdf(pdf,`VAULT-relatorio-360-${report.start}-${report.end}.pdf`,`VAULT — relatório clínico`);
 }

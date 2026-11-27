@@ -19,7 +19,7 @@ ok(home.includes('<HomeSupplyAccessTiles')&&home.includes('id="home-acessos-medi
 ok(tile.includes('onNavigate(path)')&&tile.includes('const surface = areaTone.split')&&tile.includes('${surface || "border-surface-border/60 bg-surface"}'),'cartão clínico mantém cores originais e haptics pela Home');
 ok(qg1.homePrimaryMinHeightQG1(home,76)&&qg1.clinicalTileMinHeightQG1(tile,76),'M136: mínimo de toque legado preservado');
 ok(supply.includes('density="compact" items={[')&&supply.includes('label="Áreas do fornecimento"'),'navegação principal tem uma linha em largura de celular');
-ok(supply.includes('Acesso 360 · abrir panorama completo')&&supply.indexOf('id="processos"')<supply.indexOf('id="documentos-pendentes"'),'processos primeiro, panorama e documentos completos sob demanda');
+ok(supply.includes('Acesso · abrir panorama completo')&&supply.indexOf('id="processos"')<supply.indexOf('id="documentos-pendentes"'),'processos primeiro, panorama e documentos completos sob demanda');
 ok(supply.includes('id="processo-atual" disabled={busy} className="box-border w-full min-w-0 max-w-full scroll-mt-36 space-y-3 [overflow-wrap:anywhere]"'),'processo selecionado sem placeholder de 900px e com largura restrita');
 ok(supply.includes('const panel = "box-border w-full min-w-0 max-w-full')&&supply.includes('mx-auto box-border w-full max-w-3xl min-w-0 space-y-3 px-4'),'painéis e coluna usam a largura disponível');
 ok(supply.includes('min-h-11 min-w-[76px] flex-1 shrink-0')&&supply.includes('box-border w-full min-w-0 max-w-full space-y-3'),'abas e ciclo evitam min-content overflow');

@@ -59,7 +59,7 @@ export default function Reports360Page(){
       const blob=await makeClinicalPdfM2(result.report);
       if(reportScopeM2.current.userId!==intended.userId||reportScopeM2.current.personId!==intended.personId)
         throw new Error('Pessoa/conta alterada durante a preparação. Arquivo não foi gravado.');
-      await pdfLibraryM2.add(intended.personId,{title:`Relatório clínico 360 · ${start} a ${end}`,start,end,origin:'clinical_report',blob});
+      await pdfLibraryM2.add(intended.personId,{title:`Relatório clínico · ${start} a ${end}`,start,end,origin:'clinical_report',blob});
       setMessage('PDF guardado somente neste aparelho. Acesse a Biblioteca de Relatórios para localizar por ano ou exportar uma cópia.');
     }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível arquivar o relatório.');}
     finally{setBusy(false);}
@@ -84,7 +84,7 @@ export default function Reports360Page(){
     catch{setMessage("Não foi possível copiar o e-mail. Confira o cadastro do médico.");}
   };
   return <PageTransition><main className="min-h-screen bg-void px-4 pb-32 pt-5 header-safe-top text-ink-primary">
-    <header className="mx-auto flex max-w-2xl items-start gap-3"><button type="button" onClick={()=>router.back()} aria-label="Voltar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={19}/></button><div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-300">VAULT · M98</p><h1 className="mt-1 text-xl font-bold">Central de Relatórios 360</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prepare um arquivo clínico com dados reais, seu período e suas escolhas. Funciona offline.</p></div></header>
+    <header className="mx-auto flex max-w-2xl items-start gap-3"><button type="button" onClick={()=>router.back()} aria-label="Voltar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={19}/></button><div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-300">VAULT · M98</p><h1 className="mt-1 text-xl font-bold">Central de Relatórios</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prepare um arquivo clínico com dados reais, seu período e suas escolhas. Funciona offline.</p></div></header>
     <div className="mx-auto mt-4 max-w-2xl space-y-3">
       <ConsultationChangeM121 context={health.context} ownerId={user?.id || ""} personId={activePersonId || ""} today={today} onPrepare={(date)=>{setStart(date);setEnd(today);setMode("consultation");setMessage("Período preparado. Confira as seções, a prévia e o destinatário antes de exportar.");}} />
       <section className="rounded-[22px] border border-surface-border bg-surface p-4"><div className="flex items-center gap-2 text-xs font-bold"><Users size={17} className="text-violet-300"/>Pessoa e período</div>

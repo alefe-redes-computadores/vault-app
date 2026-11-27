@@ -18,7 +18,7 @@ export function BrainEvidenceWindowCI360({ context, onNavigate }: {
     </div>;
   }
   const lastSeven = evidence.sevenDays;
-  return <section aria-label="Janela factual do Brain · complemento 360" className="overflow-hidden rounded-[20px] border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[.055] to-surface p-3.5">
+  return <section aria-label="Janela factual do Brain · complemento" className="overflow-hidden rounded-[20px] border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[.055] to-surface p-3.5">
     <div className="flex items-start gap-2.5">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-cyan-400/10 text-cyan-200"><Activity size={17} aria-hidden="true"/></span>
       <div className="min-w-0 flex-1"><h3 className="text-sm font-bold text-ink-primary">Evidências de doses e registros</h3><p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">Janela móvel de 24h, observação de 30 dias e origem dos dados. Não é avaliação de segurança clínica.</p></div>

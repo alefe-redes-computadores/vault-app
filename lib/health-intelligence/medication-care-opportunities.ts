@@ -23,6 +23,7 @@ import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewa
 import { summarizeMedicationContinuity, continuityEvidenceMessage } from "@/lib/health-intelligence/medication-continuity";
 import { decideMedicationCarePath, medicationCareStageIsPlanning, type MedicationCareStage } from "@/lib/health-intelligence/medication-care-decision";
 import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
+import { indexMedicationCareLinksP7, type MedicationTreatmentChipP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -125,20 +126,27 @@ function getEffectiveRenewalDate(
 
 function indexTreatments(tratamentos: Tratamento[]) {
   const indexed = new Map<string, { treatment: Tratamento; order: number }>();
+  const ambiguous = new Set<string>();
   tratamentos.forEach((treatment, order) => {
-    if (treatment.id && !indexed.has(treatment.id)) indexed.set(treatment.id, { treatment, order });
+    if (!treatment.id || !treatment.user_id || !treatment.person_id) return;
+    const key = JSON.stringify([treatment.user_id, treatment.person_id, treatment.id]);
+    if (ambiguous.has(key)) return;
+    if (indexed.has(key)) { indexed.delete(key); ambiguous.add(key); return; }
+    indexed.set(key, { treatment, order });
   });
   return indexed;
 }
 
 function getActiveTreatment(
   medicamento: Medicamento,
-  indexed: Map<string, { treatment: Tratamento; order: number }>
+  indexed: Map<string, { treatment: Tratamento; order: number }>,
+  links: readonly MedicationTreatmentChipP7[]
 ): Tratamento | null {
+  if (!medicamento.user_id || !medicamento.person_id) return null;
   let active: { treatment: Tratamento; order: number } | undefined;
   let fallback: { treatment: Tratamento; order: number } | undefined;
-  for (const id of medicamento.tratamento_ids || []) {
-    const entry = indexed.get(id);
+  for (const { id } of links) {
+    const entry = indexed.get(JSON.stringify([medicamento.user_id, medicamento.person_id, id]));
     if (!entry) continue;
     if (!fallback || entry.order < fallback.order) fallback = entry;
     if (entry.treatment.status === "ativo" && (!active || entry.order < active.order)) active = entry;
@@ -363,6 +371,7 @@ export function buildMedicationCareOpportunities({
   const scheduledWithdrawals = indexScheduledWithdrawalsByOwner(retiradas);
   const renewalsByMedication = indexMedicationRenewals(renovacoes);
   const treatmentsById = indexTreatments(tratamentos);
+  const treatmentLinksByMedication = indexMedicationCareLinksP7(medicamentos, tratamentos);
   const today = getLocalTodayISO();
 
   for (
@@ -446,7 +455,8 @@ export function buildMedicationCareOpportunities({
     const treatment =
       getActiveTreatment(
         medicamento,
-        treatmentsById
+        treatmentsById,
+        treatmentLinksByMedication.get(medicamento) ?? []
       );
 
     const actionInsight = overdueWithdrawal

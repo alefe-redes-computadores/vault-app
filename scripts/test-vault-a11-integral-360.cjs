@@ -89,7 +89,12 @@ for(const marker of ["from('persons')","from('dose_logs')","signInWithPassword",
 ok(!/\.insert\(|\.upsert\(|\.update\(|\.delete\(/.test(rls),'RLS somente leitura sem escrita');
 const gate=read('scripts/test-v63-release-gate.mjs');
 const contractBlock=gate.split('const contracts = [')[1]?.split('];')[0]||'';
-const entries=[...contractBlock.matchAll(/"scripts\/[^\"]+"/g)].map(x=>x[0]);
+const allEntries=[...contractBlock.matchAll(/"scripts\/[^\"]+"/g)].map(x=>x[0]);
+const stabilityEntries=["\"scripts/test-vault-stability-h01-h04.cjs\"","\"scripts/test-vault-stability-h05-h06.cjs\"","\"scripts/test-vault-stability-h07.cjs\""];
+eq(allEntries.length,584,'V63 581 anteriores + 3 Stability');
+eq(JSON.stringify(allEntries.slice(535,538)),JSON.stringify(stabilityEntries),'H01–H07 presentes na ordem exata');
+eq(new Set(allEntries).size,allEntries.length,'inventário integral sem duplicatas');
+const entries=allEntries.filter(x=>!stabilityEntries.includes(x));
 const vitalContract='"scripts/test-vault-vital-integral.cjs"';
 const priorEntries=entries.slice(0,562);
 const extension=entries.slice(563);

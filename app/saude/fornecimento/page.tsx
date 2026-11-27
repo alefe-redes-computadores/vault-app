@@ -1253,7 +1253,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       <div className="mx-auto box-border w-full max-w-3xl min-w-0 space-y-3 px-4 pt-4 sm:px-5 [&>*]:min-w-0 [&>*]:max-w-full">
       <div id="fornecimento-agora" className="scroll-mt-24">
       <details className="group min-w-0 overflow-hidden rounded-2xl border border-emerald-400/20 bg-surface/50 px-3 py-1">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="min-w-0 flex-1 break-words">Acesso 360 · abrir panorama completo</span><ChevronRight size={16} className="shrink-0 text-emerald-300 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true"/></summary>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="min-w-0 flex-1 break-words">Acesso · abrir panorama completo</span><ChevronRight size={16} className="shrink-0 text-emerald-300 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true"/></summary>
         <div className="min-w-0 pb-2"><AccessCommandOverview command={healthIntelligence.careCommand} onNavigate={navigateSupplyAction}/></div>
       </details>
       </div>

@@ -6,8 +6,7 @@ import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
 import { selectHomeAttentionP4R3 } from "@/lib/home/home-attention-authority-p4-r3";
 import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
 import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
-import { TreatmentIdentityIconR03 } from "@/components/saude/TreatmentIdentityR03";
-import { safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
+import { TreatmentIdentityIconR03, useTreatmentIdentityColorResolverR03 } from "@/components/saude/TreatmentIdentityR03";
 import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
@@ -184,6 +183,7 @@ function mapUrgenciaToAlertLevel(
 
 export default function HomePage() {
  const macro02Mode=useMacro02ModeR5();
+  const resolveTreatmentColor = useTreatmentIdentityColorResolverR03();
  const {events:homeCareFlowEvents=[]}=useCareFlowM2();
  const supplyOverview=useSupplyOverview();
  const sourceNotesById=useMemo(() => new Map((supplyOverview?.renewals||[]).filter(r=>r.id).map(r=>[r.id!,r])),[supplyOverview?.renewals]);
@@ -515,7 +515,7 @@ export default function HomePage() {
     const linkedTreatments = tratamentos.filter((treatment: any) =>
       Array.isArray(medicamentoLigado?.tratamento_ids) && medicamentoLigado.tratamento_ids.includes(treatment.id)
     );
-    const treatmentAccent = linkedTreatments.length === 1 ? linkedTreatments[0]?.cor || "#8B5CF6" : null;
+    const treatmentAccent = linkedTreatments.length === 1 ? resolveTreatmentColor(linkedTreatments[0]) : null;
     const treatmentLabel = linkedTreatments.length === 1
       ? linkedTreatments[0]?.nome
       : linkedTreatments.length > 1 ? `${linkedTreatments.length} tratamentos` : null;
@@ -1938,7 +1938,7 @@ export default function HomePage() {
                     }}
                     className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/70 bg-surface-raised/70 px-3 py-2.5 text-left transition-all active:scale-[0.98]"
                   >
-                    {(()=>{const href=primaryMedicationCareOpportunity.treatmentHref||'';const match=new URLSearchParams(href.split('?')[1]||'').get('id');const linked=tratamentos.find((t:any)=>Boolean(match)&&t.id===match);if(linked){return <TreatmentIdentityIconR03 entity={linked} size={18} className="shrink-0"/>;}return <FolderHeart size={18} aria-hidden="true" className="shrink-0 text-emerald-300"/>;})()}
+                    <TreatmentIdentityIconR03 entity={primaryMedicationCareOpportunity.treatmentId?{id:primaryMedicationCareOpportunity.treatmentId}:null} size={18} className="shrink-0"/>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-ink-primary">
                         Ver tratamento vinculado
@@ -2101,7 +2101,7 @@ export default function HomePage() {
                   ) => {
 
                     const cor =
-                      safeTreatmentColorP7(tratamento.cor) ||
+                      resolveTreatmentColor(tratamento) ||
                       "#8B5CF6";
 
                     return (

@@ -132,7 +132,7 @@ function OrdersPage(){
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <header className="flex items-start gap-3">
         <button type="button" className={button} onClick={()=>router.push('/saude/exames')} aria-label="Voltar para exames"><ArrowLeft size={18}/></button>
-        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-widest text-sky-300">VAULT · Exames 360</p>
+        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-widest text-sky-300">VAULT · Exames</p>
           <h1 className="text-xl font-bold">Pedidos, sessões e resultados</h1>
           <p className="mt-1 text-xs text-ink-muted">Cada exame tem situação própria. Somente horários confirmados aparecem na agenda.</p></div>
       </header>

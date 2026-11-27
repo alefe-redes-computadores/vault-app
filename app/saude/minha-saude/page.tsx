@@ -530,7 +530,7 @@ function HealthDashboard({
                 <ClinicalDisclosure id="minha-saude-panorama" title="Panorama do cuidado" description="Tratamentos, acompanhamento e próximos passos registrados" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">
                   {() => <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>}
                 </ClinicalDisclosure>
-                <ClinicalDisclosure id="minha-saude-mapa-cuidado" title="Mapa do cuidado 360" description="Medicamentos, retiradas, SUS, documentos e prioridades com suas origens preservadas" icon={<HeartPulse size={18}/>} iconClassName="text-violet-300">
+                <ClinicalDisclosure id="minha-saude-mapa-cuidado" title="Mapa do cuidado" description="Medicamentos, retiradas, SUS, documentos e prioridades com suas origens preservadas" icon={<HeartPulse size={18}/>} iconClassName="text-violet-300">
                   {() => <CareJourney360 command={intelligence.careCommand} onNavigate={goFromHealth} compact />}
                 </ClinicalDisclosure>
                 <ClinicalDisclosure id="minha-saude-relacoes" title="Explorar áreas relacionadas" description="Medicamentos, tratamentos, fornecimento e documentos · acesso sob demanda" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">{() => <CareRelationshipRoutes onNavigate={goFromHealth} compact/>}</ClinicalDisclosure>

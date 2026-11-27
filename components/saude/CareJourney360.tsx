@@ -22,10 +22,10 @@ export function CareJourney360({ command, onNavigate, compact = false }: Props) 
     medications: "text-emerald-300", withdrawals: "text-amber-300", supply: "text-violet-300",
     documents: "text-ice", health: "text-rose-300", acquisitions: "text-sky-300", brain: "text-violet-200",
   } as const;
-  return <section aria-label="Mapa do cuidado 360" className="min-w-0 rounded-[20px] border border-surface-border/60 bg-gradient-to-br from-violet-400/[0.045] via-surface to-emerald-400/[0.025] p-3">
+  return <section aria-label="Mapa do cuidado" className="min-w-0 rounded-[20px] border border-surface-border/60 bg-gradient-to-br from-violet-400/[0.045] via-surface to-emerald-400/[0.025] p-3">
     <div className="flex items-start gap-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-violet-400/20 bg-violet-400/10 text-violet-200"><FolderHeart size={17} aria-hidden="true" /></span>
-      <div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Mapa do cuidado 360</h2>
+      <div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Mapa do cuidado</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Áreas conectadas a partir do panorama da pessoa ativa. Os números são registros e planos, não confirmação de ações.</p>
       </div>
     </div>

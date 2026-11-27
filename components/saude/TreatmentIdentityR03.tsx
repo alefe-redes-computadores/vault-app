@@ -5,7 +5,7 @@ import {useAuth} from '@/hooks/useAuth';
 import {useActivePersonId} from '@/hooks/useActivePersonId';
 import {db} from '@/lib/db';
 import {getVaultTreatmentIcon} from '@/lib/health-profile/treatment-icon';
-import {canWriteTreatmentChoiceR03,validTreatmentChoiceR03,visualRevisionR03,readVisualIntentR03,resolveOwnedTreatmentR03,resolveTreatmentKeyR03,treatmentColorR03,type TreatmentIdentityRecordR03,type TreatmentScopeR03,type TreatmentVisualChoiceR03} from '@/lib/health-profile/treatment-preferences-r03';
+import {canWriteTreatmentChoiceR03,validTreatmentChoiceR03,visualRevisionR03,readVisualIntentR03,resolveOwnedTreatmentR03,resolveTreatmentKeyR03,treatmentColorR03,normalizeTreatmentColorR03,type TreatmentIdentityRecordR03,type TreatmentScopeR03,type TreatmentVisualChoiceR03} from '@/lib/health-profile/treatment-preferences-r03';
 import type {LucideProps} from 'lucide-react';
 import {TREATMENT_VISUAL_LIBRARY,CATEGORIES,searchTreatmentVisualIcons,suggestTreatmentVisualIcons} from '@/lib/health-profile/treatment-visual-library-ux360';
 import {tratamentosRepository} from '@/lib/repositories/tratamentos';
@@ -26,11 +26,18 @@ function useIdentity(entity:TreatmentIdentityRecordR03|null|undefined){
   const record=resolveOwnedTreatmentR03(entity,records,scope);
   return {scope,record,selected:resolveTreatmentKeyR03(record),color:treatmentColorR03(record?.cor)};
 }
+/** The same owned record used by the icon is the sole current color source.
+ * A missing/foreign ID yields null; never use projected or historical colors as fallback. */
+export function useTreatmentIdentityColorResolverR03(){
+  const {scope,records}=useContext(IdentityContext);
+  return useMemo(()=>(entity:TreatmentIdentityRecordR03|null|undefined)=>
+    normalizeTreatmentColorR03(resolveOwnedTreatmentR03(entity,records,scope)?.cor),[scope,records]);
+}
 /** All projected and complete records resolve through the active owned entity. */
 export function TreatmentIdentityIconR03({entity,style,...props}:LucideProps&{entity?:TreatmentIdentityRecordR03|null}){
-  const {selected,color}=useIdentity(entity);
+  const {record,selected,color}=useIdentity(entity);
   const Icon=getVaultTreatmentIcon({visual_icon:selected});
-  return <Icon {...props} data-vault-treatment-icon={selected} style={{...style,color}} aria-hidden="true"/>;
+  return <Icon {...props} data-vault-treatment-icon={selected} data-vault-treatment-id={typeof record?.id==='string'?record.id:undefined} data-vault-treatment-revision={visualRevisionR03(record)??undefined} data-vault-treatment-pending={readVisualIntentR03(record?.visual_identity_pending)?.state} style={{...style,color}} aria-hidden="true"/>;
 }
 /** One form-only picker. Searching never changes a selection or submits CAS. */
 export function TreatmentIdentityPickerR03({value,color,title='',onChange,disabled=false}:{value:TreatmentVisualChoiceR03|null;color:string;title?:string;onChange:(v:TreatmentVisualChoiceR03)=>void;disabled?:boolean}){

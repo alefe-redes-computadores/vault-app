@@ -316,7 +316,7 @@ async function performPullAllData(userId: string): Promise<void> {
             if (remoteTable === "dose_logs") criticalPullErrors.push(error.message || "Consulta de doses falhou");
             if (remoteTable === "tratamentos") criticalPullErrors.push("Tratamentos: consulta indisponível");
             if (remoteTable === "surgery_consultation_links_m4") criticalPullErrors.push(error.message || "M4 P2: vínculos de cirurgia indisponíveis");
-            if (remoteTable.endsWith("_m5") && remoteTable.startsWith("rehab_")) criticalPullErrors.push(`${remoteTable}: ${error.message || "Reabilitação 360 indisponível"}`);
+            if (remoteTable.endsWith("_m5") && remoteTable.startsWith("rehab_")) criticalPullErrors.push(`${remoteTable}: ${error.message || "Reabilitação indisponível"}`);
             if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${error.message || 'Erro de rede'}`);
             console.error(
               `❌ [Pull] Erro ao buscar ${remoteTable}:`,

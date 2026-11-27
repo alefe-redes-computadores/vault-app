@@ -32,9 +32,11 @@ const identityEnd = medicine.indexOf("VAULT_MEDICATION_LIST_HIERARCHY_V98", iden
 assert(identityStart > 0 && identityEnd > identityStart, "hierarquia do card presente");
 const identity = medicine.slice(identityStart, identityEnd);
 assert.match(identity, /flex min-w-0 flex-col gap-0\.5/, "cabeçalho vertical compacto M131 preserva largura do nome");
-assert.match(identity, /line-clamp-2 break-words font-display/, "nome não truncado");
-assert.doesNotMatch(identity, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "coluna rígida não pode retornar");
-assert.match(identity, /aria-label="Ações do medicamento" data-vault-r4-main-action className="relative flex min-h-11 w-\[88px\]/, "ações independentes em coluna fixa e acessível");
+assert.match(identity, /<span title=\{medicationListDisplayNameM150P3\([^\n]+\)\} className="min-w-0 max-w-full break-words font-display[^"\n]*">\s*\{medicationListDisplayNameM150P3\(/, "nome não truncado");
+assert.doesNotMatch(identity, /<span title=\{medicationListDisplayNameM150P3[^\n]*className="[^"\n]*(?:line-clamp-|truncate)/, "nome completo sem corte na identidade H01");
+assert.doesNotMatch(identity.split('data-vault-r5-operational')[0], /grid-cols-\[minmax\(0,1fr\)_(?:auto|88px)\]/, "coluna rígida não pode disputar largura com nome");
+assert(identity.includes('data-vault-med360-header className="flex min-w-0 w-full') && identity.includes('data-vault-v34x-title-hitbox') && identity.indexOf('data-vault-r5-operational') > identity.indexOf('data-vault-v34x-title-hitbox'), 'operacional separado abaixo da identidade');
+assert.match(identity, /aria-label="Ações do medicamento" data-vault-r4-main-action className=\{`relative flex min-h-11 min-w-0 items-center justify-end \$\{compactCards\?"w-\[72px\]":"w-\[88px\]"\}/, "ações independentes em coluna adaptativa e acessível");
 assert.match(identity, /\[&>button\]:min-h-11/, "ações preservam alvo mínimo de toque");
 assert.match(identity, /actionLayoutM150P3\.primary && <div/, "sem coluna ou seta vazia quando não existe CTA");
 assert(identity.includes('data-vault-med360-entry="menu"') && identity.includes('grid size-11'), 'menu 360 com alvo tatil de 44px');

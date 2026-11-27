@@ -36,7 +36,7 @@ ok('Três filtros rápidos, SOS visível uma única vez', /const PRIMARY:[\s\S]*
 ok('Busca e categorias de filtros permanecem',med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>') && filter.includes('setExpanded(false)'));
 ok('SOS recolhido no panorama e progressivo',med.includes('tone="sos" forceOpen=') && !med.includes('tone="sos" defaultOpen=') && med.includes('medsSOS.slice(0, limit).map(renderCard)'));
 ok('Grupos por prioridade e dose rápida preservados',med.includes('medsPrioridade.map(renderCard)') && med.includes('setQuickDoseMedId(med.id!)'));
-ok('Classificação regulatória interativa preservada', (med.includes('regulatoryCopyUX360(regulatoryProfile')&&med.includes('data-vault-ux360-regulatory-label')&&med.includes('regulatoryCopy.label')&&med.includes('regulatoryCopy.official')&&med.includes('regulatoryCopy.declared')) &&
+ok('Classificação regulatória interativa preservada', (med.includes('regulatoryCopyUX360(regulatoryProfile')&&med.includes('data-vault-ux360-regulatory-label')&&med.includes('regulatoryCopy.label')&&med.includes('regulatoryCopy.official')&&med.includes('regulatoryCopy.cardDeclaration && !prescriptionReview360')&&med.includes('data-vault-h01-declaration')&&med.includes('regulatoryCopy.declarationConflict')&&med.includes('openMedicationSheet360("receita")')) &&
   /setSelectedRegulatoryScope\(\{\s*medicationId:\s*med\.id[^}]*userId:\s*treatmentOwner\?\.id[^}]*personId:\s*activePersonId/.test(med) &&
   med.includes('med.id === selectedRegulatoryScope.medicationId') &&
   med.includes('med.user_id === selectedRegulatoryScope.userId') &&
