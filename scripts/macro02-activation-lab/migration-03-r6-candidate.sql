@@ -423,8 +423,22 @@ DECLARE a uuid;b uuid;protected boolean;worker boolean:=current_user='vault_macr
 BEGIN
  IF TG_OP='TRUNCATE' THEN RAISE EXCEPTION 'M02_R5_TRUNCATE';END IF;
  protected:=TG_TABLE_NAME IN ('dose_logs','medicamentos','renovacoes','retiradas','medicamento_tratamentos');
- IF TG_OP<>'INSERT' THEN a:=CASE WHEN TG_TABLE_NAME='medicamento_tratamentos' THEN vault_macro02_private.cutover_join_scope_r5(to_jsonb(OLD),TG_OP='DELETE') ELSE (to_jsonb(OLD)->>'user_id')::uuid END;END IF;
- IF TG_OP<>'DELETE' THEN b:=CASE WHEN TG_TABLE_NAME='medicamento_tratamentos' THEN vault_macro02_private.cutover_join_scope_r5(to_jsonb(NEW),false) ELSE (to_jsonb(NEW)->>'user_id')::uuid END;END IF;
+ -- Use separate PL/pgSQL statements: SQL CASE planning checks function ACLs
+ -- even for an unselected branch. Only the junction needs the join resolver.
+ IF TG_OP<>'INSERT' THEN
+  IF TG_TABLE_NAME='medicamento_tratamentos' THEN
+   a:=vault_macro02_private.cutover_join_scope_r5(to_jsonb(OLD),TG_OP='DELETE');
+  ELSE
+   a:=(to_jsonb(OLD)->>'user_id')::uuid;
+  END IF;
+ END IF;
+ IF TG_OP<>'DELETE' THEN
+  IF TG_TABLE_NAME='medicamento_tratamentos' THEN
+   b:=vault_macro02_private.cutover_join_scope_r5(to_jsonb(NEW),false);
+  ELSE
+   b:=(to_jsonb(NEW)->>'user_id')::uuid;
+  END IF;
+ END IF;
  IF TG_OP='UPDATE' AND (a IS NULL OR b IS NULL OR a IS DISTINCT FROM b) THEN RAISE EXCEPTION 'M02_R5_OWNER_CHANGE';END IF;
  PERFORM vault_macro02_private.cutover_lock_r5(coalesce(b,a),protected,worker);
  IF TG_OP='DELETE' THEN RETURN OLD;END IF;RETURN NEW;
