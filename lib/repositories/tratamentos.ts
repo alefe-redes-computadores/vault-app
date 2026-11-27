@@ -34,6 +34,7 @@ type CreateTratamentoBase =
     | "updated_at"
     | "synced"
     | "visual_icon_updated_at"
+    | "visual_icon_expanded"
     | "visual_icon_revision"
     | "visual_icon_operation_id"
     | "visual_identity_pending"
@@ -74,6 +75,7 @@ type UpdateTratamentoBase =
       | "updated_at"
       | "synced"
       | "visual_icon_updated_at"
+    | "visual_icon_expanded"
     | "visual_icon_revision"
     | "visual_icon_operation_id"
     | "visual_identity_pending"
@@ -720,7 +722,7 @@ export const tratamentosRepository = {
     } =
       data;
 
-    for(const field of ['visual_icon_revision','visual_icon_updated_at','visual_icon_operation_id','visual_identity_pending','visual_legacy_choice'] as const)delete (tratamentoData as Record<string,unknown>)[field];
+    for(const field of ['visual_icon_revision','visual_icon_updated_at','visual_icon_operation_id','visual_icon_expanded','visual_identity_pending','visual_legacy_choice'] as const)delete (tratamentoData as Record<string,unknown>)[field];
     const tratamentoCompleto:
       Tratamento = {
       ...tratamentoData,
@@ -972,7 +974,7 @@ export const tratamentosRepository = {
     } =
       data;
 
-    for(const field of ['visual_icon_revision','visual_icon_updated_at','visual_icon_operation_id','visual_identity_pending','visual_legacy_choice'] as const)delete (tratamentoChanges as Record<string,unknown>)[field];
+    for(const field of ['visual_icon_revision','visual_icon_updated_at','visual_icon_operation_id','visual_icon_expanded','visual_identity_pending','visual_legacy_choice'] as const)delete (tratamentoChanges as Record<string,unknown>)[field];
     const now =
       nowIso();
 

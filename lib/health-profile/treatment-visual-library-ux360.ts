@@ -1,6 +1,4 @@
-/** Development draft. Visual search only; never a diagnostic classifier or persistence authority.
- * The canonical CAS key allowlist remains unchanged until the Guardian authorizes expansion.
- */
+/** Visual search only; never a diagnostic classifier or persistence authority. R04 dual projection required before publication. */
 export const LEGACY_TREATMENT_VISUAL_KEYS = ['activity','heart','clipboard','shield','calendar','brain','stethoscope','target','leaf','waypoints','heartpulse','pill'] as const;
 export const CATEGORIES = ['Saúde mental e emoções','Sono e descanso','Neurologia e atenção','Mobilidade e saúde física','Dor e acompanhamento','Saúde cardiovascular','Respiração','Visão e audição','Saúde metabólica','Medicamentos','Saúde geral e prevenção'] as const;
 type Category = typeof CATEGORIES[number];
@@ -57,9 +55,9 @@ export function suggestTreatmentVisualIcons(title:unknown,limit=6):readonly Entr
  const padded=` ${normalized} `;
  return prepared.map(x=>({...x,score:Math.max(0,...x.aliases.map(alias=>alias&&padded.includes(` ${alias} `)?(normalized===alias?100:20)+alias.split(' ').length*10+alias.length:0))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,Math.min(12,Math.floor(limit))).map(x=>x.item);
 }
-/** Existing 12-key authority is not expanded by the search catalogue. */
+/** Modern server contract, certified separately; historical keys remain distinct. */
 export function canPersistWithCurrentCas(key:unknown):boolean {
- return key==='unassigned'||(typeof key==='string'&&(LEGACY_TREATMENT_VISUAL_KEYS as readonly string[]).includes(key));
+ return key==='unassigned'||TREATMENT_VISUAL_LIBRARY.some(item=>item.key===key);
 }
 /** UI-only equivalent messages; preserve first text and distinguish different punctuation/negation. */
 export function distinctClinicalAlertMessages(messages:readonly unknown[]):string[]{
