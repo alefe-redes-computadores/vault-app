@@ -1017,7 +1017,7 @@ export default function MedicamentosListPage() {
         renewals:renewalsByMedication.get(med.id||'')||[],userId:treatmentOwner?.id||'',personId:activePersonId||'',regulatory:regulatoryProfile});
       // MED-04: a verified catalogue class wins over a documentary fallback.
       // The Detalhes page already consumes regulatoryProfiles from this same hook.
-      const prescriptionIdentityP6 = regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
+      const prescriptionIdentityP6 = regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true || catalogIdentity?.authorityState === "possible_divergence");
       const regulatoryCopy=regulatoryCopyUX360(regulatoryProfile,catalogIdentity?.regulatoryNeedsReview===true,reconciliationP6,catalogIdentity?.authorityState);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
@@ -1352,7 +1352,8 @@ export default function MedicamentosListPage() {
       // Suppress only the exact action duplicate. Do not discard independent attention reasons.
       const cardAttentionH01 = (attentionReasonsM143.get(med.id||"")||[]).filter(reason =>
         !(reason === "Reposição necessária" && zeroRestockVisibleH01) &&
-        !(reason === "Estoque a revisar" && (stockReview || stockNegative))
+        !(reason === "Estoque a revisar" && (stockReview || stockNegative)) &&
+        !(reason === "Dose ignorada para revisar" && !isSOS && !isSuspenso && dosesIgnoradasHoje > 0 && /ignorad/i.test(todayStatus.label))
       );
 
       // VAULT_UI360_R3_MEDICATION_SHEET_SHARED — os dados sao projecoes dos registros existentes.
@@ -1458,7 +1459,7 @@ export default function MedicamentosListPage() {
             <button
               type="button"
               title={regulatoryMeaning}
-              aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`}
+              aria-label={`Ver classificação da receita: ${prescriptionIdentityP6}`} aria-description={regulatoryMeaning}
               aria-haspopup={regulatoryProfile ? "dialog" : undefined}
               onClick={(event) => {
                 event.preventDefault();
@@ -1517,12 +1518,6 @@ export default function MedicamentosListPage() {
                     onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("acoes");}}
                     className="pointer-events-auto relative z-20 grid size-11 shrink-0 place-items-center rounded-xl border border-transparent bg-transparent text-ink-secondary transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Ellipsis size={19} aria-hidden="true"/></button>
                 </div>
-                <div data-vault-h01-regulatory className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
-                  <span data-vault-ux360-regulatory-label className="text-[11px] font-semibold leading-snug text-ink-secondary">{regulatoryCopy.label}{regulatoryCopy.official?" · fonte oficial":""}</span>
-                  {regulatoryCopy.cardDeclaration && !prescriptionReview360 && <button type="button" data-vault-h01-declaration onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}} className={`pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1 text-left text-[11px] leading-snug ${regulatoryCopy.declarationConflict?"text-amber-200":"text-ink-secondary"}`}>{regulatoryCopy.cardDeclaration}</button>}
-                  {med.data_receita && <span data-vault-v34x-receita-cadastro className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada no cadastro · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
-                  {compactCards && !med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Documento de receita vinculado</span>}
-                </div>
               </div>
               {!activeIngredients.length && !isSuspenso && (
                 <span className="sr-only">Princípio ativo · confirmar referência nos detalhes</span>
@@ -1537,6 +1532,13 @@ export default function MedicamentosListPage() {
                 </>
               )}
               </div>
+              <div data-vault-h01-context-stack className="flex min-w-0 flex-col gap-0.5">
+                <div data-vault-h01-regulatory className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
+                  <span data-vault-ux360-regulatory-label title={regulatoryMeaning} className={regulatoryCopy.official && (regulatoryProfile || receita) && prescriptionIdentityP6 !== "REG. OFICIAL" ? "sr-only" : "text-[11px] font-semibold leading-snug text-ink-secondary"}>{compactCards && (regulatoryProfile || receita) && !regulatoryCopy.official ? "Sem confirmação oficial" : `${regulatoryCopy.label}${regulatoryCopy.official?" · fonte oficial":""}`}</span>
+                  {regulatoryCopy.cardDeclaration && !prescriptionReview360 && <button type="button" data-vault-h01-declaration onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}} className={`pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1 text-left text-[11px] leading-snug ${regulatoryCopy.declarationConflict?"text-amber-200":"text-ink-secondary"}`} title={regulatoryCopy.cardDeclaration}>{compactCards && !regulatoryCopy.official && !regulatoryCopy.declarationConflict && regulatoryCopy.declared && (regulatoryProfile || receita) ? `Cadastro: ${regulatoryCopy.declared}` : regulatoryCopy.cardDeclaration}</button>}
+                  {med.data_receita && <span data-vault-v34x-receita-cadastro title={`Receita informada no cadastro · ${med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}`} className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>{compactCards ? "Receita informada · " : "Receita informada no cadastro · "}{med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
+                  {compactCards && !med.data_receita && reconciliationP6.hasDocumentEvidence && <span data-vault-v34x-receita-documento className="flex max-w-full items-start gap-1 text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>{compactCards ? "Documento vinculado" : "Documento de receita vinculado"}</span>}
+                </div>
               <div data-vault-h01-chips className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] leading-tight">
                 <button type="button" onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("rotina");}} data-vault-r5-context="regime" className={`pointer-events-auto relative z-20 inline-flex min-h-6 shrink-0 items-center gap-1 text-[10px] font-semibold ${compactCards ? (isSOS ? "text-amber-300" : isTemporary ? "text-sky-200" : "text-ink-secondary") : isSOS ? "min-h-7 rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-amber-300" : isTemporary ? "min-h-7 rounded-md border border-sky-300/20 bg-sky-300/[.05] px-1.5 py-0.5 text-sky-200" : "min-h-7 rounded-md border border-surface-border/50 bg-surface/40 px-1.5 py-0.5 text-ink-secondary"}`} aria-label={`Abrir rotina e regime de ${med.nome}`}>
                   <Repeat2 size={12} aria-hidden="true"/>
@@ -1567,6 +1569,7 @@ export default function MedicamentosListPage() {
                 })}
                 {cardTreatments.length>(compactCards?2:3)&&<button type="button" data-vault-r5-context="mais-tratamentos" aria-label={`Conferir todos os ${cardTreatments.length} tratamentos vinculados de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center text-[10px] text-ink-secondary underline underline-offset-2">+{cardTreatments.length-(compactCards?2:3)} tratamentos</button>}
               </div>}
+              </div>
               </div>
               {!compactCards && Boolean(med.tipo_aquisicao || latestManufacturer || med.laboratorio_etiqueta || reconciliationP6.hasDocumentEvidence) && <div data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Contextos adicionais do medicamento">
                 {med.tipo_aquisicao && <button type="button" data-vault-r5-context="origem" aria-label={`Conferir origem registrada de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}}
@@ -1650,7 +1653,7 @@ export default function MedicamentosListPage() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail">
+      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail vault-h01-medications-route" data-vault-h01-recovery="r1">
         {/* GRADIENTES DOS ÍCONES */}
 
         <svg
@@ -1803,7 +1806,7 @@ export default function MedicamentosListPage() {
         </ListPageHeader>
 
         {/* P7: one compact control surface, with stored density from @vault:meds_density_v1. */}
-        <section className="mx-4 mt-1 rounded-[18px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[.045] via-surface to-surface p-1.5 shadow-sm" aria-label="Organizar medicamentos">
+        <section data-vault-h01-controls className="mx-4 mt-1 rounded-[18px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[.045] via-surface to-surface p-1.5 shadow-sm" aria-label="Organizar medicamentos">
           <div className="flex min-w-0 items-center justify-between gap-2 px-1">
             <span className="text-xs font-bold text-ink-primary">Medicamentos <span className="font-normal text-ink-muted">· rotina programada</span></span>
             <button type="button" aria-label="Explicar o progresso da rotina de medicamentos" onClick={()=>setMedicationContextP7R3({title:"Progresso das doses",description:"Registros programados da pessoa ativa no dia selecionado.",details:[`${statsProgresso.completados} horários confirmados de ${statsProgresso.total} programados.`,`Ignorados registrados: ${statsProgresso.ignoradas}.`,`Esse contador pode ser diferente da Home e de Hoje porque os recortes são diferentes. Ausência de confirmação não prova dose não tomada.`]})} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 font-mono text-sm font-bold tabular-nums text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{statsProgresso.completados}/{statsProgresso.total}<Info size={14} aria-hidden="true"/></button>
@@ -1811,7 +1814,7 @@ export default function MedicamentosListPage() {
           <div role="progressbar" aria-label="Doses programadas confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total>0?Math.min(100,Math.round(statsProgresso.completados/statsProgresso.total*100)):0} className="mx-1 mt-1.5 h-1 overflow-hidden rounded-full bg-surface-raised">
             <div className="h-full bg-emerald-400" style={{width:`${statsProgresso.total>0?Math.min(100,Math.round(statsProgresso.completados/statsProgresso.total*100)):0}%`}}/>
           </div>
-          <div className="sticky top-20 z-30 mt-1.5 flex flex-wrap items-center gap-1.5 rounded-2xl border border-surface-border/40 bg-void/95 p-1.5 shadow-lg backdrop-blur-xl">
+          <div data-vault-h01-control-grid className="sticky top-20 z-30 mt-1.5 flex flex-wrap items-center gap-1.5 rounded-2xl border border-surface-border/40 bg-void/95 p-1.5 shadow-lg backdrop-blur-xl">
             <div className="inline-flex rounded-xl border border-surface-border/60 bg-surface-raised/30 p-0.5" role="group" aria-label="Exibição dos medicamentos">
               <button type="button" aria-pressed={unifiedList} onClick={()=>setUnifiedList(true)} className={`min-h-11 rounded-lg px-3 text-[11px] font-semibold ${unifiedList?"bg-emerald-300/10 text-emerald-200":"text-ink-muted"}`}>Lista</button>
               <button type="button" aria-pressed={!unifiedList} onClick={()=>setUnifiedList(false)} className={`min-h-11 rounded-lg px-3 text-[11px] font-semibold ${!unifiedList?"bg-emerald-300/10 text-emerald-200":"text-ink-muted"}`}>Grupos</button>
@@ -1868,11 +1871,14 @@ export default function MedicamentosListPage() {
         </BottomSheet>
 
         {/* CONTEÚDO */}
-        <section className="px-4 pt-2.5">
+        <section data-vault-h01-list-content className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
-          <div className="mb-2 flex min-w-0 items-center justify-end gap-2" aria-label="Resumo da lista de medicamentos">
-            {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
-          </div>
+          {(medsPrioridade.length > 0 || (unifiedList && listaProcessada.length > 0)) && <div data-vault-h01-list-summary className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1" aria-label="Resumo da lista de medicamentos">
+            {unifiedList && listaProcessada.length > 0 && <p role="status" className="min-w-0 text-xs text-ink-muted">
+                  Exibindo {(medicationFilter !== "todos" || deferredSearchQuery.trim()) ? listaProcessada.length : Math.min(unifiedVisibleCount, listaProcessada.length)} de {listaProcessada.length} medicamentos
+                </p>}
+            {medsPrioridade.length > 0 ? <span className="ml-auto rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
+          </div>}
 
           {listaProcessada.length ===
           0 ? (
@@ -1889,9 +1895,6 @@ export default function MedicamentosListPage() {
           ) : (
             unifiedList ? (
               <div className="space-y-2 pb-8" aria-label="Todos os medicamentos encontrados">
-                <p role="status" className="text-xs text-ink-muted">
-                  Exibindo {(medicationFilter !== "todos" || deferredSearchQuery.trim()) ? listaProcessada.length : Math.min(unifiedVisibleCount, listaProcessada.length)} de {listaProcessada.length} medicamentos
-                </p>
                 {(medicationFilter !== "todos" || deferredSearchQuery.trim()
                   ? listaCronologica
                   : listaCronologica.slice(0, unifiedVisibleCount)).map(renderCard)}

@@ -1,0 +1,86 @@
+name: VAULT H01 — geometria real de Medicamentos
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/saude/medicamentos/page.tsx'
+      - 'app/globals.css'
+      - 'scripts/h01-recovery/**'
+      - '.github/workflows/h01-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vault-h01-geometry-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  geometry:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      BASE: '109b116e997de0087883c5b0a7deb94143d97ef3'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Pin baseline and preserve evidence directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse "$BASE^{tree}")" = f91ae395bce3e4dd47ce84a3730898a35d50050d
+          git merge-base --is-ancestor "$BASE" HEAD
+          git worktree add --detach "$RUNNER_TEMP/h01-before" "$BASE"
+          mkdir -p "$RUNNER_TEMP/h01-evidence/before" "$RUNNER_TEMP/h01-evidence/after"
+          date +%F > "$RUNNER_TEMP/h01-evidence/day.txt"
+          git diff --stat "$BASE" HEAD > "$RUNNER_TEMP/h01-evidence/delta.txt"
+          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/h01-evidence/candidate.txt"
+      - name: Install real Chromium
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/h01-browser"
+          "$RUNNER_TEMP/h01-browser/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/h01-browser/bin/python" -m playwright install --with-deps chromium
+      - name: Baseline — actual Web export and geometry
+        id: baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/h01-before"
+          E="$RUNNER_TEMP/h01-evidence/before"
+          npm ci --no-audit --no-fund 2>&1 | tee "$E/npm.log"
+          npm run build 2>&1 | tee "$E/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$E/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" "$GITHUB_WORKSPACE/scripts/h01-recovery/qa_h01_recovery.py" --phase before --out out --evidence "$E" --sha "$BASE" --day "$(cat "$RUNNER_TEMP/h01-evidence/day.txt")" 2>&1 | tee "$E/chromium.log"
+      - name: Candidate — actual export and no-downgrade geometry
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          E="$RUNNER_TEMP/h01-evidence/after"
+          npm ci --no-audit --no-fund 2>&1 | tee "$E/npm.log"
+          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$E/directed.log"
+          npm run build 2>&1 | tee "$E/build.log"
+          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$E/static.log"
+          "$RUNNER_TEMP/h01-browser/bin/python" scripts/h01-recovery/qa_h01_recovery.py --phase after --out out --evidence "$E" --sha "$GITHUB_SHA" --baseline "$RUNNER_TEMP/h01-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-evidence/day.txt")" 2>&1 | tee "$E/chromium.log"
+      - name: Preserve visual proof, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Vault-H01-recovery-real-Chromium
+          path: ${{ runner.temp }}/h01-evidence/
+          if-no-files-found: error
+          retention-days: 30

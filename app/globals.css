@@ -539,3 +539,43 @@ html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header)
   [data-vault-h05-stats] > div { padding-inline: 6px; }
 }
 [data-vault-h05-stats] > div > p:last-child { margin-top: 0; overflow-wrap: anywhere; }
+
+/* H01-RECOVERY-R1: only medication list, no shared card/clinical writer changes. */
+.vault-h01-medications-route .vault-h01-medications-header { padding-block: 8px; }
+.vault-h01-medications-route .vault-h01-medications-header [data-vault-p0-create-row] { margin-top: 6px; }
+.vault-h01-medications-route [data-vault-h01-controls] { padding: 4px 6px; }
+.vault-h01-medications-route [data-vault-h01-controls] > div:first-child > button { min-height: 44px; padding-block: 0; }
+.vault-h01-medications-route [data-vault-h01-controls] > [role="progressbar"] { margin-top: 2px; }
+.vault-h01-medications-route [data-vault-h01-control-grid] {
+  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) 44px;
+  align-items: stretch; gap: 4px; margin-top: 4px; padding: 2px;
+  border: 0; background: transparent; box-shadow: none; backdrop-filter: none;
+}
+.vault-h01-medications-route [data-vault-h01-control-grid] > [role="group"] { display: flex; min-width: 0; padding: 1px; }
+.vault-h01-medications-route [data-vault-h01-control-grid] > [role="group"] > button {
+  flex: 1 1 0; min-width: 0; min-height: 44px; height: auto; padding-inline: 2px;
+  justify-content: center; white-space: normal; overflow-wrap: anywhere; line-height: 1.2;
+}
+.vault-h01-medications-route [data-vault-h01-control-grid] > [role="group"] > button svg { flex-shrink: 0; }
+.vault-h01-medications-route [data-vault-h01-control-grid] > button { min-height: 44px; padding-inline: 0; }
+.vault-h01-medications-route [data-vault-h01-list-content] { padding-top: 6px; }
+.vault-h01-medications-route [data-vault-h01-list-summary] { margin-bottom: 6px; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-context-stack] {
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 7px;
+}
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-regulatory],
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips],
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-med360-treatment-tags] { display: contents; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-context-stack] :is(button,span) { max-width: 100%; overflow-wrap: anywhere; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-chips] button {
+  border: 0; background: transparent; padding-inline: 1px; min-height: 24px; font-size: 11px;
+}
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-h01-declaration] { min-height: 24px; max-width: 100%; white-space: normal; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-v34x-receita-cadastro] { align-items: center; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r5-operational] { column-gap: 8px; align-items: center; }
+.vault-h01-medications-route [data-vault-executive-density="compact"] [data-vault-r4-main-action] { width: clamp(72px, 21vw, 88px); }
+.vault-h01-medications-route [data-vault-r4-main-action] > button { min-height: 44px; height: auto; gap: 4px; line-height: 1.2; overflow-wrap: anywhere; }
+.vault-h01-medications-route [data-vault-r4-main-action] > button svg { flex-shrink: 0; }
+@media (max-width: 350px) {
+  .vault-h01-medications-route [data-vault-h01-control-grid] > [data-vault-density-control] > button { flex-wrap: wrap; gap: 2px; }
+}
