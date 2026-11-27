@@ -1,0 +1,27 @@
+'use strict';
+// External pre-publication harness, not part of the certified app tree.
+// Native Chromium + actual static export and service worker; no live account or backend.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),os=require('node:os');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE);const root=path.resolve(process.cwd(),'out');
+const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.woff2':'font/woff2','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
+const server=http.createServer((req,res)=>{try{const url=new URL(req.url,'http://localhost'),name=decodeURIComponent(url.pathname);let f=path.resolve(root,'.'+name);if(!f.startsWith(root+path.sep)&&f!==root){res.writeHead(403);return res.end();}if(fs.existsSync(f)&&fs.statSync(f).isDirectory())f=path.join(f,'index.html');if(!fs.existsSync(f)&&fs.existsSync(f+'.html'))f+='.html';if(!fs.existsSync(f)){res.writeHead(404);return res.end('NOT FOUND');}res.writeHead(200,{'Content-Type':mime[path.extname(f)]||'application/octet-stream','Cache-Control':url.pathname.startsWith('/auth/callback')?'no-store, private':url.pathname==='/sw.js'?'no-cache':'public, max-age=0'});fs.createReadStream(f).pipe(res);}catch{res.writeHead(500);res.end();}});
+const profile=fs.mkdtempSync(path.join(os.tmpdir(),'vault-browser-'));let ctx;
+(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
+ const open=async()=>{const c=await chromium.launchPersistentContext(profile,{headless:true,serviceWorkers:'allow',args:['--no-sandbox']});await c.route('**/*',route=>{const u=new URL(route.request().url());return u.origin===origin?route.continue():route.abort();});return c;};
+ ctx=await open();let page=ctx.pages()[0]||await ctx.newPage();
+ // Use a real public app route; it may redirect to login when there is no account.
+ await page.goto(origin+'/login',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,{},{timeout:60000});
+ await page.reload({waitUntil:'domcontentloaded'});await page.locator('input[type=email]').waitFor({state:'visible',timeout:30000});await page.waitForFunction(async()=>{const c=await caches.open('vault-shell-v25-6');return !!await c.match('/login')&&!!await c.match('/vault-offline-fallback.html');},{},{timeout:30000});
+ const status=await page.evaluate(async()=>{const sw=await navigator.serviceWorker.ready;return !!sw.active&&!!navigator.serviceWorker.controller;});assert.equal(status,true);
+ // Synthetic sensitive URL; check cache policy on real browser fetch (never credentials).
+ await page.evaluate(async()=>{await fetch('/auth/callback?code=synthetic-preflight',{cache:'no-store'}).catch(()=>{});await fetch('/login?token=synthetic-preflight',{cache:'no-store'}).catch(()=>{});});
+ const keys=await page.evaluate(async()=>{const keys=await caches.keys();return (await Promise.all(keys.map(async k=>(await (await caches.open(k)).keys()).map(r=>r.url)))).flat();});assert(!keys.some(k=>/auth\/callback|[?&](?:code|token)=/.test(k)));console.log('PASS real SW controlled, shell warm, no auth cache');
+ await ctx.setOffline(true);let resp=await page.goto(origin+'/login',{waitUntil:'domcontentloaded'});assert.equal(resp.status(),200);await page.waitForFunction(()=>navigator.onLine===false);await page.locator('input[type=email]').waitFor({state:'visible',timeout:30000});console.log('PASS actual cached route offline and hydrated login');
+ await page.addScriptTag({path:process.env.WRITER_BUNDLE});assert.equal(await page.evaluate(()=>window.__vaultPreflight(1)),'PASS');console.log('PASS native Chromium IndexedDB planned writer, preserved legacy queue and single debit (synthetic auth)');
+ await page.evaluate(async()=>{const c=await caches.open('vault-shell-v25-6');await c.delete('/');});
+ resp=await page.goto(origin+'/__vault_preflight_unvisited__',{waitUntil:'domcontentloaded'});assert.equal(resp.status(),200);assert.match(await page.content(),/Vault - Página indisponível/);console.log('PASS autonomous fallback for uncached route');
+ // Restart browser preserving profile; cold offline navigation is not a warm-tab simulation.
+ await ctx.close();ctx=await open();await ctx.setOffline(true);page=ctx.pages()[0]||await ctx.newPage();resp=await page.goto(origin+'/login',{waitUntil:'domcontentloaded'});assert.equal(resp.status(),200);await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,{},{timeout:30000});await page.locator('input[type=email]').waitFor({state:'visible',timeout:30000});console.log('PASS persisted cache after browser restart offline');
+ await page.addScriptTag({path:process.env.WRITER_BUNDLE});assert.equal(await page.evaluate(()=>window.__vaultPreflight(2)),'PASS');console.log('PASS native IndexedDB restart, local write, account rejection and A10 (synthetic auth)');
+ await ctx.setOffline(false);resp=await page.goto(origin+'/login',{waitUntil:'domcontentloaded'});assert.equal(resp.status(),200);console.log('PASS reconnect actual export');console.log('MACRO02_REAL_BROWSER_STATIC_OK');
+})().catch(e=>{console.error('BROWSER_GATE_FAIL:',e.name,e.message);process.exitCode=1;}).finally(async()=>{if(ctx)await ctx.close();await new Promise(r=>server.close(r));fs.rmSync(profile,{recursive:true,force:true});});

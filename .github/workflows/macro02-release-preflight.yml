@@ -1,0 +1,64 @@
+name: Macro02 1.4.0 — homologacao pre-publicacao (sem deploy)
+on:
+  push:
+    branches: ['vault-preflight/macro02-1.4.0-*']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      TZ: America/Sao_Paulo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fixar candidata certificada e isolar harness
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = bd8c23bf16e76ea7f362f80c50e8bdeb0ae9a14b
+          mkdir -p "$RUNNER_TEMP/vault-preflight"
+          cp .vault-preflight/browser.cjs .vault-preflight/bundle-writer.cjs "$RUNNER_TEMP/vault-preflight/"
+          git checkout --detach bd8c23bf16e76ea7f362f80c50e8bdeb0ae9a14b
+          test "$(git rev-parse HEAD^{tree})" = 5975e510f51115d1380b8a46594e45bf1090ab42
+          test -z "$(git status --porcelain)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Reproduzir export Web e verificar artefato real
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node scripts/ci-build-web-resilient.cjs
+          node scripts/verify-static-release-stability.cjs web | tee "$RUNNER_TEMP/vault-preflight/static.log"
+      - name: Chromium real, SW e offline com reinicio
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/vault-preflight/tools" --no-audit --no-fund --save-exact playwright@1.56.1 esbuild@0.25.12
+          "$RUNNER_TEMP/vault-preflight/tools/node_modules/.bin/playwright" install --with-deps chromium
+          ESBUILD_MODULE="$RUNNER_TEMP/vault-preflight/tools/node_modules/esbuild" WRITER_BUNDLE="$RUNNER_TEMP/vault-preflight/writer.js" node "$RUNNER_TEMP/vault-preflight/bundle-writer.cjs"
+          WRITER_BUNDLE="$RUNNER_TEMP/vault-preflight/writer.js" PLAYWRIGHT_MODULE="$RUNNER_TEMP/vault-preflight/tools/node_modules/playwright" node "$RUNNER_TEMP/vault-preflight/browser.cjs" | tee "$RUNNER_TEMP/vault-preflight/browser.log"
+          grep -Fxq MACRO02_REAL_BROWSER_STATIC_OK "$RUNNER_TEMP/vault-preflight/browser.log"
+      - name: Contratos legados reais de repositorio com fixtures e Dexie
+        run: |
+          set -euo pipefail
+          node scripts/test-vault-macro02-dormant-authority.cjs
+          node scripts/test-vault-macro02-restore-staging.cjs | tee "$RUNNER_TEMP/vault-preflight/legacy.log"
+          grep -Fxq MACRO02_PLANNED_WRITER_PROJECTION_OK "$RUNNER_TEMP/vault-preflight/legacy.log"
+          grep -Fxq MACRO02_RESTORE_STAGE_GATE_OK "$RUNNER_TEMP/vault-preflight/legacy.log"
+      - name: Evidencia de pre-publicacao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro02-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/vault-preflight/*.log
+          if-no-files-found: error
