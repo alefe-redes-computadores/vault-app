@@ -1,0 +1,64 @@
+name: VAULT Macro02 R3 - laboratorio integrado (SEM RELEASE)
+on:
+  push:
+    branches: ['vault-lab/macro02-integrated-r3-*']
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verificar envelope isolado e arvore candidata
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/vault-lab/macro02-integrated-r3-* ]]
+          test "$(git diff --name-only HEAD^ HEAD | LC_ALL=C sort)" = "$(printf '%s\n' .github/workflows/macro02-integrated-r3-lab.yml vercel.json | LC_ALL=C sort)"
+          test "$(git rev-parse HEAD^^)" = 122e87f347b93d66bbb7810facb29b8ac4e881e5
+          printf 'LAB_SHA=%s\nSOURCE_SHA=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^)" "$(git rev-parse HEAD^^{tree})"
+          git checkout --detach HEAD^
+          git diff --check HEAD^ HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias exatas
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: Contratos novos R3 e escritores
+        if: always() && steps.install.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for suite in cutover-projection operational-recovery enrollment-authority metadata-intent residual-transaction canonical-writer stability-reconciliation dormant-authority; do
+            node "scripts/test-vault-macro02-$suite.cjs"
+          done
+      - name: Dexie real e IndexedDB sintetico - novos deltas
+        if: always() && steps.install.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/macro02-activation-lab/dexie-operational-r3.cjs
+          node scripts/macro02-activation-lab/dexie-residual-r3.cjs
+      - name: PostgreSQL 17 isolado - nova recuperacao e recibos
+        if: always() && steps.install.outcome == 'success'
+        run: bash scripts/macro02-activation-lab/run-recovery-r3-pg.sh
+      - name: TypeScript integral
+        if: always() && steps.install.outcome == 'success'
+        run: node node_modules/typescript/bin/tsc --noEmit
+      - name: Gates V63 e V70 obrigatorios
+        if: always() && steps.install.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/test-v63-release-gate.mjs
+          node scripts/test-v70-super-integrity-ux-contract.mjs
+          node scripts/test-v70-final-completeness-contract.mjs
+      - name: Limites da certificacao
+        if: always()
+        run: echo 'LAB ONLY. Sem migration produtiva, sem ativacao, sem assinatura, sem promocao APK.'
