@@ -1,0 +1,90 @@
+name: VAULT Residual R5 UX - Android only - NO RELEASE
+on:
+  push:
+    branches: ['vault-lab/residual-r5-ux-android-only-1bd868d24b06']
+permissions:
+  contents: read
+concurrency:
+  group: vault-residual-android-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  android-debug:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      CAPACITOR_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: android
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'e4f8340c349b10ebd442faa7946f88fdd248be9b'
+          test "$(git rev-parse 'e4f8340c349b10ebd442faa7946f88fdd248be9b^{tree}')" = '66cb1a34676b80b4bdea201a95c854c39f4dc250'
+          git checkout --detach 'e4f8340c349b10ebd442faa7946f88fdd248be9b'
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p "$RUNNER_TEMP/residual-android"
+          printf 'CANDIDATE=%s\nTREE=%s\nCAPACITOR_BUILD=%s\nNEXT_PUBLIC_VAULT_NATIVE_RUNTIME=%s\nPUBLICATION=LOCKED\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" "$CAPACITOR_BUILD" "$NEXT_PUBLIC_VAULT_NATIVE_RUNTIME" > "$RUNNER_TEMP/residual-android/identity.txt"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android export, Capacitor and debug build only
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/residual-android"
+          npm ci --no-audit --no-fund 2>&1 | tee "$d/npm-ci.log"
+          node scripts/ci-build-export-resilient.cjs 2>&1 | tee "$d/export.log"
+          node scripts/verify-static-release-stability.cjs android 2>&1 | tee "$d/static.log"
+          grep -Fq 'STATIC_EXPORT=ANDROID_PASS' "$d/static.log"
+          if test -d android; then npx cap sync android; else npx cap add android; fi
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          path=Path('android/app/src/main/AndroidManifest.xml')
+          ns='http://schemas.android.com/apk/res/android'; ET.register_namespace('android',ns)
+          t=ET.parse(path); a=next(x for x in t.getroot().findall('./application/activity') if x.get('{'+ns+'}name','').endswith('MainActivity'))
+          k=lambda s:'{'+ns+'}'+s
+          if not any(x.get(k('scheme'))=='vault' and x.get(k('host'))=='callback' for x in a.findall('./intent-filter/data')):
+              i=ET.SubElement(a,'intent-filter',{k('label'):'vault_auth'})
+              ET.SubElement(i,'action',{k('name'):'android.intent.action.VIEW'})
+              for c in ('DEFAULT','BROWSABLE'): ET.SubElement(i,'category',{k('name'):'android.intent.category.'+c})
+              ET.SubElement(i,'data',{k('scheme'):'vault',k('host'):'callback'})
+              t.write(path,encoding='utf-8',xml_declaration=True)
+          EOF
+          test -f assets/icon.png && test -f assets/splash.png
+          npx @capacitor/assets generate --android
+          npx cap sync android
+          node scripts/validate-android-bridge-v29.mjs
+          node scripts/patch-android-edge-to-edge-v28.mjs
+          node scripts/patch-android-health-connect-v113.mjs
+          node scripts/patch-android-exact-alarms-m99.mjs
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+          cd android
+          bash gradlew assembleDebug --no-daemon 2>&1 | tee "$d/gradle-debug.log"
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > "$d/debug-sha256.txt"
+          printf 'ANDROID_DEBUG=PASS; NATIVE_PHYSICAL=NOT_RUN; RELEASE=LOCKED\n' > "$d/status.txt"
+      - name: Logs only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: residual-ux-android-${{ github.run_id }}
+          path: ${{ runner.temp }}/residual-android/
+          if-no-files-found: error
+          retention-days: 7
