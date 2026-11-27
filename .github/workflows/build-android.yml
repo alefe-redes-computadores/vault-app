@@ -1,12 +1,12 @@
-name: Compilar APK Vault
+name: VAULT Stability R04 - Android homologacao SEM RELEASE
 
 on:
   push:
-    branches: [main, master]
-  workflow_dispatch:
+    branches: ["vault-lab/stability-r04-android-homologacao-c80de718"]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: vault-android-${{ github.ref }}
@@ -23,6 +23,36 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Historical audit optional; strict V63 executes the current tree
+
+      - name: Fixar origem certificada e impedir downgrade ou release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SOURCE='b40d302ac4594eac60c3929a6c4f0ca855e0a5fa'
+          CANDIDATE='c80de7180ce77fd30c8cc1fc104bdb8bf1f1bdcf'
+          MIGRATION='supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql'
+          test "$GITHUB_REF_NAME" = 'vault-lab/stability-r04-android-homologacao-c80de718'
+          test "$(git rev-parse HEAD^)" = "$SOURCE"
+          test "$(git rev-parse "$SOURCE^")" = "$CANDIDATE"
+          test "$(git rev-parse "$CANDIDATE^{tree}")" = '7118bf620afe2107e3faf9736e7a741a4a3c345d'
+          test "$(git diff --name-only "$CANDIDATE" "$SOURCE")" = "$MIGRATION"
+          test "$(git diff --name-only "$SOURCE" HEAD)" = "$(printf '%s\n' .github/workflows/build-android.yml vercel.json)"
+          test "$(git rev-parse "$SOURCE:$MIGRATION")" = '3d8ea7ad33ecad3d37f3344257dea3293b518dc7'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/46015710107" --jq '.conclusion + " " + .head_sha' | grep -Fx 'success 6adc43f0a67c3036d5a2848ecacd3bca850f735a'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/46011015272" --jq '.conclusion + " " + .head_sha' | grep -Fx 'success 2fb0b5a09debad6e9478fd028651778ae1cea560'
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          [[ "$latest" =~ ^vault-android-b([0-9]+)$ ]] || { echo 'STOP: tag de producao nao reconhecida'; exit 1; }
+          last_build="${BASH_REMATCH[1]}"
+          [[ "$GITHUB_RUN_NUMBER" =~ ^[0-9]+$ ]]
+          test "$GITHUB_RUN_NUMBER" -gt "$last_build" || { echo 'STOP: versionCode nao supera release atual'; exit 1; }
+          git checkout --detach "$SOURCE"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          mkdir -p artifacts
+          printf 'SOURCE_SHA=%s\nSOURCE_TREE=%s\nLAB_SHA=%s\nVERSION_CODE=%s\nPRODUCTION_RELEASE=NO\nCAS_MIGRATION=20261127152804\n' "$SOURCE" "$(git rev-parse HEAD^{tree})" "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > artifacts/STABILITY-R04-ORIGEM.txt
+          cat artifacts/STABILITY-R04-ORIGEM.txt
+          cat artifacts/STABILITY-R04-ORIGEM.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -281,7 +311,8 @@ jobs:
         run: |
           {
             echo '## VAULT M67 · Build Android com gate V63 estrito (APK ainda requer homologação física)'
-            echo "- Commit: ${GITHUB_SHA}"
+            echo "- Commit de origem: $(git rev-parse HEAD)"
+            echo "- Commit isolado de CI: ${GITHUB_SHA}"
             echo "- Execução: ${GITHUB_RUN_ID}"
             echo '- Gate canônico V63 estrito e TypeScript integral aprovados'
             echo '- Exportação, bridge, build e certificado/versionCode: aprovados'
@@ -303,6 +334,15 @@ jobs:
         with:
           name: Vault-V63-Strict-Audit
           path: artifacts/V63-STRICT.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preservar origem do APK de homologacao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-Stability-R04-Origem
+          path: artifacts/STABILITY-R04-ORIGEM.txt
           if-no-files-found: warn
           retention-days: 14
 
