@@ -13,5 +13,13 @@ export function regulatoryCopyUX360(profile:RegulatoryUX360Profile,needsReview=f
  const declared=summary?.declaredType&&Object.prototype.hasOwnProperty.call(DECLARED,summary.declaredType)?DECLARED[summary.declaredType]:null;
  const document=summary?.hasDocumentEvidence===true?'Documento de receita vinculado':'Documento de receita não localizado nos vínculos';
  const identity=identityState==='confirmed'?'Identidade confirmada no catálogo':identityState==='compatible'?'Referência farmacêutica compatível':identityState==='possible_divergence'?'Identidade em conferência':'Identidade ainda não confirmada';
- return {label,rail,official,review,declarationConflict,declared,document,identity,source:profile?.sourceLabel||(official?'Catálogo regulatório':null),validity:'Vínculo documental não comprova validade atual.'};
+ // Card-only projection; never infer equivalence from labels or mutate declaration/authority.
+ const sameDisplayedType=official&&Boolean(declared)&&(
+   (summary?.declaredType==='branca'&&profile?.label==='Controle especial')||
+   (summary?.declaredType==='comum'&&profile?.label==='Receita comum')||
+   (summary?.declaredType==='azul'&&(profile?.label==='Notificação B'||profile?.label==='Notificação B2'))||
+   (summary?.declaredType==='amarela'&&profile?.label==='Notificação A')
+ );
+ const cardDeclaration=declarationConflict?'Cadastro em conferência':!declared||sameDisplayedType?null:official?`Cadastro: ${declared} · conferir`:`Cadastro: ${declared} · sem confirmação oficial`;
+ return {label,rail,official,review,declarationConflict,declared,cardDeclaration,document,identity,source:profile?.sourceLabel||(official?'Catálogo regulatório':null),validity:'Vínculo documental não comprova validade atual.'};
 }

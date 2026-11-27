@@ -436,3 +436,53 @@ body:has(nav.vault-bottom-nav [data-vault-home-compose]) .vault-adaptive-tail {
 /* Keep the Compose outside the nav's blurred surface; one physical reservation measured by R03. */
 .vault-bottom-nav:has([data-vault-home-compose]) > div { backdrop-filter:none; -webkit-backdrop-filter:none; }
 .vault-bottom-nav:has([data-vault-home-compose]) > div::before { content:""; position:absolute; inset:0; z-index:-1; background:rgb(var(--bg-surface) / .95); backdrop-filter:blur(20px); pointer-events:none; }
+
+/* H01–H04 · scoped physical-homologation delta. Body owns initial top inset;
+ * sticky list header uses inset as its offset, not a second content padding. */
+.vault-h01-medications-header {
+  top: var(--vault-h01-safe-top, env(safe-area-inset-top, 0px));
+  z-index: 40;
+  background-color: rgb(var(--bg-void));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  isolation: isolate;
+}
+.vault-h01-medications-header::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 100%;
+  height: var(--vault-h01-safe-top, env(safe-area-inset-top, 0px));
+  background: inherit;
+  pointer-events: none;
+}
+[data-vault-medication-flow="true"] [data-vault-med360-header] { padding-inline-start: 42px; }
+[data-vault-medication-flow="true"] [data-vault-v34x-title-hitbox],
+[data-vault-medication-flow="true"] [data-vault-h01-regulatory] { overflow-wrap: anywhere; }
+[data-vault-medication-flow="true"] [data-vault-executive-density="compact"] [data-vault-med360-header] { gap: 0; }
+[data-vault-medication-flow="true"] [data-vault-executive-density="compact"] [data-vault-v34x-title-hitbox] > button { padding-inline: 0; }
+[data-vault-medication-flow="true"] [data-vault-executive-density="comfort"] [data-vault-r5-comfort-context] { border-block-start: 1px solid rgb(var(--border-surface) / .65); padding-block-start: .5rem; }
+[data-vault-medication-flow="true"] [data-vault-executive-density="comfort"] [data-vault-r5-operational] { border-block-start: 1px solid rgb(var(--border-surface) / .65); padding-block-start: .5rem; }
+/* Keep the route's sticky header attached to the viewport, not a non-scrolling overflow ancestor. */
+html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header) { overflow-x: clip; }
+[data-vault-medication-flow="true"] [data-vault-h01-chips],
+[data-vault-medication-flow="true"] [data-vault-med360-treatment-tags],
+[data-vault-medication-flow="true"] [data-vault-r5-comfort-context] { gap: 4px 5px; align-items: center; }
+[data-vault-medication-flow="true"] [data-vault-h01-chips] button,
+[data-vault-medication-flow="true"] [data-vault-r5-comfort-context] button {
+  display: inline-flex; align-items: center; justify-content: flex-start;
+  min-width: 0; max-width: 100%; min-height: 28px; height: auto;
+  border-width: 1px; border-style: solid; border-color: rgb(var(--border-surface) / .8);
+  border-radius: 8px; padding: 3px 7px; gap: 4px;
+  font-size: 11px; line-height: 1.2; white-space: normal; overflow-wrap: anywhere;
+}
+[data-vault-medication-flow="true"] [data-vault-executive-density="compact"] [data-vault-h01-chips] button {
+  min-height: 24px; padding: 2px 5px; font-size: 10px;
+}
+[data-vault-medication-flow="true"] [data-vault-h01-chips] button svg,
+[data-vault-medication-flow="true"] [data-vault-r5-comfort-context] button svg { flex-shrink: 0; }
+[data-vault-medication-flow="true"] [data-vault-r5-operational],
+[data-vault-medication-flow="true"] [data-vault-r4-main-action] { align-items: center; }
+[data-vault-medication-flow="true"] [data-vault-med360-microbanner] { margin-top: 4px; }
+/* H04: no extra tail. The existing STB-13 ready selector is the sole measured reserve,
+ * with its existing conservative fallback until the observer measures. */

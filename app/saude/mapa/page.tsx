@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Activity, Accessibility, BedDouble, ArrowLeft, Bell, BrainCircuit, CalendarDays, ChevronDown, ChevronRight,
+  Activity, Accessibility, BedDouble, ArrowLeft, Bell, BrainCircuit, CalendarDays, ChevronRight,
   ClipboardList, Clock3, Compass, Droplets, Factory, FileHeart, FlaskConical,
   HeartPulse, Layers3, Pill, Search, Eye, ShieldCheck, Stethoscope,
   Syringe, Truck, Users, X, Star, Dumbbell, Utensils, Target, ChartNoAxesCombined,
@@ -47,13 +47,13 @@ const featuredBySection: Readonly<Record<string,readonly string[]>> = {
 
 /** Um card para cada rota, sem contadores duplicados nem dados clínicos. */
 /** One full-width destination plus a separate, non-nested Star action. */
-function EntryCard({entry,large,onNavigate,favorite,onToggle,returnHref}: {entry:ClinicalMapEntryM150;large:boolean;onNavigate:()=>void;favorite:boolean;returnHref?:string;onToggle?:((entry:ClinicalMapEntryM150)=>void)}) {
+function EntryCard({entry,onNavigate,favorite,onToggle,returnHref}: {entry:ClinicalMapEntryM150;onNavigate:()=>void;favorite:boolean;returnHref?:string;onToggle?:((entry:ClinicalMapEntryM150)=>void)}) {
   const Icon=icons[entry.icon];
   const fallbackHref=withReturnTarget(entry.href,'/saude/mapa');
   const href=returnHref?withReturnTarget(entry.href,returnHref):fallbackHref;
-  return <article className={`relative min-w-0 rounded-[20px] border shadow-sm ${clinicalMapToneM150P3(entry.id)}`}>
+  return <article className={`relative h-full min-w-0 rounded-[20px] border shadow-sm ${clinicalMapToneM150P3(entry.id)}`}>
     <Link data-vault-clinical-map-entry={entry.id} href={href} onClick={onNavigate} aria-label={`${entry.label}. ${entry.description}`}
-      className={`flex min-w-0 flex-col gap-2.5 p-3 pr-11 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${large?'min-h-[118px] justify-between':'min-h-[100px] justify-start'}`}>
+      className={`flex h-full min-w-0 flex-col gap-2.5 p-3 pr-11 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 justify-start`}>
       <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-current/15 bg-black/10"><Icon size={19} aria-hidden="true"/></span>
       <span className="min-w-0"><strong className="block break-words text-[12px] font-semibold leading-snug text-ink-primary">{entry.label}</strong>
         <span className="mt-0.5 block break-words text-[10px] leading-snug text-ink-muted">{entry.description}</span></span>
@@ -92,14 +92,12 @@ export default function ClinicalMapM150Page() {
   const favoriteEntries=current.favorites.map(id=>HEALTH_MODULES_R5.find(m=>m.id===id)).filter((m):m is (typeof HEALTH_MODULES_R5)[number]=>Boolean(m));
   const focus=useMemo(()=>buildHealthFocusR5({userId:ready?uid:'',personId:ready?pid:'',consultations:consultas,events,brain:brain.records,favorites:current.favorites,recent:current.recent,now:clock}),[ready,uid,pid,consultas,events,brain.records,current.favorites,current.recent,clock]);
   const [queryDraft,setQuery] = useState('');
-  const [additionalDraft,setShowAdditional] = useState(false);
   const [loadedMapScope,setLoadedMapScope]=useState('');
   const priorMapScope=useRef<{uid:string;pid:string}|null>(null);
   const legacyMapState=useRef<{query:string|null;additional:boolean|null}|null>(null);
   const [returnTo,setReturnTo] = useState('/');
   const mapReady=Boolean(scope&&loadedMapScope===scope);
   const query=mapReady?queryDraft:'';
-  const showAdditional=mapReady?additionalDraft:false;
   useEffect(() => {
     const params=new URLSearchParams(window.location.search);
     const requested=params.get('return_to');
@@ -110,21 +108,21 @@ export default function ClinicalMapM150Page() {
   useEffect(()=>{
     const previous=priorMapScope.current;
     if(previous&&(previous.uid!==uid||previous.pid!==pid))clearMapSessionSTB(previous.uid,previous.pid);
-    if(!scope){setLoadedMapScope('');setQuery('');setShowAdditional(false);return;}
+    if(!scope){setLoadedMapScope('');setQuery('');return;}
     priorMapScope.current={uid,pid};
     const saved=readMapSessionSTB(uid,pid),legacy=legacyMapState.current;legacyMapState.current=null;
-    setQuery(legacy?.query??saved?.query??'');setShowAdditional(legacy?.additional??saved?.additional??false);setLoadedMapScope(scope);
+    setQuery(legacy?.query??saved?.query??'');setLoadedMapScope(scope);
     if(saved?.scrollY&&!legacy){const frame=window.requestAnimationFrame(()=>window.scrollTo(0,saved.scrollY));return()=>window.cancelAnimationFrame(frame);}
   },[scope,uid,pid]);
-  const rememberMapSTB=()=>{if(mapReady)writeMapSessionSTB(uid,pid,{query,additional:showAdditional,scrollY:window.scrollY});};
-  useEffect(()=>{if(mapReady)writeMapSessionSTB(uid,pid,{query,additional:showAdditional,scrollY:window.scrollY});},[mapReady,uid,pid,query,showAdditional]);
-  const groups = useMemo(() => query.trim()?searchClinicalDirectoryM150(query):clinicalVisibleSectionsSTB(showAdditional), [query,showAdditional]);
+  const rememberMapSTB=()=>{if(mapReady)writeMapSessionSTB(uid,pid,{query,additional:false,scrollY:window.scrollY});};
+  useEffect(()=>{if(mapReady)writeMapSessionSTB(uid,pid,{query,additional:false,scrollY:window.scrollY});},[mapReady,uid,pid,query]);
+  const groups = useMemo(() => query.trim()?searchClinicalDirectoryM150(query):clinicalVisibleSectionsSTB(false), [query]);
   const sourceHref='/saude/mapa';
   const entriesCount = groups.reduce((count,group)=>count+group.items.length,0);
   const searching=Boolean(query.trim());
   const total=clinicalDirectoryM150.reduce((n,g)=>n+g.items.length,0)+clinicalAdditionalSectionsM150.reduce((n,g)=>n+g.items.length,0);
   const onNavigate=()=>{rememberMapSTB();trigger('vibrate');};
-  return <PageTransition><main className="min-h-[100dvh] bg-void pb-[calc(11rem+env(safe-area-inset-bottom))] pt-4 text-ink-primary">
+  return <PageTransition><main className="bg-void vault-adaptive-tail vault-h04-map pt-4 text-ink-primary">
     <div className="mx-auto max-w-2xl space-y-5 px-4">
       <header className="flex items-center gap-3">
         <Link href={returnTo} onClick={onNavigate} aria-label="Voltar à origem do mapa" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/60 bg-surface-raised/50 text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><ArrowLeft size={18}/></Link>
@@ -141,7 +139,6 @@ export default function ClinicalMapM150Page() {
       </div>
       <p role="status" className="text-xs text-ink-muted" aria-live="polite">{searching ? `${entriesCount} resultado${entriesCount===1?'':'s'}` : `${total} acessos clínicos disponíveis · por área`}</p>
 
-      {!searching&&<button type="button" aria-pressed={showAdditional} data-vault-map-density aria-label="Espaçamento ampliado dos cartões" onClick={()=>setShowAdditional(v=>!v)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border border-violet-300/20 bg-surface-raised/65 px-4 py-3 text-left text-xs font-semibold text-ink-primary">{showAdditional?'Espaçamento ampliado':'Espaçamento compacto'} <ChevronDown size={15} className="inline-block align-middle"/></button>}
       {!searching&&favoriteEntries.length>0&&<section aria-label="Favoritos" className="space-y-2">
         <h2 className="text-xs font-bold text-amber-200">Favoritos</h2>
         <div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favoriteEntries.map((module,i)=><Link key={module.id} href={withReturnTarget(module.href,sourceHref)} onClick={()=>{rememberMapSTB();trigger('vibrate');}} className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2 text-xs font-semibold text-ink-primary ${favoriteEntries.length%2===1&&i===favoriteEntries.length-1?"col-span-2 max-[349px]:col-span-1":""}`}><span className="min-w-0 break-words">{module.title}</span><Star size={15} fill="currentColor" className="shrink-0 text-amber-300"/></Link>)}</div>
@@ -157,11 +154,11 @@ export default function ClinicalMapM150Page() {
         const remaining=searching?[]:defaultItems.filter(item=>!preferred.includes(item.id));
         return <section key={group.id} aria-labelledby={`m150-${group.id}`} className="space-y-2.5">
           <div className="flex items-start gap-2 px-0.5"><span className={`mt-0.5 ${clinicalMapSectionToneM150P5P3(group.id)}`} aria-hidden="true"><Layers3 size={16}/></span><div><h2 id={`m150-${group.id}`} className={`text-sm font-bold ${clinicalMapSectionToneM150P5P3(group.id)}`}>{group.title}</h2><p className="mt-0.5 text-[11px] text-ink-muted">{group.description}</p></div></div>
-          {featured.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{featured.map((entry,i)=>{const module=moduleFor(entry);return <div key={entry.id} className={featured.length%2===1&&i===featured.length-1?"col-span-2 max-[349px]:col-span-1":"min-w-0"}><EntryCard entry={entry} returnHref={sourceHref} large={showAdditional||(group.id==='rotina'&&!searching)} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/></div>;})}</div>}
-          {remaining.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{remaining.map((entry,i)=>{const module=moduleFor(entry);return <div key={entry.id} className={remaining.length%2===1&&i===remaining.length-1?"col-span-2 max-[349px]:col-span-1":"min-w-0"}><EntryCard entry={entry} returnHref={sourceHref} large={showAdditional} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/></div>;})}</div>}
+          {featured.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{featured.map((entry,i)=>{const module=moduleFor(entry);return <div key={entry.id} className={featured.length%2===1&&i===featured.length-1?"col-span-2 max-[349px]:col-span-1":"min-w-0"}><EntryCard entry={entry} returnHref={sourceHref} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/></div>;})}</div>}
+          {remaining.length>0&&<div className="grid min-w-0 grid-cols-2 gap-2.5 max-[349px]:grid-cols-1">{remaining.map((entry,i)=>{const module=moduleFor(entry);return <div key={entry.id} className={remaining.length%2===1&&i===remaining.length-1?"col-span-2 max-[349px]:col-span-1":"min-w-0"}><EntryCard entry={entry} returnHref={sourceHref} onNavigate={()=>record(entry)} favorite={Boolean(module&&pinned.has(module.id))} onToggle={module?toggle:undefined}/></div>;})}</div>}
         </section>;
       })}
-      <p className="pb-3 text-[11px] leading-relaxed text-ink-muted">Este mapa organiza acessos existentes. Análises de Brain, Fênix e PharmaLens não substituem seus registros nem confirmam diagnósticos, receitas, estoque ou aquisições.</p>
+      <p data-vault-h04-map-end className="text-[11px] leading-relaxed text-ink-muted">Este mapa organiza acessos existentes. Análises de Brain, Fênix e PharmaLens não substituem seus registros nem confirmam diagnósticos, receitas, estoque ou aquisições.</p>
     </div>
   </main></PageTransition>;
 }

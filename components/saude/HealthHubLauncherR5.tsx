@@ -39,7 +39,6 @@ const TONES:Record<HealthGroupR5,{icon:string;surface:string;heading:string;line
   foundation:{icon:"text-emerald-200 bg-emerald-400/10 border-emerald-400/20",surface:"border-emerald-400/20 bg-emerald-400/[0.045]",heading:"text-emerald-300",line:"border-emerald-300/40"},
 };
 const BY_ID=new Map(HEALTH_MODULES_R5.map(module=>[module.id,module]));
-const RECOVERY_MODULES_STB=HEALTH_MODULES_R5.filter(m=>m.id==="internacoes"||m.id==="reabilitacao");
 const VITAL_ROOT_STB=HEALTH_MODULES_R5.filter(m=>m.id==="vital");
 const VITAL_TONES:Record<string,{icon:string;surface:string;heading:string;line:string}>={
  vital:{icon:"text-teal-200 bg-teal-400/10 border-teal-400/20",surface:"border-teal-400/20 bg-teal-400/[0.045]",heading:"text-teal-300",line:"border-teal-300/40"},
@@ -161,7 +160,6 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
           <span className="min-w-0 flex-1"><strong className="block break-words text-xs text-ink-primary">{module.title}</strong><span className="mt-0.5 block break-words text-[11px] leading-snug text-ink-muted">{f.reason}</span></span><ChevronRight size={15} className="shrink-0 text-sky-300" aria-hidden="true"/>
         </button>;})}</div>
       </section>:null}
-      <section aria-label="Cuidados e recuperação" className="space-y-2"><div className="flex items-center gap-2"><BedDouble size={16} className="text-sky-300" aria-hidden="true"/><h3 className="text-[13px] font-semibold">Cuidados e recuperação</h3></div><p className="text-[10px] text-ink-muted">Internações e reabilitação clínica, sem confundir com cadastro de profissionais.</p><div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{RECOVERY_MODULES_STB.map((m,i)=><HubModuleTileR5 key={m.id} module={m} pinned={pinned.has(m.id)} onOpen={open} onPin={togglePin} spanFull={isTrailingGridItemSTB(i,RECOVERY_MODULES_STB.length)}/>)}</div></section>
       <section aria-label="Explorar todas as áreas" className="space-y-2">
         <button type="button" onClick={()=>navigateToOther("/saude/mapa")} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] px-3 text-left text-xs font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex items-center gap-2"><LayoutGrid size={17} aria-hidden="true"/>Ver todas as áreas de saúde</span><ChevronRight size={17} aria-hidden="true"/></button>
       </section>
