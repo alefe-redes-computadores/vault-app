@@ -126,23 +126,40 @@ def check_modal(p,authority):
     else:expect(premium).to_have_count(0)
     dialog.get_by_role('button',name='Fechar',exact=True).click();expect(dialog).not_to_be_visible(timeout=10000)
 
-def check_sheet(p,day,kind,linked):
-    c=h.card(p,h.NAMES[kind]);c.locator('[data-vault-med360-entry="name"]').click()
+def check_sheet(p,kind,row,linked):
+    # Date and document linkage are independent facts. Never infer one from the other.
+    require(row['nome']==h.NAMES[kind], 'fixture identity mismatch')
+    raw_date=row.get('data_receita')
+    expected_date=datetime.fromisoformat(raw_date).strftime('%d/%m/%Y') if raw_date else 'Não informada'
+    expected_manufacturer=row['laboratorio_etiqueta']
+    require(bool(expected_manufacturer), 'fixture manufacturer missing')
+    c=h.card(p,row['nome']);c.locator('[data-vault-med360-entry="name"]').click()
     sheet=p.locator('[data-vault-med360-sheet]');expect(sheet).to_be_visible(timeout=15000)
-    require('Laboratório QA' in sheet.inner_text(),'manufacturer missing in real drawer')
-    sheet.get_by_role('tab',name='Receita',exact=True).click()
-    evidence=sheet.locator('[data-vault-h01-document-evidence]');expect(evidence).to_be_visible()
+    expect(sheet.get_by_role('heading',level=2)).to_contain_text(row['nome'],timeout=15000)
+    # The component restores its initial tab in a React effect. Assert and wait;
+    # do not click Ficha to conceal a regression in the default tab.
+    ficha=sheet.get_by_role('tab',name='Ficha',exact=True)
+    expect(ficha).to_have_attribute('aria-selected','true',timeout=15000)
+    panel=sheet.get_by_role('tabpanel')
+    manufacturer=panel.get_by_text('Fabricante',exact=True).locator('xpath=../..')
+    expect(manufacturer.get_by_text(expected_manufacturer,exact=True)).to_be_visible(timeout=15000)
+    receita=sheet.get_by_role('tab',name='Receita',exact=True);receita.click()
+    expect(receita).to_have_attribute('aria-selected','true',timeout=15000)
+    evidence=panel.locator('[data-vault-h01-document-evidence]');expect(evidence).to_be_visible()
     expect(evidence.get_by_text('Documento vinculado' if linked else 'Não localizado nos vínculos',exact=True)).to_be_visible()
-    date_field=sheet.get_by_text('Data da receita',exact=True).locator('xpath=../..')
-    expected=datetime.fromisoformat(day).strftime('%d/%m/%Y') if linked else 'Não informada'
-    expect(date_field.get_by_text(expected,exact=True)).to_be_visible()
+    expect(evidence.get_by_text('Vínculo documental não comprova validade atual.',exact=True)).to_be_visible()
+    date_field=panel.get_by_text('Data da receita',exact=True).locator('xpath=../..')
+    expect(date_field.get_by_text(expected_date,exact=True)).to_be_visible()
     expect(sheet.get_by_role('button',name='Abrir detalhes completos')).to_be_visible()
     sheet.get_by_role('button',name='Fechar Gaveta de medicamentos',exact=True).click();expect(sheet).not_to_be_visible(timeout=10000)
+    print('H01_DRAWER_PASS',kind,'date='+expected_date,'linked='+str(linked),flush=True)
+
 
 def main():
     global AUTH_MODE
     a=argparse.ArgumentParser();a.add_argument('--out',type=Path,required=True);a.add_argument('--evidence',type=Path,required=True);a.add_argument('--sha',required=True);a.add_argument('--phase',choices=['before','after'],required=True);a.add_argument('--baseline',type=Path);a.add_argument('--day',required=True);args=a.parse_args()
-    after=args.phase=='after';q.ROOT=args.out.resolve();require((q.ROOT/'index.html').is_file(),'real export missing');args.evidence.mkdir(parents=True,exist_ok=True);fixtures(args.day)
+    after=args.phase=='after';q.ROOT=args.out.resolve();require((q.ROOT/'index.html').is_file(),'real export missing');args.evidence.mkdir(parents=True,exist_ok=True);fixture_rows=fixtures(args.day)
+    require(bool(fixture_rows['normal'].get('data_receita')) and bool(fixture_rows['zero'].get('data_receita')) and not fixture_rows['unit'].get('data_receita'),'independent date fixture matrix invalid')
     baseline=json.loads(args.baseline.read_text()) if after else None
     if after:require(baseline['phase']=='before','baseline required')
     report={'sha':args.sha,'phase':args.phase,'status':'FAIL','cases':{},'failures':{},'safeArea':'simulated Chromium','authority':'synthetic enrollment; no SQL or clinical mutation','productionWrites':0}
@@ -162,8 +179,8 @@ def main():
                             for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
                                 scale_text(p,1);p.get_by_role('button',name=label,exact=True).click();expect(h.card(p,h.NAMES['normal']).locator(f'[data-vault-executive-density="{mode}"]')).to_be_visible();scale_text(p,scale)
                                 if after and scale==1:
-                                    for fixture,linked in [('normal',True),('zero',False)]:
-                                        try:check_sheet(p,args.day,fixture,linked)
+                                    for fixture,linked in [('normal',True),('zero',False),('unit',False)]:
+                                        try:check_sheet(p,fixture,fixture_rows[fixture],linked)
                                         except Exception as exc:
                                             report['failures'][f'{key}-{mode}-drawer-{fixture}']=str(exc);print('H01_DRAWER_FAIL',key,mode,fixture,str(exc),flush=True)
                                             drawer=p.locator('[data-vault-med360-sheet]')
