@@ -37,5 +37,6 @@
         }
       ]
     }
-  ]
+  ],
+  "ignoreCommand": "exit 0"
 }

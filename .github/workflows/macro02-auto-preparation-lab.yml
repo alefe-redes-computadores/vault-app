@@ -1,0 +1,39 @@
+name: VAULT Macro02 GO AUTO + H01 - final nested gate LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-go-auto-gate-2e55f9e6aba0']
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact source and immutable historical gate
+        run: |
+          test "$(git rev-parse HEAD^)" = "2e55f9e6aba09af66cdffabb92dfc9ac1395a3a4"
+          git checkout --detach 2e55f9e6aba09af66cdffabb92dfc9ac1395a3a4
+          test "$(git rev-parse HEAD^{tree})" = "fcde2e77d1adb2bf1bddba8acb5e01ded5fcdb9e"
+          git merge-base --is-ancestor 5d76df41dfae7f2c3607eb18454aa5bf6fe64afd HEAD
+          git merge-base --is-ancestor 12f137f46db2956a7b3a26f5ce348c3f552c9eef HEAD
+          git diff --check 30b47151a0bb50ed54dceae926958a9b9a99dea7 HEAD
+          git diff --exit-code 30b47151a0bb50ed54dceae926958a9b9a99dea7 HEAD -- scripts/test-v63-release-gate.mjs scripts/test-vault-stability-360.cjs
+          test "$(git rev-parse HEAD:scripts/macro02-auto-preparation-contracts.cjs)" = "185496775e54e6d10d87d9e1701f791faa1207ee"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Mandatory nested automatic preparation and operational recovery
+        run: node scripts/test-vault-macro02-operational-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-recovery.cjs
+      - run: node node_modules/typescript/bin/tsc --noEmit
+      - name: V63 cumulative release contracts
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Android Web export (synthetic configuration)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+        run: npm run build:export
