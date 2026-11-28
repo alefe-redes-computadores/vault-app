@@ -34,3 +34,13 @@ Dados exclusivamente sintéticos; PG17.6 descartável; transporte/autenticação
 
 ## Bloqueios de entrega
 Concluir V63/V70/TS/export Android, novo teste browser integrado e qualquer regressão detectada; reconciliar HEAD atualizado e obter Guardian independente antes de merge/produção. A homologação física e a ativação da conta do proprietário continuam não realizadas. Nenhum teste do proprietário é solicitado nesta etapa. Os resultados dos Actions devem ser lidos na execução correspondente, não inferidos deste manifesto.
+
+
+## Continuidade do segundo turno — 2026-11-28
+- O job cumulativo 141071307349 (run 46174912571) terminou SUCCESS: root=0, typescript=0, v63=0, v70super=0, v70final=0, androidexport=0. Artefato 15275885757; SHA256 d01c04ef46ba4aae1420c225a1d69c3158a85a3df1579c7629f0ac8931535854.
+- Main lida novamente: 49c3aabde83bf0b2480a84bb5e967922e41975f2; candidata e6ef2cc5506963b5dc6fe9fad40790e79bf3b101 está ahead=2, behind=0, dez arquivos exatamente da allowlist. Fechamento Stability Guardian 9ac387f4cb750611c73e4a66ace8a18c014ca8e6 é ancestral da main (ahead=0, behind=2).
+- Revalidação 46175528970 (job 141073209696) falhou: UI de conferência permaneceu presente e epoch local ausente. Não é falso positivo de texto; a conferência rejeitou, ainda sem causa específica demonstrada. Não liberar produto.
+- Teste novo multidispositivo 46176018970 (job 141074738972) utiliza dois perfis Chromium independentes e exige A -> B -> A com doses distintas, saldo, aquisição sem quantidade, IDs e ausência de fila clínica após ACK; não há reseed após início do teste.
+- Diagnóstico integrado 46176102589 (job 141075028146) conserva as exigências da UI; em caso de falha coleta comparação de tabelas/categorias e erro técnico em uma tentativa separada que NÃO satisfaz o gate.
+- Workflow PG17 previamente aprovado teve trigger restringido para não repetir por commits de documentação/harness. Código de produto inalterado, sem publicação ou migração produtiva.
+- Ambos os testes novos estavam em execução na última consulta. Verificar os jobs/artefatos exatos, sem considerar status em andamento como sucesso. Se houver falha de produto, corrigir em branch protegida, fixar nova árvore e reexecutar os gates afetados.
