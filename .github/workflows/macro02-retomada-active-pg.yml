@@ -2,6 +2,8 @@ name: VAULT Macro02 active PG17 CAS parity - LAB ONLY
 on:
   push:
     branches: ['vault-lab/macro02-retomada-20261128']
+    # Immutable source already certified. Do not rerun on unrelated lab documentation or harness commits.
+    paths: ['scripts/macro02-activation-lab/run-active-r7-pg.sh']
 permissions:
   contents: read
 jobs:
