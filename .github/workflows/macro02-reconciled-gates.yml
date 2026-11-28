@@ -1,0 +1,49 @@
+name: VAULT Macro02 H01 reconciled cumulative - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-reconciled-h01-20261128']
+    paths: ['.github/workflows/macro02-reconciled-gates.yml']
+permissions:
+  contents: read
+jobs:
+  gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2b0103b71420c96b2d067dda2a56a4564d0abc8a
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          test "$(git rev-parse HEAD^{tree})" = dac7806abe8cc2e98a0290ba74f6b7cf7ed37e96
+          git diff --check 4d7010cf88e78bb31ef94c706a1102729662aab7 HEAD
+          npm ci
+      - name: Collect all gates independently
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/m02-gates"
+          result=0
+          run(){ local name="$1"; shift; set +e; "$@" > "$RUNNER_TEMP/m02-gates/$name.log" 2>&1; local rc=$?; set -e; printf '%s=%s\n' "$name" "$rc" | tee -a "$RUNNER_TEMP/m02-gates/results"; tail -12 "$RUNNER_TEMP/m02-gates/$name.log"; if (( rc != 0 )); then result=1; fi; }
+          run root node scripts/macro02-cause-root-contracts.cjs
+          run typescript node node_modules/typescript/bin/tsc --noEmit
+          run v63 env VAULT_V63_COLLECT_ALL=1 node scripts/test-v63-release-gate.mjs
+          run v70super node scripts/test-v70-super-integrity-ux-contract.mjs
+          run v70final node scripts/test-v70-final-completeness-contract.mjs
+          run h01 node scripts/test-vault-stability-h01-h04.cjs
+          run m64 node scripts/test-vault-m64-premium-performance.cjs
+          run androidexport npm run build:export
+          cat "$RUNNER_TEMP/m02-gates/results"
+          exit "$result"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macro02-full-gates
+          path: ${{ runner.temp }}/m02-gates/

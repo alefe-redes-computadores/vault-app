@@ -1,0 +1,183 @@
+name: VAULT Macro02 H01 reconciled integrated and passive multi-device - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-reconciled-h01-20261128']
+    paths: ['.github/workflows/macro02-reconciled-browser.yml']
+permissions:
+  contents: read
+jobs:
+  integrated-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4173
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      TZ: America/Sao_Paulo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2b0103b71420c96b2d067dda2a56a4564d0abc8a
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recover previously certified browser harness; no production data
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^{tree})" = dac7806abe8cc2e98a0290ba74f6b7cf7ed37e96
+          ui="$RUNNER_TEMP/macro02-ui"
+          mkdir -p "$ui"
+          for f in bootstrap.cjs browser.cjs profile-contract.cjs queue-contract.cjs run.sh; do
+            git show da1bc6d149dc11884f4c303a2877a5f585ccae64:.github/macro02-ui/"$f" > "$ui/$f"
+          done
+          test "$(git hash-object "$ui/bootstrap.cjs")" = 83ff3c618167f73690aa3ea251d6896108c17aac
+          test "$(git hash-object "$ui/browser.cjs")" = 460cd7e8bfb1781b608ce68f7479be00d8b640c5
+          test "$(git hash-object "$ui/run.sh")" = c99b6611679ef4d175b0723a5e3bfb92c07a9550
+          cp "$ui/browser.cjs" "$ui/multidevice.cjs"
+          python3 - "$ui/browser.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          s=p.read_text()
+          old="await page.getByText('Aparelho conferido com a base remota.',{exact:false}).waitFor({timeout:120000});await attach();assert.equal((await local()).device.epoch,ep);"
+          new="await attach();await wait(async()=>{const x=await local();return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI');assert.equal((await local()).device.epoch,ep);await navigate('/hoje');await center().waitFor({timeout:120000});assert.equal(await page.getByRole('heading',{name:'Conferência de autoridade clínica'}).count(),0);"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          python3 - "$ui/bootstrap.cjs" "$ui/browser.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          b=Path(sys.argv[1]);s=b.read_text()
+          old="import {getLocalTodayISO} from '@/lib/health-utils';"
+          assert s.count(old)==1
+          s=s.replace(old,old+"""
+          import {verifyMacro02ActiveDeviceR5} from '@/lib/sync/macro02-device-r5';
+          import {captureMacro02LocalCutover} from '@/lib/dose-premium/cutover-local-snapshot';
+          import {exactMacro02LocalIdentity,normalizeMacro02LocalForComparison,normalizeMacro02RemoteForComparison,MACRO02_R3_REMOTE_COLUMNS} from '@/lib/dose-premium/cutover-storage-codec';
+          import {previewMacro02UnfencedComparison} from '@/lib/dose-premium/cutover-projection-lab';
+          """.replace('          ',''))
+          marker=' state:async()=>'
+          assert s.count(marker)==1
+          s=s.replace(marker,""" diagnosis:async(raw)=>{try{const tables=[...CUTOVER_TABLES,'syncQueue'].map(t=>db.table(t));const local=await captureMacro02LocalCutover({transaction:run=>db.transaction('r',tables,run),readTable:t=>db.table(t).toArray(),assertSession(){},validateLocal:exactMacro02LocalIdentity,requireAllQueueDependenciesClear:true},uid);const normalized=normalizeMacro02RemoteForComparison(raw);const fields=Object.fromEntries(CUTOVER_TABLES.map(t=>[t,[...MACRO02_R3_REMOTE_COLUMNS[t].split(','),'synced','isDefault','visual_icon_expanded']]));return previewMacro02UnfencedComparison(normalized.rows,normalizeMacro02LocalForComparison(local),fields);}catch(e){return {error:String(e.message)};}},
+          directVerifyDiagnostic:async()=>{try{await verifyMacro02ActiveDeviceR5(uid);return 'DIRECT_VERIFY_SUCCESS_NOT_GATE';}catch(e){return String(e.message);}},
+          """.replace('          ','')+marker)
+          b.write_text(s)
+          p=Path(sys.argv[2]);s=p.read_text()
+          old="await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click();await attach();"
+          new="await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click();await attach();"
+          assert s.count(old)==1
+          old2="await wait(async()=>{const x=await local();return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI');"
+          new2="""try{await wait(async()=>{const x=await local();if(await page.getByText('Não foi possível comprovar a correspondência integral.',{exact:false}).count())throw Error('UI verification rejected');return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI',30000);}catch(e){console.log('DEVICE_DIAG_SNAPSHOT_RPC_COUNT='+calls.filter(c=>c.name==='vault_macro02_active_snapshot_r5').length);console.log('DEVICE_DIAG_COMPARISON='+JSON.stringify(await page.evaluate(raw=>window.__vaultLab.diagnosis(raw),snapshot())));console.log('DEVICE_DIAG_DIRECT='+await page.evaluate(()=>window.__vaultLab.directVerifyDiagnostic()));throw e;}"""
+          assert s.count(old2)==1
+          p.write_text(s.replace(old2,new2))
+          PY
+          python3 - "$ui/multidevice.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          s=p.read_text()
+          marker='(async()=>{\n assert.equal(enroll().state'
+          assert s.count(marker)==1
+          head=s[:s.index(marker)]
+          old='const open=async()=>{const c=await chromium.launchPersistentContext(profile,'
+          assert head.count(old)==1
+          head=head.replace(old,'const open=async(profile=globalThis.__unusedProfile)=>{const c=await chromium.launchPersistentContext(profile,')
+          p.write_text(head+"const profileB=fs.mkdtempSync(path.join(os.tmpdir(),'vault-device-b-'));\nconst pick=async(p)=>{if(ctx)await ctx.close();ctx=null;ctx=await open(p);page=ctx.pages()[0]||await ctx.newPage();track(page);};\nconst clinicalPending=x=>x.queue.filter(q=>q.payload?.macro02_atomic||q.payload?.macro02_compound||q.payload?.macro02_metadata);\nconst seedVerify=async(p,s)=>{\n await pick(p);await navigate('/__vault_lab_bootstrap');await page.evaluate(s=>localStorage.setItem('sb-127-auth-token',JSON.stringify(s)),session);await attach();assert.equal((await local()).device,undefined);await page.evaluate(({s,settings})=>window.__vaultLab.seed(s,settings),{s,settings});\n await navigate('/hoje');await page.getByRole('heading',{name:'Conferência de autoridade clínica'}).waitFor({timeout:120000});assert.equal(await center().count(),0);await page.getByRole('link',{name:'Abrir Central de segurança'}).click();\n const before=calls.filter(c=>c.name==='vault_macro02_active_snapshot_r5').length;\n await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click({timeout:120000});await attach();await wait(async()=>{const d=(await local()).device;return d?.epoch===ep&&/^[a-f0-9]{64}$/.test(d.local_sha256)&&/^[a-f0-9]{64}$/.test(d.remote_sha256)&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'verified independent device');\n assert(calls.filter(c=>c.name==='vault_macro02_active_snapshot_r5').length>=before+2);\n await navigate('/hoje');await center().waitFor({timeout:120000});assert.equal(await page.getByRole('heading',{name:'Conferência de autoridade clínica'}).count(),0);\n};\nconst syncUI=async()=>{await navigate('/recuperacao');await page.getByRole('button',{name:'Conferir e sincronizar',exact:true}).click({timeout:120000});await attach();};\nconst taken=(x,h)=>x.doses.filter(d=>d.medicamento_id===mid&&d.horario===h&&d.tomado_em);\nconst remoteTaken=(h)=>snapshot().rows.doseLogs.filter(d=>d.medicamento_id===mid&&d.horario===h&&d.tomado_em);\nconst recordDose=async(h,expected)=>{\n await navigate('/hoje');await center().waitFor({timeout:120000});await center().getByRole('button',{name:'Pendentes',exact:true}).click();\n await center().getByRole('button',{name:'Conferir dose de QA Dose Sintetica, '+h,exact:true}).click();await page.getByRole('button',{name:'Tomar',exact:true}).click();await page.getByRole('heading',{name:'Registrar Dose',exact:true}).waitFor({timeout:60000});await page.getByRole('button',{name:'comprimido',exact:true}).click();await page.getByRole('button',{name:'Registrar tomada agora',exact:true}).click();await page.getByRole('button',{name:new RegExp('^Tomei às '+h)}).click();await attach();\n await wait(async()=>{const x=await local();return taken(x,h).length===1&&localMed(x,mid).estoque_quantidade===expected&&clinicalPending(x).length===0&&remoteTaken(h).length===1&&med(snapshot(),mid).estoque_quantidade===expected},'device dose acknowledged '+h,180000);\n const d=taken(await local(),h)[0];assert.equal(d.id,remoteTaken(h)[0].id);assert.equal(d.quantidade,1);assert.equal(d.unidade_dose,'tablet');return d.id;\n};\n(async()=>{\n assert.equal(enroll().state,'premium');const initial=snapshot();\n await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(4173,'127.0.0.1',resolve)});\n await seedVerify(profile,initial);\n await seedVerify(profileB,initial);assert.notEqual(profile,profileB);console.log('TWO_INDEPENDENT_PROFILES_VERIFIED_PASS');\n await pick(profile);await navigate('/saude/medicamentos/saldo?id='+mid+'&return_to=%2Fhoje');await page.getByText('QA Dose Sintetica',{exact:true}).waitFor({timeout:120000});await page.getByLabel('Quantidade disponível agora').fill('10');await page.getByRole('button',{name:'Confirmar contagem',exact:true}).click();await page.waitForURL(/\\/hoje(?:\\?|$)/,{timeout:120000});await attach();\n await wait(async()=>{const x=await local();return localMed(x,mid)?.estoque_ciclo_id&&clinicalPending(x).length===0&&med(snapshot(),mid).estoque_ciclo_id===localMed(x,mid).estoque_ciclo_id},'A count acknowledged');\n const aId=await recordDose('00:00',9);\n const rxId=await page.evaluate(()=>window.__vaultLab.unquantified());\n await wait(async()=>{const x=await local();return x.rx.some(r=>r.id===rxId&&r.synced===true)&&clinicalPending(x).length===0&&snapshot().rows.renovacoes.some(r=>r.id===rxId&&r.quantidade===null)},'A acquisition acknowledged',180000);\n await pick(profileB);await navigate('/__vault_lab_bootstrap');await attach();const stale=await local();assert.equal(taken(stale,'00:00').length,0);assert.equal(localMed(stale,mid).estoque_quantidade,10);assert(!stale.rx.some(r=>r.id===rxId));await syncUI();\n await wait(async()=>{const x=await local();return taken(x,'00:00').length===1&&taken(x,'00:00')[0].id===aId&&localMed(x,mid).estoque_quantidade===9&&localMed(x,mid).estoque_ciclo_id===med(snapshot(),mid).estoque_ciclo_id&&x.rx.some(r=>r.id===rxId&&r.quantidade===null)&&localMed(x,mid2).estoque_quantidade===7&&clinicalPending(x).length===0},'B pulls A dose, stock, acquisition',180000);console.log('DEVICE_A_TO_B_REAL_PULL_PASS');\n const bId=await recordDose('00:01',8);assert.notEqual(aId,bId);\n await pick(profile);await navigate('/__vault_lab_bootstrap');await attach();assert.equal(taken(await local(),'00:01').length,0);await syncUI();\n await wait(async()=>{const x=await local();return taken(x,'00:00').length===1&&taken(x,'00:01').length===1&&taken(x,'00:01')[0].id===bId&&localMed(x,mid).estoque_quantidade===8&&clinicalPending(x).length===0},'A pulls B dose and stock',180000);\n const final=snapshot();assert.deepEqual(final.rows.doseLogs.filter(d=>d.medicamento_id===mid&&d.tomado_em).map(d=>d.id).sort(),[aId,bId].sort());assert.equal(med(final,mid).estoque_quantidade,8);assert.equal(final.rows.renovacoes.filter(r=>r.id===rxId).length,1);assert.equal(med(final,mid2).estoque_quantidade,7);\n await navigate('/hoje');await center().waitFor({timeout:60000});await center().getByRole('button',{name:'Histórico',exact:true}).click();await center().getByText('Tomada registrada',{exact:true}).first().waitFor({timeout:60000});await screenshot('device-a-final-history');\n console.log('DEVICE_B_TO_A_REAL_PULL_PASS');console.log('TWO_DEVICES_NO_DUPLICATE_STOCK_OR_HISTORY_PASS');\n})().catch(async e=>{console.error('MULTIDEVICE_FAIL',e.stack||e.message);process.exitCode=1;try{if(page){await screenshot('failure');console.log('PAGE_URL='+page.url());console.log('PAGE_TEXT='+String(await page.locator('body').innerText()).slice(0,2500));fs.writeFileSync(path.join(logs,'failure.html'),await page.content());}}catch{}}).finally(async()=>{blocked=false;if(ctx)await ctx.close();for(const s of sockets)s.destroy();await new Promise(r=>server.close(r));fs.rmSync(profile,{recursive:true,force:true});fs.rmSync(profileB,{recursive:true,force:true});});\n")
+          PY
+          python3 - "$ui/multidevice.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path(sys.argv[1]);s=p.read_text()
+          def rep(a,b):
+              global s
+              assert s.count(a)==1, a
+              s=s.replace(a,b)
+          rep("const local=()=>page.evaluate(()=>window.__vaultLab.state());", """// Observe the real database without loading another Supabase client.
+          const local=()=>page.evaluate(uid=>new Promise((resolve,reject)=>{
+           const req=indexedDB.open('vault-db');req.onupgradeneeded=()=>{req.transaction.abort();reject(Error('LAB_DB_ABSENT'));};req.onerror=()=>reject(req.error);
+           req.onsuccess=()=>{const d=req.result;const names=['persons','medicamentos','doseLogs','syncQueue','renovacoes','macro02_device_enrollment'];try{const tx=d.transaction(names,'readonly');const out={};const keys=['persons','meds','doses','queue','rx','device'];for(let i=0;i<names.length;i++){const r=i===5?tx.objectStore(names[i]).get(uid):tx.objectStore(names[i]).getAll();r.onsuccess=()=>{out[keys[i]]=r.result;};r.onerror=()=>reject(r.error);}tx.oncomplete=()=>{d.close();resolve(out);};tx.onerror=()=>{d.close();reject(tx.error);};tx.onabort=()=>{d.close();reject(tx.error);};}catch(e){d.close();reject(e);}};
+          }),uid);""".replace('          ',''))
+          rep("await attach();assert.equal((await local()).device,undefined);await page.evaluate", "await attach();assert.equal((await page.evaluate(()=>window.__vaultLab.state())).device,undefined);await page.evaluate")
+          rep("await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click({timeout:120000});await attach();await wait(async()=>{const d=(await local()).device;return d?.epoch===ep&&/^[a-f0-9]{64}$/.test(d.local_sha256)&&/^[a-f0-9]{64}$/.test(d.remote_sha256)&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'verified independent device');", "await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click({timeout:120000});await wait(async()=>{const d=(await local()).device;return d?.epoch===ep&&/^[a-f0-9]{64}$/.test(d.local_sha256)&&/^[a-f0-9]{64}$/.test(d.remote_sha256)&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'verified independent device without injected client');")
+          rep("const syncUI=async()=>{await navigate('/recuperacao');await page.getByRole('button',{name:'Conferir e sincronizar',exact:true}).click({timeout:120000});await attach();};", "const syncUI=async()=>{await navigate('/recuperacao');await page.getByRole('button',{name:'Conferir e sincronizar',exact:true}).click({timeout:120000});};")
+          rep("await page.getByRole('button',{name:new RegExp('^Tomei às '+h)}).click();await attach();", "await page.getByRole('button',{name:new RegExp('^Tomei às '+h)}).click();")
+          rep("await page.waitForURL(/\\/hoje(?:\\?|$)/,{timeout:120000});await attach();", "await page.waitForURL(/\\/hoje(?:\\?|$)/,{timeout:120000});")
+          rep("const rxId=await page.evaluate(()=>window.__vaultLab.unquantified());", "await navigate('/__vault_lab_bootstrap');await attach();const rxId=await page.evaluate(()=>window.__vaultLab.unquantified());await syncUI();")
+          rep("await pick(profileB);await navigate('/__vault_lab_bootstrap');await attach();const stale=await local();", "await pick(profileB);await navigate('/__vault_lab_bootstrap');const stale=await local();")
+          rep("await pick(profile);await navigate('/__vault_lab_bootstrap');await attach();assert.equal(taken(await local(),'00:01').length,0);", "await pick(profile);await navigate('/__vault_lab_bootstrap');assert.equal(taken(await local(),'00:01').length,0);")
+          rep("console.error('MULTIDEVICE_FAIL',e.stack||e.message);process.exitCode=1;try{if(page){await screenshot", "console.error('MULTIDEVICE_FAIL',e.stack||e.message);process.exitCode=1;try{if(page){try{const x=await local();console.log('MULTIDEVICE_SAFE_DIAG='+JSON.stringify({doseCount:x.doses.length,stock:localMed(x,mid)?.estoque_quantidade,clinicalQueue:clinicalPending(x).length,remoteDoseCount:snapshot().rows.doseLogs.length,remoteStock:med(snapshot(),mid)?.estoque_quantidade,denied:[...denied].sort(),rpcCounts:Object.fromEntries([...new Set(calls.map(c=>c.name))].map(n=>[n,calls.filter(c=>c.name===n).length]))}));}catch(diag){console.log('MULTIDEVICE_DIAG_UNAVAILABLE');}await screenshot")
+          p.write_text(s)
+          PY
+          python3 - "$ui/run.sh" <<'PY'
+          import sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          s = p.read_text()
+          a = 'psql_admin < "$p/active-fixture-r7.sql"'
+          b = "psql_lab <<'UI_SEED_SQL'"
+          assert s.count(a) == 1 and s.count(b) == 1
+          s = s.replace(a, a + '\npsql_lab < "$p/cas-r04-m03-fixture.sql"\npsql_lab < supabase/migrations/20261126161012_vault_stb11_visual_cas_r03.sql')
+          s = s.replace(b, 'psql_lab < supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql\n' + b)
+          p.write_text(s)
+          PY
+          python3 - "$ui/browser.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path(sys.argv[1]);s=p.read_text()
+          old="await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click();await attach();try{await wait(async()=>{const x=await local();if(await page.getByText('Não foi possível comprovar a correspondência integral.',{exact:false}).count())throw Error('UI verification rejected');return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI',30000);}catch(e){console.log('DEVICE_DIAG_SNAPSHOT_RPC_COUNT='+calls.filter(c=>c.name==='vault_macro02_active_snapshot_r5').length);"
+          new="await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click();try{await wait(async()=>await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0&&await page.getByRole('heading',{name:'Conferência do aparelho Premium'}).count()===0,'verification UI completed without injected client',120000);}catch(e){await attach();console.log('DEVICE_DIAG_SNAPSHOT_RPC_COUNT='+calls.filter(c=>c.name==='vault_macro02_active_snapshot_r5').length);"
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          old="throw e;}assert.equal((await local()).device.epoch,ep);"
+          new="throw e;}await attach();const proof=(await local()).device;assert.equal(proof.epoch,ep);assert.match(proof.local_sha256,/^[a-f0-9]{64}$/);assert.match(proof.remote_sha256,/^[a-f0-9]{64}$/);"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          {
+            printf 'UI_GATE_DIR=%s\n' "$ui"
+            printf 'ESBUILD_MODULE=%s\n' "$ui/tools/node_modules/esbuild"
+            printf 'PLAYWRIGHT_MODULE=%s\n' "$ui/tools/node_modules/playwright"
+            printf 'BOOTSTRAP_BUNDLE=%s\n' "$ui/bootstrap.js"
+          } >> "$GITHUB_ENV"
+          test -z "$(git status --porcelain)"
+      - name: Web export and inherited contracts
+        run: |
+          npm ci --no-audit --no-fund
+          node "$UI_GATE_DIR/queue-contract.cjs" "$PWD"
+          node "$UI_GATE_DIR/profile-contract.cjs" "$PWD"
+          node scripts/ci-build-web-resilient.cjs 2>&1 | tee "$UI_GATE_DIR/build.log"
+          node scripts/verify-static-release-stability.cjs web | tee "$UI_GATE_DIR/static.log"
+      - name: Chromium, actual IndexedDB, PG17 and receipt lifecycle
+        run: |
+          npm install --prefix "$UI_GATE_DIR/tools" --no-audit --no-fund --save-exact playwright@1.56.1 esbuild@0.25.12
+          "$UI_GATE_DIR/tools/node_modules/.bin/playwright" install --with-deps chromium
+          node "$UI_GATE_DIR/bootstrap.cjs"
+          set +e
+          bash "$UI_GATE_DIR/run.sh" 2>&1 | tee "$UI_GATE_DIR/browser.log"
+          integrated_rc=${PIPESTATUS[0]}
+          mv "$UI_GATE_DIR/browser.cjs" "$UI_GATE_DIR/integrated.cjs"
+          cp "$UI_GATE_DIR/multidevice.cjs" "$UI_GATE_DIR/browser.cjs"
+          if test -f "$UI_GATE_DIR/failure.html"; then mv "$UI_GATE_DIR/failure.html" "$UI_GATE_DIR/integrated-failure.html"; fi
+          if test -f "$UI_GATE_DIR/failure.png"; then mv "$UI_GATE_DIR/failure.png" "$UI_GATE_DIR/integrated-failure.png"; fi
+          bash "$UI_GATE_DIR/run.sh" 2>&1 | tee "$UI_GATE_DIR/multidevice.log"
+          multi_rc=${PIPESTATUS[0]}
+          set -e
+          echo "INTEGRATED_RC=$integrated_rc MULTIDEVICE_RC=$multi_rc"
+          test "$integrated_rc" = 0
+          test "$multi_rc" = 0
+          for mark in UI_DEVICE_REAL_VERIFICATION_PASS UI_OFFLINE_RELOAD_AND_HISTORY_PASS UI_COLD_OFFLINE_PROFILE_AND_OUTBOX_PASS UI_BACKUP_ACTIVE_RECEIPT_READ_PASS UI_RECONNECT_EXACT_RETRY_NO_DUPLICATE_PASS MACRO02_ACTIVE_PREMIUM_BROWSER_PG17_GATE_PASS; do grep -Fxq "$mark" "$UI_GATE_DIR/browser.log"; done
+          for mark in TWO_INDEPENDENT_PROFILES_VERIFIED_PASS DEVICE_A_TO_B_REAL_PULL_PASS DEVICE_B_TO_A_REAL_PULL_PASS TWO_DEVICES_NO_DUPLICATE_STOCK_OR_HISTORY_PASS; do grep -Fxq "$mark" "$UI_GATE_DIR/multidevice.log"; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macro02-nonintrusive-integrated-and-multidevice
+          path: |
+            ${{ runner.temp }}/macro02-ui/*.log
+            ${{ runner.temp }}/macro02-ui/*.png
+            ${{ runner.temp }}/macro02-ui/*failure.html
+          if-no-files-found: warn
