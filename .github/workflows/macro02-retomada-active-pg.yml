@@ -1,0 +1,40 @@
+name: VAULT Macro02 active PG17 CAS parity - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-retomada-20261128']
+permissions:
+  contents: read
+jobs:
+  active-pg:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          fetch-depth: 0
+          persist-credentials: false
+      - run: |
+          test "$(git rev-parse HEAD)" = e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          test "$(git rev-parse HEAD^{tree})" = 18575a1b5da20acb21a11e531aa6403793b72922
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Reconstruct real CAS R03/R04 in disposable PostgreSQL before Migration03
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/macro02-activation-lab/run-active-r7-pg.sh')
+          s = p.read_text()
+          a = 'psql_admin < "$p/active-fixture-r7.sql"'
+          b = 'psql_lab < "$out/seed.sql"'
+          assert s.count(a) == 1 and s.count(b) == 1
+          s = s.replace(a, a + '\npsql_lab < "$p/cas-r04-m03-fixture.sql"\npsql_lab < supabase/migrations/20261126161012_vault_stb11_visual_cas_r03.sql')
+          s = s.replace(b, 'psql_lab < supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql\n' + b)
+          p.write_text(s)
+          PY
+          git diff --check
+          git diff -- scripts/macro02-activation-lab/run-active-r7-pg.sh
+          test "$(git diff --name-only)" = scripts/macro02-activation-lab/run-active-r7-pg.sh
+          bash scripts/macro02-activation-lab/run-active-r7-pg.sh
