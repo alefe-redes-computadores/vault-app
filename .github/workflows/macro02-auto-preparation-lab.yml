@@ -1,0 +1,36 @@
+name: VAULT Macro02 GO AUTO + H01 - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-go-auto-h01-30b47151a0bb']
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exact source and both ancestries
+        run: |
+          test "$(git rev-parse HEAD^)" = "30b47151a0bb50ed54dceae926958a9b9a99dea7"
+          git checkout --detach 30b47151a0bb50ed54dceae926958a9b9a99dea7
+          test "$(git rev-parse HEAD^{tree})" = "f31a9f85d84ba9453ad3e680778c46ceaea5fefc"
+          git merge-base --is-ancestor 5d76df41dfae7f2c3607eb18454aa5bf6fe64afd HEAD
+          git merge-base --is-ancestor 12f137f46db2956a7b3a26f5ce348c3f552c9eef HEAD
+          git diff --check 5d76df41dfae7f2c3607eb18454aa5bf6fe64afd HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node scripts/test-vault-macro02-operational-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-recovery.cjs
+      - run: node node_modules/typescript/bin/tsc --noEmit
+      - name: V63 cumulative release contracts
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Android Web export (synthetic configuration)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+        run: npm run build:export
