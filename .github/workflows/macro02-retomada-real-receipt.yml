@@ -1,0 +1,132 @@
+name: Macro02 exact legacy-to-premium receipt - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-retomada-20261128']
+    paths: ['.github/workflows/macro02-retomada-real-receipt.yml']
+permissions:
+  contents: read
+jobs:
+  actual-receipt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:8765
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact source and isolated browser tools
+        run: |
+          test "$(git rev-parse HEAD^{tree})" = 18575a1b5da20acb21a11e531aa6403793b72922
+          npm ci
+          npm install --prefix "$RUNNER_TEMP/m02-real" --save-exact --no-audit --no-fund esbuild@0.25.12 playwright@1.56.1
+          "$RUNNER_TEMP/m02-real/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Exercise existing client code against actual disposable PG17
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/m02-real/driver.cjs" <<'JS'
+          const assert=require('node:assert/strict');
+          const {execFileSync}=require('node:child_process');
+          const {createHash}=require('node:crypto');
+          const {build}=require('esbuild');
+          const {chromium}=require('playwright');
+          const uid='00000000-0000-4000-8000-000000000001',epoch='00000000-0000-4000-8000-000000000003';
+          const tables=new Set('a1_prescription_links a1_supply_locations a1_treatment_phases cids documents dose_logs farmacias fornecimento_ciclos fornecimento_documentos fornecimento_itens fornecimentos hospitais locais medicamento_tratamentos medicamentos medicos persons renovacoes retiradas tratamentos'.split(' '));
+          const lit=s=>"'"+String(s).replaceAll("'","''")+"'";
+          const uuid=s=>{assert.match(s,/^[a-f0-9-]{36}$/);return lit(s)+'::uuid'};
+          const pg=(sql,auth=false)=>execFileSync('docker',['exec','-i',process.env.LAB_PG_CID,'psql','-X','-h','/tmp','-v','ON_ERROR_STOP=1','-qAt','-U','postgres','-d','postgres'],{input:(auth?"SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub',"+lit(uid)+",false) \\g /dev/null\n":"")+sql+'\n',encoding:'utf8',maxBuffer:32*1024*1024}).trim();
+          const json=(sql,auth=true)=>JSON.parse(pg(sql,auth));
+          let completeCalls=0,lost=false;
+          const bridge=async(type,a)=>{
+            if(type==='rows'){
+              assert(tables.has(a.table));assert(Number.isSafeInteger(a.offset)&&a.offset>=0);
+              const where=a.table==='medicamento_tratamentos'?'':'WHERE user_id='+uuid(uid);
+              const sql='SELECT jsonb_build_object(\'data\',COALESCE((SELECT jsonb_agg(to_jsonb(q) ORDER BY q.id) FROM (SELECT * FROM public.'+a.table+' '+where+' ORDER BY id OFFSET '+a.offset+' LIMIT 200) q),\'[]\'::jsonb),\'count\',(SELECT count(*) FROM public.'+a.table+' '+where+'));';
+              return {...json(sql),error:null};
+            }
+            if(type!=='rpc')throw Error('LAB_UNKNOWN_TRANSPORT');
+            if(a.name==='vault_macro02_read_enrollment_r5')return {data:json('SELECT public.vault_macro02_read_enrollment_r5();'),error:null};
+            if(a.name==='vault_macro02_recovery_claim_r3')return {data:json('SELECT public.vault_macro02_recovery_claim_r3('+uuid(a.args.p_epoch)+','+uuid(a.args.p_operation_id)+','+(a.args.p_acquire===true?'true':'false')+');'),error:null};
+            if(a.name==='vault_macro02_recovery_complete_r3'){
+              completeCalls++;
+              const data=json('SELECT public.vault_macro02_recovery_complete_r3('+lit(JSON.stringify(a.args.p_receipt))+'::jsonb);');
+              if(!lost){lost=true;return {data:null,error:{message:'synthetic transport interruption after actual commit'}};}
+              return {data,error:null};
+            }
+            throw Error('LAB_UNEXPECTED_RPC');
+          };
+          const mock="export const supabase={auth:{getUser:async()=>({data:{user:{id:"+JSON.stringify(uid)+"}},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:(name,args)=>globalThis.labPg('rpc',{name,args}),from(table){const q={select(){return q},eq(){return q},order(){return q},range(offset){return globalThis.labPg('rows',{table,offset})}};return q}};";
+          const client=[
+            "import {db} from '@/lib/db';",
+            "import {CUTOVER_TABLES,assertMacro02LocalPreparation} from '@/lib/dose-premium/cutover-recovery';",
+            "import {readMacro02ExactRecoveryImage,normalizeMacro02LocalForComparison} from '@/lib/dose-premium/cutover-storage-codec';",
+            "import {prepareMacro02Automatically,resumeMacro02Automatically} from '@/lib/dose-premium/auto-preparation';",
+            "import {createPrivatePreparationStore} from '@/lib/dose-premium/private-preparation-store';",
+            "import {readMacro02EnrollmentR5} from '@/lib/sync/macro02-enrollment-r5';",
+            "import {preflightMacro02BeforeFreeze} from '@/lib/sync/macro02-preflight';",
+            "import {exportAuthenticatedMacro02RecoveryImage,restoreAuthenticatedMacro02RecoveryImage} from '@/lib/sync/macro02-operational-recovery';",
+            "const uid="+JSON.stringify(uid)+";",
+            "const digest=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))),b=>b.toString(16).padStart(2,'0')).join('');",
+            "const capture=()=>exportAuthenticatedMacro02RecoveryImage(uid);",
+            "async function run(resume,allowSeed){const store=createPrivatePreparationStore();try{const host={store,guard(){},enrollment:()=>readMacro02EnrollmentR5(uid),synchronize:async()=>{if(!allowSeed)throw Error('unexpected repeated synchronization');const source={};for(const t of CUTOVER_TABLES){const r=await globalThis.labPg('rows',{table:t==='doseLogs'?'dose_logs':t,offset:0});if(r.count!==r.data.length)throw Error('fixture pagination');source[t]=r.data;}await db.transaction('rw',CUTOVER_TABLES.map(t=>db.table(t)),async()=>{for(const t of CUTOVER_TABLES){if(t==='medicamento_tratamentos')continue;for(const row of source[t]){const next={...row,synced:true};if(t==='persons'){next.isDefault=row.is_default===true;delete next.is_default;}if(t==='medicamentos'){next.tratamento_ids=source.medicamento_tratamentos.filter(r=>r.medicamento_id===row.id).map(r=>r.tratamento_id).sort();if(next.catalog_snapshot)next.catalog_snapshot={...next.catalog_snapshot,lab_undefined:undefined};}await db.table(t).add(next);}}});return true;},capture,inspect:bytes=>assertMacro02LocalPreparation(normalizeMacro02LocalForComparison(readMacro02ExactRecoveryImage(JSON.parse(bytes),uid))),preflight:bytes=>preflightMacro02BeforeFreeze(uid,bytes,()=>{}),digest,uuid:()=>crypto.randomUUID(),recover:restoreAuthenticatedMacro02RecoveryImage};return await (resume?resumeMacro02Automatically:prepareMacro02Automatically)(host,uid);}finally{store.close();}}",
+            "globalThis.lab={prepare:seed=>run(false,seed),resume:()=>run(true,false),capture,status:async()=>{const s=createPrivatePreparationStore();try{return await s.read(uid);}finally{s.close();}},enrollment:()=>readMacro02EnrollmentR5(uid),count:()=>db.table('renovacoes').filter(r=>r.id.startsWith('00000000-0000-4000-8000-000000008')).count()};"
+          ].join('\n');
+          (async()=>{
+            const result=await build({stdin:{contents:client,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'browser',target:'chrome130',define:{'process.env.NODE_ENV':'"test"','process.env.NEXT_PUBLIC_SUPABASE_URL':'"http://127.0.0.1:8765"','process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY':'"synthetic-lab-only"'},plugins:[{name:'isolated-auth-transport',setup(b){b.onResolve({filter:/^@\/lib\/supabase\/client$/},()=>({path:'lab',namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:mock,loader:'js'}));}}]});
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            try{
+              const context=await browser.newContext();await context.route('**/*',r=>r.request().url()==='http://127.0.0.1:8765/'?r.fulfill({contentType:'text/html',body:'<!doctype html><title>isolated macro02</title>'}):r.abort());
+              const page=await context.newPage();await page.exposeFunction('labPg',bridge);
+              const boot=async()=>{await page.goto('http://127.0.0.1:8765/');await page.addScriptTag({content:result.outputFiles[0].text});};
+              await boot();assert.equal((await page.evaluate(()=>lab.enrollment())).state,'legacy');
+              const prep=await page.evaluate(()=>lab.prepare(true));const cap=await page.evaluate(()=>lab.capture());assert.equal(prep.sha256,createHash('sha256').update(cap.bytes).digest('hex'));assert.equal(await page.evaluate(()=>lab.count()),7);
+              await boot();assert.deepEqual(await page.evaluate(()=>lab.prepare(false)),prep);
+              console.log('LEGACY_PRIVATE_BACKUP_SEVEN_DETACHED_PERSISTENCE_PASS');
+              pg("SELECT vault_macro02_private.cutover_freeze_r3("+uuid(uid)+","+uuid(epoch)+",'synthetic-isolated-test');");
+              await assert.rejects(page.evaluate(()=>lab.resume()),/M02_RECOVERY_REMOTE_UNAVAILABLE/);
+              assert.equal(completeCalls,1);assert.equal((await page.evaluate(()=>lab.status())).completed,false);
+              await boot();const completed=await page.evaluate(()=>lab.resume());assert.equal(completed.completed,true);assert.equal(completed.operation_id,prep.operation_id);assert.equal(completed.sha256,prep.sha256);assert.equal(completeCalls,2);
+              assert.deepEqual(await page.evaluate(()=>lab.resume()),completed);assert.equal(completeCalls,2);
+              const receipt=json('SELECT receipt FROM vault_macro02_private.cutover_recovery_claims_r3 WHERE user_id='+uuid(uid)+';',false);
+              assert.equal(receipt.source_sha256,prep.sha256);assert.equal(receipt.operation_id,prep.operation_id);assert.equal(receipt.state,'local_verified');for(const k of ['local_sha256','remote_sha256','server_snapshot_sha256'])assert.match(receipt[k],/^[a-f0-9]{64}$/);
+              assert.equal(receipt.allows_activation,false);assert.equal(receipt.allows_replay,false);
+              console.log('REAL_CLIENT_HASH_RECEIPT_LOST_RESPONSE_IDEMPOTENCE_PASS');
+              pg('SELECT vault_macro02_private.activate_account_r5('+uuid(uid)+','+uuid(epoch)+','+uuid(prep.operation_id)+",encode(sha256(convert_to(receipt::text,'UTF8')),'hex'),'synthetic-isolated-test') FROM vault_macro02_private.cutover_recovery_claims_r3 WHERE user_id="+uuid(uid)+';');
+              await boot();assert.equal((await page.evaluate(()=>lab.enrollment())).state,'premium');assert.equal(await page.evaluate(()=>lab.count()),7);await assert.rejects(page.evaluate(()=>lab.prepare(false)),/NOT_LEGACY/);
+              assert.equal(pg("SELECT count(*) FROM public.renovacoes WHERE user_id="+uuid(uid)+" AND id::text LIKE '00000000-0000-4000-8000-000000008%';"),'7');
+              console.log('ACTUAL_RECEIPT_ACTIVATION_SEVEN_HISTORY_ROWS_PASS');
+            }finally{await browser.close();}
+          })().catch(e=>{console.error(e);process.exitCode=1;});
+          JS
+          python3 - "$RUNNER_TEMP/m02-real/run.sh" <<'PY'
+          from pathlib import Path
+          import sys
+          s=Path('scripts/macro02-activation-lab/run-active-r7-pg.sh').read_text()
+          a='psql_admin < "$p/active-fixture-r7.sql"'
+          b='psql_lab < "$out/seed.sql"'
+          c='psql_lab < "$p/active-enrollment-r7-tests.sql"'
+          assert all(s.count(x)==1 for x in [a,b,c])
+          s=s.replace(a,a+'\npsql_lab < "$p/cas-r04-m03-fixture.sql"\npsql_lab < supabase/migrations/20261126161012_vault_stb11_visual_cas_r03.sql\npsql_lab -c "ALTER TABLE public.renovacoes DROP CONSTRAINT renovacoes_medicamento_id_fkey"')
+          s=s.replace(b,'psql_lab < supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql\n'+b+'''
+          psql_lab <<'SEED'
+          INSERT INTO public.renovacoes(id,user_id,person_id,medicamento_id,data,medicamento_nome,medicamento_dosagem)
+          SELECT ('00000000-0000-4000-8000-00000000800'||n)::uuid,'00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',('00000000-0000-4000-8000-00000000810'||n)::uuid,'2024-01-01','Synthetic historical reference','Synthetic historical dosage' FROM generate_series(1,7) n;
+          SEED
+          ''')
+          s=s.replace(c,'LAB_PG_CID="$cid" node "$RUNNER_TEMP/m02-real/driver.cjs"')
+          Path(sys.argv[1]).write_text(s)
+          PY
+          bash "$RUNNER_TEMP/m02-real/run.sh" 2>&1 | tee "$RUNNER_TEMP/m02-real/results.log"
+          grep -Fxq ACTUAL_RECEIPT_ACTIVATION_SEVEN_HISTORY_ROWS_PASS "$RUNNER_TEMP/m02-real/results.log"
+          grep -Fxq MACRO02_ACTIVE_COMPOUND_PG17_GATE_PASS "$RUNNER_TEMP/m02-real/results.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macro02-real-receipt
+          path: ${{ runner.temp }}/m02-real/results.log
