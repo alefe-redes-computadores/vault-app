@@ -150,11 +150,17 @@ def check_sheet(p,kind,row,linked,diagnostics):
     expect(manufacturer.get_by_text(expected_manufacturer,exact=True)).to_be_visible(timeout=15000)
     receita=sheet.get_by_role('tab',name='Receita',exact=True);receita.click()
     expect(receita).to_have_attribute('aria-selected','true',timeout=15000)
+    diagnostics['receiptSelected']=True
+    diagnostics['receiptAssertionStage']='document'
     evidence=panel.locator('[data-vault-h01-document-evidence]');expect(evidence).to_be_visible()
+    diagnostics['receiptAssertionStage']='linkage'
     expect(evidence.get_by_text('Documento vinculado' if linked else 'Não localizado nos vínculos',exact=True)).to_be_visible()
+    diagnostics['receiptAssertionStage']='disclaimer'
     expect(evidence.get_by_text('Vínculo documental não comprova validade atual.',exact=True)).to_be_visible()
     date_field=panel.get_by_text('Data da receita',exact=True).locator('xpath=../..')
+    diagnostics['receiptAssertionStage']='date'
     expect(date_field.get_by_text(expected_date,exact=True)).to_be_visible()
+    diagnostics['receiptAssertionStage']='details'
     expect(sheet.get_by_role('button',name='Abrir detalhes completos')).to_be_visible()
     sheet.get_by_role('button',name='Fechar Gaveta de medicamentos',exact=True).click();expect(sheet).not_to_be_visible(timeout=10000)
     diagnostics['result']='PASS'
@@ -262,6 +268,73 @@ def guardian_fab_controlled(p,browser,width,after,evidence,key,diagnostics):
         raise
     finally:real.close()
 
+# Baseline behavior and reference geometry are separate contracts. R4 is immutable.
+# A historical drawer reset is retained as FAIL; it cannot certify behavior.
+# Only a fully measured, otherwise clean R4 can serve as a geometry reference.
+R4_SHA='5d76df41dfae7f2c3607eb18454aa5bf6fe64afd'
+
+def reference_cells():
+    return {(f'{width}-{authority}',str(scale),mode)
+            for width in WIDTHS for authority in ('legacy','premium')
+            for scale in (1,1.25) for mode in ('compact','comfort')}
+
+def historical_drawer_reset(failure,diag,fixture):
+    # Narrow exception for the observed historical defect, never the candidate.
+    # The user's click really selected Receita, and the old UI later returned
+    # to Ficha. No missing document, incorrect date or failed initial click is waived.
+    if fixture not in ('zero','unit') or diag.get('expectedLinked') is not False:
+        return False
+    selectors={'document':'[data-vault-h01-document-evidence]',
+               'linkage':'Não localizado nos vínculos',
+               'disclaimer':'Vínculo documental não comprova validade atual.',
+               'date':'Data da receita'}
+    stage=diag.get('receiptAssertionStage')
+    return (diag.get('result')=='FAIL' and diag.get('receiptSelected') is True
+            and diag.get('selectedTabs')==['Ficha'] and diag.get('drawerDocumentTexts')==[]
+            and diag.get('cardDocumentMarkersAtOpen')==0 and diag.get('cardDocumentMarkersAfter')==0
+            and diag.get('indexedDB')=={'matching':[]} and 'diagnosticError' not in diag
+            and stage in selectors and selectors[stage] in failure
+            and '[data-vault-med360-sheet]' in failure and 'tabpanel' in failure
+            and 'Actual value: None' in failure and 'element(s) not found' in failure
+            and isinstance(diag.get('expectedDate'),str)
+            and (stage!='date' or diag['expectedDate'] in failure))
+
+def baseline_geometry_reference(report):
+    import math
+    errors=[]; known=[]; seen=set()
+    failures=report.get('failures',{}); cases=report.get('cases',{})
+    if report.get('phase')!='before' or report.get('sha')!=R4_SHA:
+        errors.append('unexpected baseline identity')
+    if report.get('status')!=('FAIL' if failures else 'PASS'):
+        errors.append('inconsistent raw baseline status')
+    expected=reference_cells()
+    if set(cases)!={key for key,_,_ in expected}:
+        errors.append('incomplete baseline cases')
+    def finite(v):return type(v) in (int,float) and math.isfinite(v)
+    for key,scale,mode in sorted(expected):
+        data=cases.get(key,{}).get(scale,{}).get(mode,{})
+        top=data.get('top',{}); cards=data.get('cards',{})
+        if (not finite(top.get('first',{}).get('y')) or top.get('overflow') is not False
+                or set(cards)!=set(h.NAMES)
+                or any(not finite(c.get('card',{}).get('height')) or c['card']['height']<=0 for c in cards.values())):
+            errors.append(f'missing or invalid geometry: {key}/{scale}/{mode}')
+        else:seen.add((key,scale,mode))
+    # Every original drawer assertion must have run; only the exact observed
+    # old reset can be segregated from geometry, with its failure and screenshot retained.
+    for key in sorted({key for key,_,_ in expected}):
+        ds=cases.get(key,{}).get('drawer_diagnostics',{})
+        for mode in ('compact','comfort'):
+            for fixture in ('normal','zero','unit'):
+                dk=f'{key}-{mode}-drawer-{fixture}'; diag=ds.get(dk,{})
+                if dk in failures and historical_drawer_reset(failures[dk],diag,fixture):
+                    known.append(dk)
+                elif dk in failures or diag.get('result')!='PASS' or diag.get('receiptSelected') is not True:
+                    errors.append('unresolved baseline drawer: '+dk)
+    errors.extend('unclassified baseline failure: '+k for k in sorted(set(failures)-set(known)))
+    return {'status':'FAIL' if errors else 'PASS','rawBehaviorStatus':report.get('status'),
+            'geometryCells':len(seen),'requiredGeometryCells':len(expected),
+            'historicalDrawerFailures':sorted(known),'errors':errors}
+
 def main():
     global AUTH_MODE
     a=argparse.ArgumentParser();a.add_argument('--out',type=Path,required=True);a.add_argument('--evidence',type=Path,required=True);a.add_argument('--sha',required=True);a.add_argument('--phase',choices=['before','after'],required=True);a.add_argument('--baseline',type=Path);a.add_argument('--day',required=True);args=a.parse_args()
@@ -269,6 +342,9 @@ def main():
     require(bool(fixture_rows['normal'].get('data_receita')) and bool(fixture_rows['zero'].get('data_receita')) and not fixture_rows['unit'].get('data_receita'),'independent date fixture matrix invalid')
     baseline=json.loads(args.baseline.read_text()) if after else None
     if after:require(baseline['phase']=='before' and baseline['sha']=='5d76df41dfae7f2c3607eb18454aa5bf6fe64afd','certified R4 baseline required')
+    reference=baseline_geometry_reference(baseline) if after else None
+    reference_ready=after and reference['status']=='PASS' and baseline.get('geometryReference')==reference
+    comparisons=set()
     report={'sha':args.sha,'phase':args.phase,'status':'FAIL','cases':{},'failures':{},'safeArea':'simulated Chromium','authority':'synthetic enrollment; no SQL or clinical mutation','productionWrites':0}
     server=q.ThreadingHTTPServer(('127.0.0.1',8765),Server);threading.Thread(target=server.serve_forever,daemon=True).start()
     try:
@@ -324,9 +400,10 @@ def main():
                                             elif kind in ('zero','unit','negative','sos','taken'):
                                                 require(g['railColor']=='rgb(148, 163, 184)','confirmed ordinary prescription not gray '+kind+' '+repr(g['railColor']))
                                     except AssertionError as exc:report['failures'][f'{key}-{scale}-{mode}-{kind}']=str(exc);print('H01_CARD_FAIL',key,scale,mode,kind,str(exc),flush=True)
-                                if after and baseline['status']=='PASS':
+                                if reference_ready:
                                     b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());
                                     data['card_delta_px']={kind:round(g['card']['height']-b['cards'][kind]['card']['height'],2) for kind,g in data['cards'].items()}
+                                    comparisons.add((key,k,mode))
                                     for ok,msg in [(data['delta_first_y']<=2,'header grew versus certified R4'),(data['delta_median']<=2,'median height grew versus certified R4'),(max(data['card_delta_px'].values())<=18*scale+2,'individual card grew beyond one text line versus certified R4')]:
                                         if not ok:report['failures'][f'{key}-{scale}-{mode}-{msg}']=msg;print('H01_GEOMETRY_FAIL',key,scale,mode,msg,flush=True)
                             for kind in ('normal','ignored','review','long'):
@@ -345,9 +422,21 @@ def main():
                     finally:
                         if ctx:ctx.close()
             browser.close()
-        if after and baseline['status']!='PASS':report['failures']['baseline']='Baseline incomplete: candidate evidence collected, comparative certification blocked'
+        if after:
+            report['baselineReference']=reference
+            report['comparisonCells']=[list(cell) for cell in sorted(comparisons)]
+            if not reference_ready:report['failures']['baseline']='Baseline reference incomplete or inconsistent; certification blocked'
+            if comparisons!=reference_cells():report['failures']['comparisonCoverage']='Incomplete R4 geometry comparison: '+str(len(comparisons))+'/32'
+            print('H01_R4_COMPARISON',len(comparisons),'/',len(reference_cells()),flush=True)
         report['status']='FAIL' if report['failures'] else 'PASS'
+        if not after:
+            report['geometryReference']=baseline_geometry_reference(report)
+            print('H01_R4_RAW_BEHAVIOR',report['status'],flush=True)
+            print('H01_R4_GEOMETRY_REFERENCE',json.dumps(report['geometryReference'],ensure_ascii=False),flush=True)
     finally:
         server.shutdown();(args.evidence/'measurements.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    # Before-phase exit certifies reference usability ONLY. Raw behavioral FAIL
+    # and all original evidence are preserved. After-phase exit remains strict.
+    if not after:return 0 if report['geometryReference']['status']=='PASS' else 1
     return 0 if report['status']=='PASS' else 1
 if __name__=='__main__':raise SystemExit(main())
