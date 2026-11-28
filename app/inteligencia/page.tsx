@@ -8,6 +8,7 @@ import { BRAIN_NAME } from "@/lib/health-intelligence/version";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, BrainCircuit, ChevronLeft, ChevronRight, CircleCheck, CreditCard, Database, FileText, KeyRound, Landmark, ShieldCheck, WalletCards } from "lucide-react";
+import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import { PageTransition } from "@/components/PageTransition";
 import { VaultInsightSheet } from "@/components/vault-intelligence/VaultInsightSheet";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
@@ -108,7 +109,7 @@ export default function VaultIntelligencePage() {
     { label: "Compras", value: coverage?.acquisitions || 0, icon: WalletCards, tone: "text-orange-300" },
   ];
 
-  return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-5 header-safe-top text-ink-primary">
+  return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-5 header-safe-top text-ink-primary vault-adaptive-tail">
     <header className="mx-auto flex max-w-2xl items-start gap-3">
       <button type="button" onClick={() => router.replace(backTarget)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface text-ink-muted" aria-label="Voltar"><ChevronLeft size={20}/></button>
       <div className="min-w-0"><p className="font-mono text-xs uppercase tracking-[0.16em] text-ice">VAULT Brain</p><h1 className="font-display text-2xl font-bold tracking-tight text-ink-primary">Central do Brain</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Um próximo passo em destaque. Evidências, plano e histórico disponíveis sob demanda, sem presumir que algo foi realizado.</p></div>
@@ -136,6 +137,7 @@ export default function VaultIntelligencePage() {
       <button type="button" onClick={() => setExpiredInsightNotice(false)} className="min-h-11 shrink-0 rounded-lg px-2 font-semibold">Entendi</button>
     </div>}
     <section id="insight-decisoes" className="mx-auto mt-6 max-w-2xl scroll-mt-24">
+      <ClinicalEpisodePulseP4 returnTo="/inteligencia#insight-decisoes" />
       {!health.isLoading && health.careCommand?.decision ? (
         <BrainNextStep decision={health.careCommand.decision} onOpen={href => router.push(preserveReturn(href))} />
       ) : null}

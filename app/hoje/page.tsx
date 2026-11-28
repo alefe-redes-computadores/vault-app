@@ -17,6 +17,7 @@ import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
 import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
+import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
 import { DosePremiumCenter } from "@/components/hoje/DosePremiumCenter";
@@ -1419,7 +1420,8 @@ function PremiumHojePage() {
         </div>
         <section id="hoje-cuidado" aria-label="Cuidado" className="mx-auto max-w-3xl scroll-mt-24 space-y-2 px-4 pt-3">
           <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
-          <CareFlowSummaryM2 />
+          <CareFlowSummaryM2 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />
+          {isHoje && !retroReviewMode && <ClinicalEpisodePulseP4 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />}
         </section>
         <div className="mx-auto max-w-3xl px-4 pt-2">
           <ExamAgendaM2 day={dataSelecionada} />
@@ -1657,7 +1659,7 @@ function PremiumHojePage() {
                     .getElementById("hoje-doses")
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
-                onNavigate={(href) => navigateWithReturnM120(href)}
+                onNavigate={(href) => navigateWithReturnM120(href, premiumSelection)}
               />
             ) : null}
           </section>

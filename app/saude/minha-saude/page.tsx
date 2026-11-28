@@ -1,4 +1,5 @@
 "use client";
+import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -350,6 +351,7 @@ function HealthDashboard({
             {/* R5: a entrada é o launcher; o painel de Fênix e métricas permanece íntegro. */}
             {!profileOnly?<HealthHubLauncherR5 userId={person?.user_id||""} personId={personId||""} onOpenPersonalSection={openPersonalSectionR5}/>:null}
             {profileOnly?<VitalContextCard origin="/saude/fenix"/>:null}
+            {profileOnly && <ClinicalEpisodePulseP4 returnTo="/saude/fenix" />}
             <section id="painel-pessoal-r5" aria-label="Painel de saúde e Fênix" className="scroll-mt-24 overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface/60">
                {!profileOnly?<button type="button" onClick={()=>goFromHealth("/saude/fenix")} className="flex min-h-[72px] w-full items-center gap-3 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300" aria-label="Abrir Fênix e Perfil Clínico">
                  <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10"><FenixMark size="xs"/></span>

@@ -145,7 +145,7 @@ export default function HealthIntelligenceLabPage() {
   if (health.isLoading || !experience || !health.brainV4) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary">
+        <main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary vault-adaptive-tail">
           <div className="mx-auto max-w-2xl rounded-[24px] border border-surface-border bg-surface p-5 text-sm text-ink-muted">
             Organizando timeline, evidências e histórico longitudinal…
           </div>
@@ -163,7 +163,7 @@ export default function HealthIntelligenceLabPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary">
+      <main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary vault-adaptive-tail">
         <header className="mx-auto flex max-w-2xl items-start gap-3">
           <button
             type="button"

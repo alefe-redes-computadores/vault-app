@@ -18,8 +18,12 @@ const tabTitles:{key:DoseCenterTab;title:string;icon:typeof Clock3}[]=[{key:'pen
 const button='min-h-11 rounded-xl border border-surface-border px-3 text-sm font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:opacity-50';
 const DoseCard=memo(function DoseCard({row,busy,history,onReview,onOpenMedication}:{row:CenterRow;busy:boolean;history:boolean;onReview:(row:CenterRow)=>void;onOpenMedication:(row:CenterRow)=>void}){
   const Status=statusIcon(row.status),available=row.medicationAvailable!==false;
+  const reviewLabel = history ? "Revisar registro" : "Conferir dose";
   const color=typeof row.relationColor==='string'&&/^#[0-9a-f]{6}$/i.test(row.relationColor)?row.relationColor:undefined;
   return <li className="min-w-0 overflow-hidden rounded-2xl border border-surface-border bg-void/35 p-3" style={color?{borderLeftColor:color,borderLeftWidth:3}:undefined}>
+    <div className={`mb-3 flex items-center gap-1.5 rounded-lg border border-surface-border/70 bg-surface px-2.5 py-1.5 text-xs font-semibold ${tone(row.status)}`}>
+      <Status size={14} className="shrink-0" aria-hidden="true"/>{statusLabel[row.status]}
+    </div>
     <div className="flex min-w-0 items-start gap-3">
       <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised"><MedicationFormatIcon formato={row.format} cores={row.colors} size={29}/></span>
       <div className="min-w-0 flex-1">
@@ -27,9 +31,7 @@ const DoseCard=memo(function DoseCard({row,busy,history,onReview,onOpenMedicatio
         {row.concentration&&<p className="mt-0.5 break-words text-xs text-ink-muted">{row.concentration}{row.pharmaceuticalSource==='cadastro_no_registro'?' · cadastro no registro':row.pharmaceuticalSource==='cadastro_atual'||history?' · cadastro atual':''}</p>}
         {row.pharmaceuticalSource==='cadastro_no_registro'&&!row.concentration&&<p className="text-xs text-ink-muted">Cadastro preservado no registro</p>}
         <p className="mt-1 break-words text-sm font-medium text-ink-secondary">{row.quantityLabel}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs"><span className={`inline-flex items-center gap-1 rounded-lg border border-surface-border/70 px-2 py-1 ${tone(row.status)}`}><Status size={13} aria-hidden="true"/>{statusLabel[row.status]}</span><span className="rounded-lg bg-surface-raised px-2 py-1 text-ink-muted">{originLabel[row.origin]}</span></div>
         {history&&<p className="mt-2 text-xs text-ink-muted">Dia de referência: {labelDate(row.day)}</p>}
-        {row.scheduledHour&&<p className="mt-1 text-xs text-ink-muted">Prevista: {row.scheduledHour}</p>}
         {row.actualAt&&<p className="mt-1 break-words text-xs text-emerald-200">Tomada: {actualLabel(row.actualAt)}</p>}
         {row.retroactive&&<span className="mt-1 inline-block rounded-md border border-violet-400/25 bg-violet-400/5 px-2 py-1 text-xs text-violet-200">Registro em outro dia</span>}
         {row.ignoredReason&&<p className="mt-1 break-words text-xs text-ink-muted">Motivo: {row.ignoredReason}</p>}
@@ -38,7 +40,17 @@ const DoseCard=memo(function DoseCard({row,busy,history,onReview,onOpenMedicatio
         {(row.status==='overdue'||row.status==='due_now')&&(!row.eligible||row.stock!=='available')&&<p className="mt-2 break-words text-xs text-amber-200">{row.stock==='unavailable'?'Estoque registrado indisponível':row.stock==='unknown'?'Estoque não comprovado':'Não elegível para confirmação coletiva'} · revisar individualmente</p>}
       </div>
     </div>
-    {available&&<button disabled={busy} type="button" className={`${button} mt-3 flex w-full items-center justify-between gap-2`} onClick={()=>onReview(row)} aria-label={`${history?'Revisar registro de':'Conferir dose de'} ${row.name}, ${row.hour}`}><span>{history?'Revisar registro':'Conferir dose'}</span><ChevronRight size={17} aria-hidden="true"/></button>}
+    <div className="mt-3 grid grid-cols-2 items-stretch gap-2 border-t border-surface-border/60 pt-2.5 min-[420px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+      <dl className="min-w-0 rounded-lg bg-surface-raised px-2 py-1.5 text-xs">
+        <dt className="text-ink-muted">{row.scheduledHour ? "Prevista" : "Horário"}</dt>
+        <dd className="mt-0.5 break-words font-semibold tabular-nums text-ink-primary">{row.scheduledHour || row.hour || "Não informado"}</dd>
+      </dl>
+      <dl className="min-w-0 rounded-lg bg-surface-raised px-2 py-1.5 text-xs">
+        <dt className="text-ink-muted">Origem</dt>
+        <dd className="mt-0.5 break-words font-semibold text-ink-primary">{originLabel[row.origin]}</dd>
+      </dl>
+      {available&&<button disabled={busy} type="button" className={`${button} col-span-2 flex items-center justify-between gap-2 text-left min-[420px]:col-span-1`} onClick={()=>onReview(row)} aria-label={`${history?'Revisar registro de':'Conferir dose de'} ${row.name}, ${row.hour}`}><span>{reviewLabel}</span><ChevronRight size={17} className="shrink-0" aria-hidden="true"/></button>}
+    </div>
   </li>;
 });
 function RoutineSummary({view}:{view:DoseCenterView}){

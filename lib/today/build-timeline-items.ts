@@ -93,11 +93,14 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
   const list: TodayTimelineItem[] = [];
   const scheduledKeys = new Set<string>();
   const slotIndex = buildDoseSlotIndex(input.doseLogs as any, { userId: input.userId, personId: input.personId });
-  const medicationById = byId(input.medicamentos);
-  const doctorById = byId(input.medicos);
-  const treatmentById = byId(input.tratamentos);
-  const pharmacyById = byId(input.farmacias);
-  const hospitalById = byId(input.hospitais);
+  const sameAccount = (entity: Entity) => !input.userId || entity.user_id === input.userId;
+  const samePerson = (entity: Entity) => sameAccount(entity) && (!input.personId || entity.person_id === input.personId);
+  const medications = input.medicamentos.filter(samePerson);
+  const medicationById = byId(medications);
+  const doctorById = byId(input.medicos.filter(sameAccount));
+  const treatmentById = byId(input.tratamentos.filter(samePerson));
+  const pharmacyById = byId(input.farmacias.filter(sameAccount));
+  const hospitalById = byId(input.hospitais.filter(sameAccount));
   // M23: one O(n) pass for every medication, no per-medication date sort.
   const firstAcquisitionByMedication = earliestAcquisitionByMedication(input.renovacoes);
   const historyByMedication = groupedBy(input.historicoDoses, "medicamento_id");
@@ -111,7 +114,7 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     return snapshot;
   };
 
-  for (const med of input.medicamentos) {
+  for (const med of medications) {
     if (input.retroReviewMode && input.retroReviewMedicationId && med.id !== input.retroReviewMedicationId) continue;
     if (!med.id || med.status === "descontinuado" || med.tipo_uso === "sos" || med.tipo_uso === "esporadico") continue;
     const horarios = Array.from(new Set<string>((med.estoque_horarios || [])

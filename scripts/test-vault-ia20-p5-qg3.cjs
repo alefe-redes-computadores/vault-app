@@ -38,7 +38,7 @@ ok(rail.includes('min-h-11')&&rail.includes('focus-visible:outline'),'44px targe
 ok(!/\bdb\.|fetch\(|\.put\(|\.update\(|marcarDose\(|ignorar\(/.test(rail),'navigation cannot write clinical data');
 ok(today.includes('TodayDateNavigation')&&today.includes('TodayRoutinePulse')&&today.includes('TodayNavigationContextM120'),'day/time/origin authorities intact');
 ok(today.includes('visibleTimelineItems(')&&today.includes('<TodayDoseTimelineCard')&&today.includes('handleTomarTodos()'),'dose logic and established data components retained');
-ok(today.includes('<CareFlowSummaryM2 />')&&today.includes('<TodayAgendaOverview'),'careflow and agenda components preserved');
+ok(today.includes('<CareFlowSummaryM2 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />')&&today.includes('<TodayAgendaOverview'),'careflow and agenda components preserved');
 ok(today.includes('pb-[calc(8rem+env(safe-area-inset-bottom,0px))]'),'Android bottom gesture inset reserved');
 // Documents: the sticky header no longer grows 45dvh; only one real filter state.
 ok(documents.includes('aria-controls="p5-filtros-cofre"')&&documents.includes('aria-expanded={showFilters}'),'filter announces state and controls correct region');

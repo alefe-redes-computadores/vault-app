@@ -160,6 +160,17 @@ const builder=load(paths[1],{
  '@/lib/health-utils':{computeEstoqueInfo:()=>({quantidadeRestante:5}),getDaysUntil:()=>null},
  '@/lib/health-insights':{analisarComportamentoUso:()=>null,isReceitaAtualVencida:()=>false,sugerirRenovacao:()=>({deveRenovar:false,mensagem:'',urgencia:'nenhuma'})},
 }).buildTodayTimelineItems;
-const mk=(renewals)=>builder({medicamentos:[{...medication,tipo_uso:'continuo',status:'ativo',cor_principal:'#fff'}],doseLogs:[],medicos:[],tratamentos:[],farmacias:[],hospitais:[],historicoDoses:[],registros:[],renovacoes:renewals,dataSelecionada:'2026-11-02',isHoje:true,userId:'u1',personId:'p1'});
+const mk=(renewals, overrides={})=>builder({medicamentos:[{...medication,user_id:'u1',person_id:'p1',tipo_uso:'continuo',status:'ativo',cor_principal:'#fff'}],doseLogs:[],medicos:[],tratamentos:[],farmacias:[],hospitais:[],historicoDoses:[],registros:[],renovacoes:renewals,dataSelecionada:'2026-11-02',isHoje:true,userId:'u1',personId:'p1',...overrides});
 ok(mk(acquisitions).length===3&&mk([{medicamento_id:'m1',data:'2026-11-03'}]).length===0,'actual Today builder still respects documented start-date boundary');
+const scopedRows=mk(acquisitions,{
+  medicamentos:[
+    {...medication,user_id:'u1',person_id:'p1',tipo_uso:'continuo',status:'ativo',medico_id:'doc',farmacia_id:'ph',tratamento_ids:['care']},
+    {...medication,id:'foreign',user_id:'u1',person_id:'p2',tipo_uso:'continuo',status:'ativo'},
+  ],
+  medicos:[{id:'doc',user_id:'u1',nome:'Médico da conta'},{id:'doc',user_id:'u2',nome:'Médico alheio'}],
+  farmacias:[{id:'ph',user_id:'u2',nome:'Farmácia alheia'}],
+  tratamentos:[{id:'care',user_id:'u1',person_id:'p2',nome:'Tratamento de outra pessoa',cor:'#aabbcc'}],
+});
+ok(scopedRows.length===3&&scopedRows.every(row=>row.medicoNome==='Médico da conta'&&!row.farmaciaId&&!row.tratamentoId),
+  'Today resolves related IDs only inside their account/person authority');
 console.log('VAULT M23:',checks,'checks passed; historic absent data never inferred missed');
