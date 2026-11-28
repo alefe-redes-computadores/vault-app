@@ -42,7 +42,7 @@ jobs:
           const uuid=s=>{assert.match(s,/^[a-f0-9-]{36}$/);return lit(s)+'::uuid'};
           const pg=(sql,auth=false)=>execFileSync('docker',['exec','-i',process.env.LAB_PG_CID,'psql','-X','-h','/tmp','-v','ON_ERROR_STOP=1','-qAt','-U','postgres','-d','postgres'],{input:(auth?"SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub',"+lit(uid)+",false) \\g /dev/null\n":"")+sql+'\n',encoding:'utf8',maxBuffer:32*1024*1024}).trim();
           const json=(sql,auth=true)=>JSON.parse(pg(sql,auth));
-          let completeCalls=0,lost=false;
+          let completeCalls=0,lost=false,firstAdded=null;
           const bridge=async(type,a)=>{
             if(type==='rows'){
               assert(tables.has(a.table));assert(Number.isSafeInteger(a.offset)&&a.offset>=0);
@@ -54,7 +54,7 @@ jobs:
             if(a.name==='vault_macro02_read_enrollment_r5')return {data:json('SELECT public.vault_macro02_read_enrollment_r5();'),error:null};
             if(a.name==='vault_macro02_recovery_claim_r3')return {data:json('SELECT public.vault_macro02_recovery_claim_r3('+uuid(a.args.p_epoch)+','+uuid(a.args.p_operation_id)+','+(a.args.p_acquire===true?'true':'false')+');'),error:null};
             if(a.name==='vault_macro02_recovery_complete_r3'){
-              completeCalls++;
+              completeCalls++;if(completeCalls===1)firstAdded=a.args.p_receipt.added;
               const data=json('SELECT public.vault_macro02_recovery_complete_r3('+lit(JSON.stringify(a.args.p_receipt))+'::jsonb);');
               if(!lost){lost=true;return {data:null,error:{message:'synthetic transport interruption after actual commit'}};}
               return {data,error:null};
@@ -74,8 +74,8 @@ jobs:
             "const uid="+JSON.stringify(uid)+";",
             "const digest=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))),b=>b.toString(16).padStart(2,'0')).join('');",
             "const capture=()=>exportAuthenticatedMacro02RecoveryImage(uid);",
-            "async function run(resume,allowSeed){const store=createPrivatePreparationStore();try{const host={store,guard(){},enrollment:()=>readMacro02EnrollmentR5(uid),synchronize:async()=>{if(!allowSeed)throw Error('unexpected repeated synchronization');const source={};for(const t of CUTOVER_TABLES){const r=await globalThis.labPg('rows',{table:t==='doseLogs'?'dose_logs':t,offset:0});if(r.count!==r.data.length)throw Error('fixture pagination');source[t]=r.data;}await db.transaction('rw',CUTOVER_TABLES.map(t=>db.table(t)),async()=>{for(const t of CUTOVER_TABLES){if(t==='medicamento_tratamentos')continue;for(const row of source[t]){const next={...row,synced:true};if(t==='persons'){next.isDefault=row.is_default===true;delete next.is_default;}if(t==='medicamentos'){next.tratamento_ids=source.medicamento_tratamentos.filter(r=>r.medicamento_id===row.id).map(r=>r.tratamento_id).sort();if(next.catalog_snapshot)next.catalog_snapshot={...next.catalog_snapshot,lab_undefined:undefined};}await db.table(t).add(next);}}});return true;},capture,inspect:bytes=>assertMacro02LocalPreparation(normalizeMacro02LocalForComparison(readMacro02ExactRecoveryImage(JSON.parse(bytes),uid))),preflight:bytes=>preflightMacro02BeforeFreeze(uid,bytes,()=>{}),digest,uuid:()=>crypto.randomUUID(),recover:restoreAuthenticatedMacro02RecoveryImage};return await (resume?resumeMacro02Automatically:prepareMacro02Automatically)(host,uid);}finally{store.close();}}",
-            "globalThis.lab={prepare:seed=>run(false,seed),resume:()=>run(true,false),capture,status:async()=>{const s=createPrivatePreparationStore();try{return await s.read(uid);}finally{s.close();}},enrollment:()=>readMacro02EnrollmentR5(uid),count:()=>db.table('renovacoes').filter(r=>r.id.startsWith('00000000-0000-4000-8000-000000008')).count()};"
+            "async function run(resume,allowSeed){const store=createPrivatePreparationStore();try{const host={store,guard(){},enrollment:()=>readMacro02EnrollmentR5(uid),synchronize:async()=>{if(!allowSeed)throw Error('unexpected repeated synchronization');const source={};for(const t of CUTOVER_TABLES){const r=await globalThis.labPg('rows',{table:t==='doseLogs'?'dose_logs':t,offset:0});if(r.count!==r.data.length)throw Error('fixture pagination');source[t]=r.data;}await db.transaction('rw',CUTOVER_TABLES.map(t=>db.table(t)),async()=>{for(const t of CUTOVER_TABLES){if(t==='medicamento_tratamentos')continue;for(const row of source[t]){const next={...row,synced:true};if(t==='persons'){next.isDefault=row.is_default===true;delete next.is_default;}if(t==='medicamentos'){next.tratamento_ids=source.medicamento_tratamentos.filter(r=>r.medicamento_id===row.id).map(r=>r.tratamento_id).sort();if(next.catalog_snapshot)next.catalog_snapshot={...next.catalog_snapshot,lab_undefined:undefined};}if(t==='renovacoes'&&next.a3_location_snapshot)next.a3_location_snapshot={...next.a3_location_snapshot,lab_undefined:undefined};await db.table(t).add(next);}}});return true;},capture,inspect:bytes=>assertMacro02LocalPreparation(normalizeMacro02LocalForComparison(readMacro02ExactRecoveryImage(JSON.parse(bytes),uid))),preflight:bytes=>preflightMacro02BeforeFreeze(uid,bytes,()=>{}),digest,uuid:()=>crypto.randomUUID(),recover:restoreAuthenticatedMacro02RecoveryImage};return await (resume?resumeMacro02Automatically:prepareMacro02Automatically)(host,uid);}finally{store.close();}}",
+            "globalThis.lab={prepare:seed=>run(false,seed),resume:()=>run(true,false),capture,status:async()=>{const s=createPrivatePreparationStore();try{return await s.read(uid);}finally{s.close();}},enrollment:()=>readMacro02EnrollmentR5(uid),count:()=>db.table('renovacoes').filter(r=>r.id.startsWith('00000000-0000-4000-8000-000000008')).count(),simulateMissingLocal:()=>db.table('renovacoes').delete('00000000-0000-4000-8000-000000008001'),restored:async()=>{const r=await db.table('renovacoes').get('00000000-0000-4000-8000-000000008001');return !!r&&Object.hasOwn(r.a3_location_snapshot,'lab_undefined')&&r.a3_location_snapshot.lab_undefined===undefined;}};"
           ].join('\n');
           (async()=>{
             const result=await build({stdin:{contents:client,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'browser',target:'chrome130',define:{'process.env.NODE_ENV':'"test"','process.env.NEXT_PUBLIC_SUPABASE_URL':'"http://127.0.0.1:8765"','process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY':'"synthetic-lab-only"'},plugins:[{name:'isolated-auth-transport',setup(b){b.onResolve({filter:/^@\/lib\/supabase\/client$/},()=>({path:'lab',namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:mock,loader:'js'}));}}]});
@@ -89,10 +89,11 @@ jobs:
               await boot();assert.deepEqual(await page.evaluate(()=>lab.prepare(false)),prep);
               console.log('LEGACY_PRIVATE_BACKUP_SEVEN_DETACHED_PERSISTENCE_PASS');
               pg("SELECT vault_macro02_private.cutover_freeze_r3("+uuid(uid)+","+uuid(epoch)+",'synthetic-isolated-test');");
-              await assert.rejects(page.evaluate(()=>lab.resume()),/M02_RECOVERY_REMOTE_UNAVAILABLE/);
+              await page.evaluate(()=>lab.simulateMissingLocal());assert.equal(await page.evaluate(()=>lab.count()),6);
+              await assert.rejects(page.evaluate(()=>lab.resume()),/M02_RECOVERY_REMOTE_UNAVAILABLE/);assert.equal(firstAdded,1);assert.equal(await page.evaluate(()=>lab.count()),7);assert.equal(await page.evaluate(()=>lab.restored()),true);assert.equal((await page.evaluate(()=>lab.capture())).sha256,prep.sha256);
               assert.equal(completeCalls,1);assert.equal((await page.evaluate(()=>lab.status())).completed,false);
               await boot();const completed=await page.evaluate(()=>lab.resume());assert.equal(completed.completed,true);assert.equal(completed.operation_id,prep.operation_id);assert.equal(completed.sha256,prep.sha256);assert.equal(completeCalls,2);
-              assert.deepEqual(await page.evaluate(()=>lab.resume()),completed);assert.equal(completeCalls,2);
+              assert.deepEqual(await page.evaluate(()=>lab.resume()),completed);assert.equal(completeCalls,2);assert.equal(await page.evaluate(()=>lab.restored()),true);console.log('NON_JSON_EXACT_ADD_ONLY_RECOVERY_PASS');
               const receipt=json('SELECT receipt FROM vault_macro02_private.cutover_recovery_claims_r3 WHERE user_id='+uuid(uid)+';',false);
               assert.equal(receipt.source_sha256,prep.sha256);assert.equal(receipt.operation_id,prep.operation_id);assert.equal(receipt.state,'local_verified');for(const k of ['local_sha256','remote_sha256','server_snapshot_sha256'])assert.match(receipt[k],/^[a-f0-9]{64}$/);
               assert.equal(receipt.allows_activation,false);assert.equal(receipt.allows_replay,false);
@@ -115,14 +116,15 @@ jobs:
           s=s.replace(a,a+'\npsql_lab < "$p/cas-r04-m03-fixture.sql"\npsql_lab < supabase/migrations/20261126161012_vault_stb11_visual_cas_r03.sql\npsql_lab -c "ALTER TABLE public.renovacoes DROP CONSTRAINT renovacoes_medicamento_id_fkey"')
           s=s.replace(b,'psql_lab < supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql\n'+b+'''
           psql_lab <<'SEED'
-          INSERT INTO public.renovacoes(id,user_id,person_id,medicamento_id,data,medicamento_nome,medicamento_dosagem)
-          SELECT ('00000000-0000-4000-8000-00000000800'||n)::uuid,'00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',('00000000-0000-4000-8000-00000000810'||n)::uuid,'2024-01-01','Synthetic historical reference','Synthetic historical dosage' FROM generate_series(1,7) n;
+          INSERT INTO public.renovacoes(id,user_id,person_id,medicamento_id,data,medicamento_nome,medicamento_dosagem,a3_location_snapshot)
+          SELECT ('00000000-0000-4000-8000-00000000800'||n)::uuid,'00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',('00000000-0000-4000-8000-00000000810'||n)::uuid,'2024-01-01','Synthetic historical reference','Synthetic historical dosage','{"fixture":"historical"}'::jsonb FROM generate_series(1,7) n;
           SEED
           ''')
           s=s.replace(c,'LAB_PG_CID="$cid" node "$RUNNER_TEMP/m02-real/driver.cjs"')
           Path(sys.argv[1]).write_text(s)
           PY
           bash "$RUNNER_TEMP/m02-real/run.sh" 2>&1 | tee "$RUNNER_TEMP/m02-real/results.log"
+          grep -Fxq NON_JSON_EXACT_ADD_ONLY_RECOVERY_PASS "$RUNNER_TEMP/m02-real/results.log"
           grep -Fxq ACTUAL_RECEIPT_ACTIVATION_SEVEN_HISTORY_ROWS_PASS "$RUNNER_TEMP/m02-real/results.log"
           grep -Fxq MACRO02_ACTIVE_COMPOUND_PG17_GATE_PASS "$RUNNER_TEMP/m02-real/results.log"
       - uses: actions/upload-artifact@v4
