@@ -46,7 +46,7 @@ const home=fs.readFileSync('app/page.tsx','utf8');
 const today=fs.readFileSync('app/hoje/page.tsx','utf8');
 assert(provider.includes('resolveDoseNotificationDestination(data.type)'),'listener cold-start reutiliza destino unico');
 assert(home.includes('setModalPendenciasAberto(true)'),'modal abre sem confirmar');
-assert(today.includes('focusDoseQueue')&&today.includes('getElementById("hoje-doses")'),'Hoje foca doses');
+assert(today.includes('focusDoseQueue')&&today.includes('openTodayArea("hoje-doses")'),'Hoje foca doses');
 for (const file of ['components/Providers.tsx','app/page.tsx','app/hoje/page.tsx','lib/home/pending-dose-projection.ts','lib/notification-dose-navigation.ts']) {
  const source=fs.readFileSync(file,'utf8');const sf=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,file.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.equal(sf.parseDiagnostics.length,0,`${file}: parse TSX/TS ${sf.parseDiagnostics.map(x=>x.messageText)}`);

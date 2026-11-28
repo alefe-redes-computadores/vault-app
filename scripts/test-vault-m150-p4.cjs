@@ -12,8 +12,8 @@ ok('Conta e pessoa no mesmo cartão',more.includes('Pessoa ativa no Vault')&&(mo
 ok('Conta e pessoa têm autoridades distintas',more.includes('Conta Vault')&&more.includes('Os registros de saúde seguem este perfil, não a foto da conta.'));
 ok('Brain no domínio de Saúde',more.includes('aria-label="Acessos de saúde"')&&more.includes('router.push("/inteligencia")')&&!more.includes('Cofre pessoal e inteligência'));
 ok('Cofre mantém senhas, bancos, cartões e pessoas',['id: "senhas"','id: "cartoes"','id: "contas"','id: "cofres"','id: "pessoas"','id: "favoritos"'].every(x=>more.includes(x)));
-ok('Sync ao lado de recuperação e exportação',more.indexOf('Sincronização</h3>')>more.indexOf('Dados & Nuvem')&&more.includes('handleSync()')&&more.includes('pendingQueueCount > 0'));
-ok('Update Center preservado',more.includes('id="mais-atualizacoes"')&&(more.match(/<VaultUpdateCenter \/>/g)||[]).length===1);
+ok('Sync ao lado de recuperação e exportação',more.indexOf('Sincronização</h3>')>more.indexOf('<MoreArea id="dados"')&&more.includes('handleSync()')&&more.includes('pendingQueueCount > 0'));
+ok('Update Center preservado',more.includes('<MoreArea id="atualizacoes"')&&(more.match(/<VaultUpdateCenter \/>/g)||[]).length===1);
 ok('Tema em três alvos iguais',more.includes('grid grid-cols-3')&&more.includes('h-[72px] w-full min-w-0')&&more.includes('aria-pressed={selected}'));
 ok('Diagnóstico avançado mantém dono',more.includes('isDiagnosticOwner && (')&&more.includes('diagnosticOpen && (')&&more.includes('handleErudaToggle'));
 ok('Limpeza de dados conserva confirmação',more.includes('setShowClearDataModal(true)')&&more.includes('RigorousConfirmInput'));
@@ -22,7 +22,7 @@ ok('Paleta Home por domínio',center.includes('border-ice/20')&&center.includes(
 ok('Home explica recorte de doses',hero.includes('Home: horários de contínuos.')&&hero.includes('onOpenToday')&&home.includes('onOpenToday={() =>'));
 ok('Hoje não presume contagem igual à Home',pulse.includes('A Home resume apenas a rotina de medicamentos contínuos'));
 ok('Atalhos do Hoje usam mesmos destinos',today.includes('aria-label="Acessos rápidos do cuidado"')&&today.includes('navigateWithReturnM120("/saude/central-m144")')&&today.includes('navigateWithReturnM120("/saude/plano-seguranca")'));
-ok('Check-in usa diário existente',today.includes('getElementById("hoje-diario")')&&today.includes('id="hoje-diario"'));
+ok('Check-in usa diário existente',today.includes('openTodayArea("hoje-diario")')&&today.includes('id="hoje-diario"'));
 ok('Doses e Brain mantêm autoridade',/<TodayActionCenter\s+pendingDoses=\{totalPendentes\}/.test(today)&&/<TodayBatchAction\s+count=\{dosesElegiveisLote.length\}/.test(today)&&/<DoseScheduleGroups\s+items=\{grupo.items\}/.test(today));
 ok('Datas e passado continuam discriminados',today.includes('isPassado')&&today.includes('isFuturo')&&today.includes('<TodayRoutinePulse'));
 ok('Pluralização sem marcador genérico',!agenda.includes('evento(s)')&&!agenda.includes('compromisso(s)')&&!actions.includes('sinal(is) agrupado(s)')&&!today.includes('registro(s) recolhido(s)'));

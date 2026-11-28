@@ -719,3 +719,10 @@ html:has(.vault-h01-medications-header), body:has(.vault-h01-medications-header)
 .vault-h01-medications-route [data-vault-executive-density="comfort"] [data-vault-h01-regulatory]:not(:has(> :not(.sr-only))) {
   display: none;
 }
+
+/* Dose cards choose the action row by usable card width, including nested mobile panels. */
+.vault-dose-card { container-type: inline-size; }
+@container (min-width: 23rem) {
+  .vault-dose-facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .vault-dose-facts .vault-dose-review { grid-column: span 1; }
+}

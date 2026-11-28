@@ -10,12 +10,12 @@ for(const path of ['app/hoje/page.tsx','app/page.tsx','lib/navigation/clinical-d
 check('Hoje: doses antes de briefing e agenda',()=>{
  assert(today.indexOf('id="hoje-doses"')>0);
  assert(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayActionCenter'));
- assert(today.indexOf('<TodayActionCenter')<today.indexOf('<TodayAgendaOverview'));
+ assert(today.indexOf('id="hoje-agenda"')<today.indexOf('<TodayAgendaOverview')&&today.indexOf('id="hoje-brain"')<today.indexOf('<TodayActionCenter'));
  assert.equal((today.match(/<TodayAgendaOverview/g)||[]).length,1);
  assert.equal((today.match(/<TodayActionCenter/g)||[]).length,1);
- assert(!today.includes('data-vault-p5p5-dose-shortcut="true"') && today.includes('onOpenDoses={() =>') && today.includes('getElementById("hoje-doses")?.scrollIntoView'));
+ assert(!today.includes('data-vault-p5p5-dose-shortcut="true"') && today.includes('onOpenDoses={() =>') && today.includes('openTodayArea("hoje-doses")?.scrollIntoView'));
  assert(today.includes('focusDoseQueue = searchParams.get("focus") === "doses"'));
- assert(today.includes('getElementById("hoje-doses")?.scrollIntoView'));
+ assert(today.includes('openTodayArea("hoje-doses")?.scrollIntoView'));
 });
 check('Hoje: mesma autoridade de retirada aberta da Home',()=>{
  assert(today.includes('isOpenWithdrawal(item) && item.data < hoje'));
@@ -58,7 +58,7 @@ check('Contratos legados M76 e M110 migrados para nova ordem sem remover autorid
  const m110=read('scripts/test-vault-m110-home-today.cjs');
  assert(m76.includes('agenda preservada apos doses prioritarias'));
  assert(m76.includes('Brain preservado no bloco de prioridades e doses acessiveis sem CTA duplicado'));
- assert(m76.includes("today.indexOf('<TodayActionCenter')<today.indexOf('<TodayAgendaOverview')"));
+ assert(m76.includes("today.indexOf('id=\"hoje-brain\"')<today.indexOf('<TodayActionCenter')"));
  assert(m76.includes("!today.includes('data-vault-p5p5-dose-shortcut"));
  assert(m110.includes('Doses prioritarias; Brain e agenda preservados'));
  assert(m76.includes('buildTodayAgendaOverview'));

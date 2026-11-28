@@ -31,7 +31,7 @@ assert(today.includes("<TodayAppointmentCard"),"Today: extracted appointment car
 assert(appointmentCard.includes("rounded-[20px] border p-3.5"),"Today: original appointment card radius and padding preserved");
 assert(appointmentCard.includes("onClick={onOpen}") && appointmentCard.includes("motion-reduce:transform-none"),"Today: navigable card action and reduced motion preserved");
 
-assert(more.match(/className="vault-deferred/g)?.length >= 5);
+assert(more.match(/<MoreArea id=/g)?.length >= 5 && read("components/MoreSectionIndex.tsx").includes("<details id="));
 assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.includes('<ClinicalDisclosure'));
 // M131 R5: o cartão único de 20px foi substituído por dois destinos premium.
 // Valida os novos alvos visíveis, o raio, as rotas e a identidade verde da Minha Saúde.

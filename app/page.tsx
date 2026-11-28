@@ -10,6 +10,7 @@ import { TreatmentIdentityIconR03, useTreatmentIdentityColorResolverR03 } from "
 import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
+import { ExperienceContextPanel } from "@/components/saude/ExperienceContextPanel";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
 import { VaccinationAccessA8 } from "@/components/saude/VaccinationAccessA8";
@@ -1294,6 +1295,7 @@ export default function HomePage() {
           <CareFlowSummaryM2 />
           {/* P6 P4-A: somente um acompanhamento opcional, evidência de consulta, sem mexer em Ação Agora. */}
           <ClinicalEpisodePulseP4 />
+          <ExperienceContextPanel origin="/" />
           {/* M145: Compromissos reais primeiro; análises e cards de evidência vêm depois. */}
           {/* ===================================================
               COMPROMISSOS DE HOJE

@@ -42,7 +42,7 @@ ok(view.includes('Atenção do dia')&&view.includes('Agenda por horário')&&view
 ok(view.includes('onJump(item.destination)')&&view.includes('remindersCount > 0'),"previsão acessa seções existentes e lembra da agenda completa");
 const today=parse("app/hoje/page.tsx");
 ok(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayAgendaOverview')&&today.indexOf('<TodayAgendaOverview')>0,"agenda preservada apos doses prioritarias na P5 P5");
-ok(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayActionCenter')&&today.indexOf('<TodayActionCenter')<today.indexOf('<TodayAgendaOverview')&&today.includes('onOpenDoses={() =>')&&!today.includes('data-vault-p5p5-dose-shortcut="true"'),"Brain preservado no bloco de prioridades e doses acessiveis sem CTA duplicado");
+ok(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayActionCenter')&&today.indexOf('id="hoje-agenda"')<today.indexOf('<TodayAgendaOverview')&&today.indexOf('id="hoje-brain"')<today.indexOf('<TodayActionCenter')&&today.includes('onOpenDoses={() =>')&&!today.includes('data-vault-p5p5-dose-shortcut="true"'),"Brain preservado no bloco de prioridades e doses acessiveis sem CTA duplicado");
 ok(today.includes('id="hoje-compromissos"')&&today.includes('buildTodayAgendaOverview'),"reaproveita a agenda e os destinos reais");
 const meds=parse("app/saude/medicamentos/page.tsx");
 ok(meds.includes('className="sr-only" title={`Princípio ativo: ${activeIngredient}`}') &&

@@ -14,6 +14,7 @@ export function useVisualDisclosureMemoryR2(scope: string, userId: string | unde
         const saved = sessionStorage.getItem(storageKey);
         if (saved === "1") element.open = true;
         else if (saved === "0") element.open = false;
+        else if (element.dataset.vaultDefaultOpen !== undefined) element.open = element.dataset.vaultDefaultOpen === "1";
       } catch { /* armazenamento desabilitado nao altera o aplicativo */ }
       const remember = () => {
         try { sessionStorage.setItem(storageKey, element.open ? "1" : "0"); }

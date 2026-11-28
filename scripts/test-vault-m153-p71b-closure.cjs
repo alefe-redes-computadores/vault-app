@@ -27,7 +27,7 @@ const home=read(files[0]);
 assert(home.indexOf('<HomeDoseQuantityFollowUp')>home.indexOf('id="home-brain"'),'quantidade dentro do Brain');
 assert(home.includes('item.id === quantityFollowUpInsight.id'),'identidade exata do evento');
 assert(home.includes('!quantityAlreadyInBrain')&&home.includes('quantityFollowUpInsight')&&home.includes('HomeAttentionRail alerts={unifiedAlerts}'),'não esconder atenção independente');
-const more=read(files[2]);assert(more.includes('{vaultOverview.total} itens desta pessoa'),'contagem do Cofre permanece vinculada à pessoa');assert(more.includes('<VaultUpdateCenter')&&more.includes('Ferramentas do Cofre')&&more.includes('quickAccessItems.map')&&more.includes('min-[390px]:col-span-1'),'cofre preserva todos os destinos');
+const more=read(files[2]);assert(more.includes('{vaultOverview.total} itens desta pessoa'),'contagem do Cofre permanece vinculada à pessoa');assert(more.includes('<VaultUpdateCenter')&&more.includes('Ferramentas do cofre pessoal')&&more.includes('quickAccessItems.map')&&more.includes('min-[390px]:col-span-1'),'cofre preserva todos os destinos');
 assert(read(files[3]).includes('Home: horários de contínuos.') && read(files[3]).includes('SOS fora da meta.') && read(files[3]).includes('homeRoutineSummaryNote(scheduled, safeCompleted)'),'contadores continuam distintos, SOS fora do denominador e explicação acessível');
 assert(meds.includes('MedicationFilterBar value={medicationFilter}')&&meds.includes('MedicationListGroupNavigation')&&meds.includes('MedicationPortfolioOverview')&&meds.includes('VAULT_M144_LIST_ENTRY'),'filtros, grupos e panorama preservados');
 const startFilter=meds.indexOf('aria-expanded={visualFilterSheetOpenR1}');

@@ -5,7 +5,7 @@ import { isVaultNative } from "@/lib/native-runtime";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { MoreSectionIndex } from "@/components/MoreSectionIndex";
+import { MoreArea, MoreSectionIndex } from "@/components/MoreSectionIndex";
 import { VaultUpdateDisclosureR4 } from "@/components/updates/VaultUpdateDisclosureR4";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -959,14 +959,17 @@ export default function MaisPage() {
           =================================================== */}
 
           {/* VAULT_MORE_INFORMATION_ARCHITECTURE_V79 */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} id="mais-conta" tabIndex={-1} className="scroll-mt-24 space-y-4">
+          <MoreArea id="conta" preview="Perfil, segurança da conta e pessoa ativa" defaultOpen>
             <div className="rounded-[20px] border border-surface-border/50 bg-surface p-2.5 shadow-sm">
               <div className="flex items-center gap-2.5">
                 <div className="relative shrink-0">
                   {avatarUrl ? <img src={avatarUrl} alt={displayName} loading="lazy" className="h-11 w-11 rounded-full border-2 border-ice/20 object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-xl text-ink-muted">{displayName.charAt(0).toUpperCase()}</div>}
                 </div>
-                <button type="button" onClick={()=>{trigger("vibrate");router.push("/perfil?return_to=%2Fmais");}} aria-label="Abrir configurações da Conta Vault" className="min-w-0 flex-1 text-left"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-ice">Conta Vault</p><h2 className="truncate font-display text-sm font-semibold text-ink-primary">{displayName}</h2><p className="truncate text-[11px] text-ink-muted">{user?.email}</p></button>
-                <button type="button" onClick={()=>{trigger("vibrate");router.push("/perfil?return_to=%2Fmais");}} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações da conta"><Settings size={17} /></button>
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/perfil?return_to=%2Fmais");}}
+                  aria-label="Configurações da conta" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                  <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-[.14em] text-ice">Conta Vault</span><strong className="block truncate font-display text-sm font-semibold text-ink-primary">{displayName}</strong><span className="block truncate text-[11px] text-ink-muted">{user?.email}</span></span>
+                  <Settings size={18} className="shrink-0 text-ink-muted" aria-hidden="true"/>
+                </button>
               </div>
               {/* P4: uma identidade visual; conta autenticada e pessoa clínica seguem autoridades diferentes. */}
               <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 border-t border-surface-border/40 pt-3" aria-label="Pessoa ativa no Vault">
@@ -977,7 +980,9 @@ export default function MaisPage() {
               </div>
             </div>
 
-            <div id="mais-cuidado" tabIndex={-1} className="scroll-mt-24">
+          </MoreArea>
+          <MoreArea id="cuidado" preview="Minha Saúde, recursos clínicos e Brain">
+            <div>
               <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/mapa?return_to=%2Fmais"); }}
                 className="mb-2 flex min-h-12 w-full items-center gap-2.5 rounded-[16px] border border-emerald-300/25 bg-emerald-300/[.06] px-2.5 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
                 aria-label="Abrir mapa de todas as áreas de saúde">
@@ -992,63 +997,8 @@ export default function MaisPage() {
               </div>
             </div>
 
-            {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
-            <h2 id="mais-preferencias" tabIndex={-1} className="scroll-mt-24 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências</h2>
-            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3" data-vault-remember-r2="preferences">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                <span>Preferências e lembretes</span>
-                <ChevronDown size={16} aria-hidden="true" className="text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-              </summary>
-              <div className="space-y-3 border-t border-surface-border/35 pb-3 pt-3">
-            <div>
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências do aplicativo</h2>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={handleBiometricToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.035] p-3 text-left active:scale-[0.985]"><Fingerprint size={18} className={isBiometricEnabled ? "text-violet-300" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Biometria</p><p className="truncate text-[11px] text-ink-muted">{isBiometricEnabled ? "Ativa" : "Inativa"}</p></div></button>
-                <button type="button" onClick={handleNotificationsToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-left active:scale-[0.985]"><Bell size={18} className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Lembretes</p><p className="truncate text-[11px] text-ink-muted">{!isNativeApp ? "Somente APK" : isNotificationsEnabled ? "Ativos" : "Inativos"}</p></div></button>
-              </div>
-              <button type="button" onClick={() => {trigger("vibrate"); router.push("/saude/lembretes");}} className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.045] px-3 text-left text-xs font-semibold text-emerald-200 transition-colors active:scale-[0.985] motion-reduce:transform-none" aria-label="Abrir Central de notificações para personalizar categorias e horários"><span className="flex items-center gap-2"><Bell size={15}/> Central de notificações e categorias</span><ChevronRight size={14}/></button>
-              {isNativeApp && isNotificationsEnabled ? <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Lembretes no mesmo horário são agrupados; cada tomada continua individual no prontuário.</p> : null}
-              {isNativeApp && isNotificationsEnabled && activePersonId ? <NativeDoseAgendaInspection key={activePersonId} personId={activePersonId} /> : null}
-            </div>
-
-              </div>
-            </details>
-
-            {/* P4: atualização básica separada das preferências. Diagnóstico técnico fica abaixo e recolhido. */}
-            <section id="mais-atualizacoes" tabIndex={-1} aria-label="Atualizações do aplicativo" className="scroll-mt-24 space-y-2">
-              <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Atualizações</h2>
-              <details id="vault-updates-r4" className="group rounded-[20px] border border-surface-border/55 bg-surface/70" data-vault-remember-r2="updates" aria-label="VAULT Update Center recolhido">
-                <VaultUpdateDisclosureR4 />
-                <div className="border-t border-surface-border/45 p-2"><VaultUpdateCenter /></div>
-              </details>
-            </section>
-
-          </motion.div>
-
-          {/* ===================================================
-              ACESSO RÁPIDO — GRID
-          =================================================== */}
-
-          <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.28,
-              delay: 0.04,
-            }}
-          >
-            <h2 id="mais-cofre" tabIndex={-1} className="scroll-mt-24 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Cofre pessoal</h2>
-            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/30 px-3" aria-label="Ferramentas do cofre pessoal">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                <span className="flex min-w-0 flex-col gap-0.5"><strong className="font-semibold text-ink-primary">Ferramentas do Cofre</strong><span className="text-[10px] font-normal text-ink-muted">{vaultOverview.total} itens desta pessoa · abrir acessos</span></span>
-                <ChevronDown size={15} className="transition-transform group-open:rotate-180" aria-hidden="true"/>
-              </summary>
+          </MoreArea>
+          <MoreArea id="cofre" accessibleLabel="Ferramentas do cofre pessoal" preview={<>{vaultOverview.total} itens desta pessoa · documentos e ferramentas</>}>
             <div className="grid grid-cols-2 gap-2.5 border-t border-surface-border/35 py-3">
               {quickAccessItems.map((item) => {
                 const Icon = item.icon;
@@ -1070,19 +1020,21 @@ export default function MaisPage() {
                 );
               })}
             </div>
-            </details>
-          </motion.div>
+          </MoreArea>
+          <MoreArea id="preferencias" preview="Tema, biometria e lembretes">
+              <div className="space-y-3 border-t border-surface-border/35 pb-3 pt-3">
+            <div>
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências do aplicativo</h2>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={handleBiometricToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.035] p-3 text-left active:scale-[0.985]"><Fingerprint size={18} className={isBiometricEnabled ? "text-violet-300" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Biometria</p><p className="truncate text-[11px] text-ink-muted">{isBiometricEnabled ? "Ativa" : "Inativa"}</p></div></button>
+                <button type="button" onClick={handleNotificationsToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-left active:scale-[0.985]"><Bell size={18} className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Lembretes</p><p className="truncate text-[11px] text-ink-muted">{!isNativeApp ? "Somente APK" : isNotificationsEnabled ? "Ativos" : "Inativos"}</p></div></button>
+              </div>
+              <button type="button" onClick={() => {trigger("vibrate"); router.push("/saude/lembretes");}} className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.045] px-3 text-left text-xs font-semibold text-emerald-200 transition-colors active:scale-[0.985] motion-reduce:transform-none" aria-label="Abrir Central de notificações para personalizar categorias e horários"><span className="flex items-center gap-2"><Bell size={15}/> Central de notificações e categorias</span><ChevronRight size={14}/></button>
+              {isNativeApp && isNotificationsEnabled ? <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Lembretes no mesmo horário são agrupados; cada tomada continua individual no prontuário.</p> : null}
+              {isNativeApp && isNotificationsEnabled && activePersonId ? <NativeDoseAgendaInspection key={activePersonId} personId={activePersonId} /> : null}
+            </div>
 
-          {/* ===================================================
-              TEMA
-          =================================================== */}
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.06 }}
-            className="vault-deferred"
-          >
+              </div>
             <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Aparência
             </h2>
@@ -1153,31 +1105,14 @@ export default function MaisPage() {
                 })}
               </div>
             </div>
-          </motion.div>
-
-          {/* ===================================================
-              DADOS & NUVEM
-          =================================================== */}
-
-          <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.28,
-              delay: 0.08,
-            }}
-            className="vault-deferred"
-          >
-            <h2 id="mais-dados" tabIndex={-1} className="scroll-mt-24 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-              Dados & Nuvem
-            </h2>
-
+          </MoreArea>
+          <MoreArea id="atualizacoes" preview="Versão e instalação do aplicativo">
+              <details id="vault-updates-r4" className="group rounded-[20px] border border-surface-border/55 bg-surface/70" data-vault-remember-r2="updates" aria-label="VAULT Update Center recolhido">
+                <VaultUpdateDisclosureR4 />
+                <div className="border-t border-surface-border/45 p-2"><VaultUpdateCenter /></div>
+              </details>
+          </MoreArea>
+          <MoreArea id="dados" preview="Sincronização, proteção, backup e recuperação" defaultOpen>
             <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&_button]:min-w-0 [&_button]:text-left">
               {/* P4: fila e status de sincronização junto de recuperação, backup e exportação. */}
             <div className="col-span-full min-w-0">
@@ -1247,12 +1182,6 @@ export default function MaisPage() {
                 </div>
               </details>
             </div>
-          </motion.div>
-
-          {/* ===================================================
-              DIAGNÓSTICO — SOMENTE PROPRIETÁRIO
-          =================================================== */}
-
           {isDiagnosticOwner && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1397,20 +1326,12 @@ export default function MaisPage() {
             </motion.div>
           )}
 
+          </MoreArea>
           {/* ===================================================
               AJUDA
           =================================================== */}
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.12 }}
-            className="vault-deferred"
-          >
-            <h2 id="mais-ajuda" tabIndex={-1} className="scroll-mt-24 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-              Ajuda
-            </h2>
-
+          <MoreArea id="ajuda" preview="Guias e instruções de uso">
             <button type="button" onClick={() => { trigger("vibrate"); router.push("/ajuda"); }} className="mb-2 flex min-h-16 w-full items-center gap-3 rounded-[22px] border border-emerald-400/20 bg-surface p-3.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
               <BookOpen size={20} className="shrink-0 text-emerald-300" aria-hidden="true" />
               <span className="min-w-0 flex-1"><strong className="block text-sm">Ajuda e guias por área</strong><span className="mt-1 block text-xs text-ink-muted">Busque orientações e reveja os guias do Vault.</span></span>
@@ -1441,7 +1362,8 @@ export default function MaisPage() {
 
               <ChevronRight size={16} className="text-ink-faint" />
             </button>
-          </motion.div>
+          </MoreArea>
+
 
           {/* ===================================================
               SAIR

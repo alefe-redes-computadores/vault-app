@@ -19,7 +19,7 @@ assert(home.includes('longitudinalHighlights.some(item => item.gravidadeSeguranc
 assert(home.includes('suppressOperationalOverlap('),'Home keeps dedup source of truth');
 assert(home.includes('primaryMedicationCareOpportunity.actionHref'),'Home preserves real operational action');
 assert(/<TodayFilterPanel\s+status=\{filtroStatus\}/.test(today)&&/<TodayDateNavigation\s+label="Escolher data da linha do tempo"/.test(today),'all Today areas visible');
-assert(today.includes('pendingDoses={totalPendentes}') && today.includes('getElementById("hoje-doses")') && todayActions.includes('pendingDoses > 0'),'pending jump preserved');
+assert(today.includes('pendingDoses={totalPendentes}') && today.includes('openTodayArea("hoje-doses")') && todayActions.includes('pendingDoses > 0'),'pending jump preserved');
 assert(/<DoseMonthOverview\s+userId=\{user.id\}\s+personId=\{activePersonId\}/.test(today),'owner-safe monthly analysis');
 assert(today.includes('dosesElegiveisLote.length > 1') && today.includes('handleTomarTodos()'),'dose batch preserved');
 assert(today.includes('setMostrarConcluidas'),'past doses review preserved');

@@ -8,6 +8,7 @@ import { BRAIN_NAME } from "@/lib/health-intelligence/version";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, BrainCircuit, ChevronLeft, ChevronRight, CircleCheck, CreditCard, Database, FileText, KeyRound, Landmark, ShieldCheck, WalletCards } from "lucide-react";
+import { ExperienceContextPanel } from "@/components/saude/ExperienceContextPanel";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import { PageTransition } from "@/components/PageTransition";
 import { VaultInsightSheet } from "@/components/vault-intelligence/VaultInsightSheet";
@@ -138,6 +139,7 @@ export default function VaultIntelligencePage() {
     </div>}
     <section id="insight-decisoes" className="mx-auto mt-6 max-w-2xl scroll-mt-24">
       <ClinicalEpisodePulseP4 returnTo="/inteligencia#insight-decisoes" />
+      <ExperienceContextPanel origin="/inteligencia#insight-decisoes" />
       {!health.isLoading && health.careCommand?.decision ? (
         <BrainNextStep decision={health.careCommand.decision} onOpen={href => router.push(preserveReturn(href))} />
       ) : null}

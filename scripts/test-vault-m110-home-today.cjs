@@ -44,7 +44,7 @@ ok((/<MedicationFormatIcon\s+formato=\{item.formato\}\s+cores=\{item.cores\}/.te
 ok(today.includes('onJumpDose={(time) =>')&&today.includes('/hoje?focus=doses&status=pendentes&time=${encodeURIComponent(') && today.includes('time'),'Horarios usam deep-link contextual de pendentes');
 ok(today.includes('commandDoseStatus !== "tomados"')&&today.includes('setFiltroStatus(commandDoseStatus)'),'Deep link de tomadas ativa filtro diretamente');
 ok(/Exibindo\s*\{"\s*"\}\s*\{filtroStatus\s*===\s*"tomados"/.test(today)&&today.includes('onClick={limparFiltros}'),'Filtro contextual visível e reversivel');
-ok(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayActionCenter')&&today.indexOf('<TodayActionCenter')<today.indexOf('<TodayAgendaOverview')&&today.includes('focusDoseQueue = searchParams.get("focus") === "doses"'),'Doses prioritarias; Brain e agenda preservados com foco contextual');
+ok(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayActionCenter')&&today.indexOf('id="hoje-agenda"')<today.indexOf('<TodayAgendaOverview')&&today.indexOf('id="hoje-brain"')<today.indexOf('<TodayActionCenter')&&today.includes('focusDoseQueue = searchParams.get("focus") === "doses"'),'Doses prioritarias; Brain e agenda preservados com foco contextual');
 ok(today.includes('visibleTimelineItems(dosesFiltradas')&&today.includes('summarizeTimeline(doses)')&&/<DoseScheduleGroups\s+items=\{grupo.items\}/.test(today),'Projeções e agrupamento canônicos preservados');
 const treatment=parsed('app/saude/tratamentos/detalhes/page.tsx');
 ok(treatment.includes('bg-sky-400/10 text-sky-300')&&treatment.includes('bg-rose-400/10 text-rose-300')&&treatment.includes('bg-emerald-400/10 text-emerald-400'),'Rede de apoio diferencia medico, hospital e local');

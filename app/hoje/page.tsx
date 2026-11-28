@@ -17,8 +17,11 @@ import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
 import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
+import { ExperienceContextPanel } from "@/components/saude/ExperienceContextPanel";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
-import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
+import { TodayArea } from "@/components/hoje/TodayArea";
+import { useVisualDisclosureMemoryR2 } from "@/hooks/useVisualDisclosureMemoryR2";
+import { TodayJourneyRailP5, openTodayArea } from "@/components/hoje/TodayJourneyRailP5";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
 import { DosePremiumCenter } from "@/components/hoje/DosePremiumCenter";
 import { DoseHistoricalUnitField, unitDraftSnapshot, type UnitDraft } from "@/components/hoje/DoseHistoricalUnitField";
@@ -193,6 +196,7 @@ function PremiumHojePage() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
+  useVisualDisclosureMemoryR2("hoje-workspace", user?.id, activePersonId);
 
   const presentationNow = new Date();
   const hoje = formatLocalDateISO(presentationNow);
@@ -832,7 +836,7 @@ function PremiumHojePage() {
   useEffect(() => {
     if (!focusDoseQueue || !isHoje) return;
     const focus = () =>
-      document.getElementById("hoje-doses")?.scrollIntoView({
+      openTodayArea("hoje-doses")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
@@ -1395,7 +1399,7 @@ function PremiumHojePage() {
               if (originM120) router.push(originM120);
             }}
             onOpenFilters={() => {
-              const panel = document.querySelector<HTMLDetailsElement>(
+              const panel = openTodayArea("hoje-doses")?.querySelector<HTMLDetailsElement>(
                 "[data-vault-today-filters]"
               );
               if (panel) {
@@ -1418,19 +1422,12 @@ function PremiumHojePage() {
             onInteraction={() => trigger("vibrate")}
           />
         </div>
-        <section id="hoje-cuidado" aria-label="Cuidado" className="mx-auto max-w-3xl scroll-mt-24 space-y-2 px-4 pt-3">
-          <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
-          <CareFlowSummaryM2 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />
-          {isHoje && !retroReviewMode && <ClinicalEpisodePulseP4 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />}
-        </section>
-        <div className="mx-auto max-w-3xl px-4 pt-2">
-          <ExamAgendaM2 day={dataSelecionada} />
-        </div>
 
         {/* =========================================================
             CONTEÚDO
         ========================================================= */}
-        <section className="space-y-2.5 px-4 pt-2.5">
+        <section aria-label="Áreas de Hoje" className="mx-auto max-w-3xl space-y-2.5 px-4 pt-2.5">
+          <TodayArea id="hoje-doses" area="doses" defaultOpen preview={isFuturo ? "Planejamento do dia selecionado" : "Rotina e histórico do dia"}>
           {/* M40 — O conteúdo clínico vem antes dos atalhos e painéis complementares. */}
           <span
             id="hoje-agora"
@@ -1533,11 +1530,6 @@ function PremiumHojePage() {
           {/* =======================================================
               TIMELINE / DOSES
           ======================================================= */}
-          <span
-            id="hoje-doses"
-            className="block scroll-mt-24"
-            aria-hidden="true"
-          />
           <DosePremiumCenter view={premiumView} history={premiumHistory} selection={premiumSelection}
             onSelectionChange={selection=>setPremiumNavigation({context:doseIdentityContext,selection})}
             brain={{...premiumBrain,stockCoverage:premiumStockCoverage,loading:!historyReady||medicationsLoading,periodLabel:premiumBrain.start?`${premiumBrain.start.split('-').reverse().join('/')} – ${hoje.split('-').reverse().join('/')}`:'Últimos 30 dias'}}
@@ -1632,12 +1624,25 @@ function PremiumHojePage() {
           )}
 
           </ClinicalDisclosure>
-          {/* M150 P5 P5 — depois das doses, orientacoes e agenda reais permanecem acessiveis. */}
-          {/* M150 P5 P5: comando do Brain permanece visivel, mas depois da fila de doses. */}
-          {/* Conteudo de evidencias separado da autoridade do registro de doses. */}
+          {/* VAULT_V321_DAILY_FOCUS: acesso preservado; Brain apos doses na P5 P5. */}
+          {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
+          {isHoje && medicamentosSemHorario.length > 0 && (
+            <TodayUnscheduledRoutine
+              medications={medicamentosSemHorario}
+              onEdit={(medicationId) => {
+                trigger("vibrate");
+                navigateWithReturnM120(
+                  `/saude/medicamentos/editar?id=${encodeURIComponent(
+                    medicationId
+                  )}`
+                );
+              }}
+            />
+          )}
 
-          {/* R4: Brain na area de prioridades, fora dos grupos cronologicos de doses. */}
-          <section id="hoje-brain" aria-label="Prioridades do dia" className="scroll-mt-24 space-y-2">
+          </TodayArea>
+          {isHoje && !retroReviewMode && (
+              <TodayArea id="hoje-brain" area="brain" preview={healthIntelligence.careCommand?.decision?.title ?? "Prioridades e evidências do cuidado"}>
             {isHoje && !retroReviewMode ? (
               <TodayActionCenter
                 pendingDoses={totalPendentes}
@@ -1655,61 +1660,15 @@ function PremiumHojePage() {
                 }
                 onOpenDoses={() => {
                   trigger("vibrate");
-                  document
-                    .getElementById("hoje-doses")
+                  openTodayArea("hoje-doses")
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
                 onNavigate={(href) => navigateWithReturnM120(href, premiumSelection)}
               />
             ) : null}
-          </section>
-          {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
-          {isHoje && !retroReviewMode && (
-            <nav
-              className="grid min-w-0 grid-cols-3 gap-1.5"
-              aria-label="Acessos rápidos do cuidado"
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  document
-                    .getElementById("hoje-diario")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.055] px-1.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
-              >
-                <Activity size={14} className="shrink-0" aria-hidden="true" />
-                <span className="break-words">Check-in</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  navigateWithReturnM120("/saude/central-m144");
-                }}
-                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-ice/20 bg-ice/[.055] px-1.5 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
-              >
-                <Calendar size={14} className="shrink-0" aria-hidden="true" />
-                <span className="break-words">Ocorrências</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  navigateWithReturnM120("/saude/plano-seguranca");
-                }}
-                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-400/20 bg-rose-400/[.055] px-1.5 text-[11px] font-semibold text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
-              >
-                <AlertTriangle
-                  size={14}
-                  className="shrink-0"
-                  aria-hidden="true"
-                />
-                <span className="break-words">Plano pessoal</span>
-              </button>
-            </nav>
+              </TodayArea>
           )}
+          <TodayArea id="hoje-agenda" area="agenda" preview={compromissosFiltrados.length > 0 ? `${compromissosFiltrados.length} compromissos · lembretes e planejamento` : "Compromissos, lembretes e planejamento"}>
           {isHoje && !retroReviewMode ? (
             <TodayAgendaOverview
               overview={agendaOverview}
@@ -1717,8 +1676,7 @@ function PremiumHojePage() {
               remindersCount={remindersDoDia.length}
               onJump={(section) => {
                 trigger("vibrate");
-                document
-                  .getElementById(section)
+                openTodayArea(section)
                   ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               onJumpDose={(time) => {
@@ -1739,152 +1697,7 @@ function PremiumHojePage() {
               }}
             />
           ) : null}
-          {/* VAULT_V321_DAILY_FOCUS: acesso preservado; Brain apos doses na P5 P5. */}
-          {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
-          {isHoje && medicamentosSemHorario.length > 0 && (
-            <TodayUnscheduledRoutine
-              medications={medicamentosSemHorario}
-              onEdit={(medicationId) => {
-                trigger("vibrate");
-                navigateWithReturnM120(
-                  `/saude/medicamentos/editar?id=${encodeURIComponent(
-                    medicationId
-                  )}`
-                );
-              }}
-            />
-          )}
-
-          {/* M40 — Orientação complementar discreta; nunca substitui o Brain nem os registros. */}
-          {assistenteDiario && (
-            <details
-              className={`group rounded-xl border px-3 py-2 ${
-                assistenteDiario.urgencia === "alta"
-                  ? "border-coral/30 bg-coral/[0.04]"
-                  : assistenteDiario.urgencia === "media"
-                  ? "border-amber-400/25 bg-amber-400/[0.035]"
-                  : "border-surface-border/45 bg-surface/40"
-              }`}
-            >
-              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                <Activity
-                  size={16}
-                  className={
-                    assistenteDiario.urgencia === "alta"
-                      ? "text-coral"
-                      : "text-ice"
-                  }
-                  aria-hidden="true"
-                />
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-primary">
-                  {assistenteDiario.titulo}
-                </span>
-                <span className="text-[10px] text-ink-muted">Dica</span>
-                <ChevronRight
-                  size={15}
-                  className="shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"
-                  aria-hidden="true"
-                />
-              </summary>
-              <p className="pb-2 pl-6 text-xs leading-relaxed text-ink-secondary">
-                {assistenteDiario.mensagem}
-              </p>
-            </details>
-          )}
-
-          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
-          {isHoje && !retroReviewMode && (
-            <section
-              id="hoje-diario"
-              aria-label="Diário rápido do dia"
-              className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-ink-primary">
-                    Como você está se sentindo?
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-ink-muted">
-                    Registro opcional de humor e sintomas.
-                  </p>
-                </div>
-                <Calendar size={15} className="shrink-0 text-violet-300" />
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(
-                      "/saude/registros/novo?preset=humor&return_to=%2Fhoje"
-                    );
-                  }}
-                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-2 text-xs font-semibold text-violet-200"
-                >
-                  <SmilePlus size={15} aria-hidden="true" />
-                  Registrar humor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(
-                      "/saude/registros/novo?preset=sintoma&return_to=%2Fhoje"
-                    );
-                  }}
-                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-sky-300/25 bg-sky-300/[.06] px-2 text-xs font-semibold text-sky-200"
-                >
-                  <Activity size={15} aria-hidden="true" />
-                  Registrar sintoma
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  router.push("/saude/registros/relatorio?return_to=%2Fhoje")
-                }
-                className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300"
-              >
-                Ver resumo longitudinal
-              </button>
-            </section>
-          )}
-
-          {/* VAULT_M144_TODAY_ENTRY — destinos de ocorrência e segurança já estão na grade, quatro eixos continuam acessíveis */}
-          {isHoje && !retroReviewMode ? (
-            <button
-              type="button"
-              aria-label="Check-in dos quatro eixos"
-              onClick={() => navigateWithReturnM120("/saude/visual-studio")}
-              className="mb-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.04] px-3 text-left text-xs font-semibold text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <Activity size={15} aria-hidden="true" />
-                Check-in dos 4 eixos{" "}
-                <span className="text-[11px] font-normal text-ink-muted">
-                  (opcional)
-                </span>
-              </span>
-              <ChevronRight size={15} className="shrink-0" aria-hidden="true" />
-            </button>
-          ) : null}
-          {/* V33: visíveis somente hoje e sem revisão retroativa; ausência não gera cartões vazios. */}
-          {isHoje && !retroReviewMode ? (
-            <div data-vault-v33="today-care-context" className="space-y-2">
-              <TreatmentContinuityA4 context="today" maxItems={2} />
-              <RehabM5AgendaStrip />
-              <HospitalizationA5AgendaStrip day={dataSelecionada} />
-              <VaccinationAccessA8 context="today" />
-              <A9ReadOnlySummary360 context="today" />
-              <A10ContextLink context="today" compact />
-            </div>
-          ) : null}
-          <span
-            id="hoje-agenda"
-            className="block scroll-mt-24"
-            aria-hidden="true"
-          />
-
+          <ExamAgendaM2 day={dataSelecionada} />
           {remindersForaDaAgenda.length > 0 && (
             <TodayRemindersPanel
               reminders={remindersForaDaAgenda}
@@ -2013,6 +1826,186 @@ function PremiumHojePage() {
               />
             </ClinicalDisclosure>
           )}
+          </TodayArea>
+          <TodayArea id="hoje-cuidado" area="cuidado" preview="Acompanhamento, tratamento e registros vinculados">
+          <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
+          <CareFlowSummaryM2 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />
+          <ExperienceContextPanel day={dataSelecionada} origin={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />
+          {isHoje && !retroReviewMode && <ClinicalEpisodePulseP4 returnTo={buildTimelineUrl(dataSelecionada)} onNavigate={href => navigateWithReturnM120(href, premiumSelection)} />}
+          {/* V33: visíveis somente hoje e sem revisão retroativa; ausência não gera cartões vazios. */}
+          {isHoje && !retroReviewMode ? (
+            <div data-vault-v33="today-care-context" className="space-y-2">
+              <TreatmentContinuityA4 context="today" maxItems={2} />
+              <RehabM5AgendaStrip />
+              <HospitalizationA5AgendaStrip day={dataSelecionada} />
+              <VaccinationAccessA8 context="today" />
+              <A9ReadOnlySummary360 context="today" />
+              <A10ContextLink context="today" compact />
+            </div>
+          ) : null}
+          </TodayArea>
+          {isHoje && !retroReviewMode && (
+              <TodayArea id="hoje-diario" area="diario" preview="Registros do dia, sintomas e check-in">
+          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
+          {isHoje && !retroReviewMode && (
+            <section
+              aria-label="Diário rápido do dia"
+              className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-ink-primary">
+                    Como você está se sentindo?
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-ink-muted">
+                    Registro opcional de humor e sintomas.
+                  </p>
+                </div>
+                <Calendar size={15} className="shrink-0 text-violet-300" />
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(
+                      "/saude/registros/novo?preset=humor&return_to=%2Fhoje"
+                    );
+                  }}
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-2 text-xs font-semibold text-violet-200"
+                >
+                  <SmilePlus size={15} aria-hidden="true" />
+                  Registrar humor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(
+                      "/saude/registros/novo?preset=sintoma&return_to=%2Fhoje"
+                    );
+                  }}
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-sky-300/25 bg-sky-300/[.06] px-2 text-xs font-semibold text-sky-200"
+                >
+                  <Activity size={15} aria-hidden="true" />
+                  Registrar sintoma
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  router.push("/saude/registros/relatorio?return_to=%2Fhoje")
+                }
+                className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300"
+              >
+                Ver resumo longitudinal
+              </button>
+            </section>
+          )}
+
+          {/* VAULT_M144_TODAY_ENTRY — destinos de ocorrência e segurança já estão na grade, quatro eixos continuam acessíveis */}
+          {isHoje && !retroReviewMode ? (
+            <button
+              type="button"
+              aria-label="Check-in dos quatro eixos"
+              onClick={() => navigateWithReturnM120("/saude/visual-studio")}
+              className="mb-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.04] px-3 text-left text-xs font-semibold text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <Activity size={15} aria-hidden="true" />
+                Check-in dos 4 eixos{" "}
+                <span className="text-[11px] font-normal text-ink-muted">
+                  (opcional)
+                </span>
+              </span>
+              <ChevronRight size={15} className="shrink-0" aria-hidden="true" />
+            </button>
+          ) : null}
+          {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
+          {isHoje && !retroReviewMode && (
+            <nav
+              className="grid min-w-0 grid-cols-3 gap-1.5"
+              aria-label="Acessos rápidos do cuidado"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  openTodayArea("hoje-diario")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.055] px-1.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                <Activity size={14} className="shrink-0" aria-hidden="true" />
+                <span className="break-words">Check-in</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  navigateWithReturnM120("/saude/central-m144");
+                }}
+                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-ice/20 bg-ice/[.055] px-1.5 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                <Calendar size={14} className="shrink-0" aria-hidden="true" />
+                <span className="break-words">Ocorrências</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  navigateWithReturnM120("/saude/plano-seguranca");
+                }}
+                className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-400/20 bg-rose-400/[.055] px-1.5 text-[11px] font-semibold text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+              >
+                <AlertTriangle
+                  size={14}
+                  className="shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="break-words">Plano pessoal</span>
+              </button>
+            </nav>
+          )}
+              </TodayArea>
+          )}
+          {/* M40 — Orientação complementar discreta; nunca substitui o Brain nem os registros. */}
+          {assistenteDiario && (
+            <details
+              className={`group rounded-xl border px-3 py-2 ${
+                assistenteDiario.urgencia === "alta"
+                  ? "border-coral/30 bg-coral/[0.04]"
+                  : assistenteDiario.urgencia === "media"
+                  ? "border-amber-400/25 bg-amber-400/[0.035]"
+                  : "border-surface-border/45 bg-surface/40"
+              }`}
+            >
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <Activity
+                  size={16}
+                  className={
+                    assistenteDiario.urgencia === "alta"
+                      ? "text-coral"
+                      : "text-ice"
+                  }
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-primary">
+                  {assistenteDiario.titulo}
+                </span>
+                <span className="text-[10px] text-ink-muted">Dica</span>
+                <ChevronRight
+                  size={15}
+                  className="shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="pb-2 pl-6 text-xs leading-relaxed text-ink-secondary">
+                {assistenteDiario.mensagem}
+              </p>
+            </details>
+          )}
+
           {isHoje && (
             <section className="pt-2" aria-label="Versículo do dia">
               <VersiculoDia />

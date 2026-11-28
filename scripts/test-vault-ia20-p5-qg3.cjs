@@ -30,7 +30,7 @@ for(const id of ['hoje-doses','hoje-agenda','hoje-cuidado','hoje-diario','hoje-b
  ok(today.includes(`id="${id}"`),`Hoje: destination ${id} still exists`);
  ok(rail.includes(`id: "${id}"`),`Hoje: direct navigation to ${id}`);
 }
-ok(rail.includes('!daily || dailySections') && today.includes('dailySections={isHoje && !retroReviewMode}'),'Daily destinations hidden for other dates and retro review');
+ok(rail.includes('!("daily" in item) || dailySections') && today.includes('dailySections={isHoje && !retroReviewMode}'),'Daily destinations hidden for other dates and retro review');
 ok(rail.includes('pendingCount > 0')&&rail.includes('doses pendentes'),'pending only when real count exceeds zero');
 ok(rail.includes('document.getElementById(id)')&&rail.includes('target.scrollIntoView'),'anchors navigate to a real DOM section');
 ok(rail.includes('(prefers-reduced-motion: reduce)')&&rail.includes('? "auto" : "smooth"'),'honors reduced motion');
@@ -55,7 +55,7 @@ ok(legacy.includes('min-[480px]:grid-cols-2')&&legacy.includes('aria-expanded={s
 ok(more.includes('aria-label="Pessoa ativa no Vault"')&&more.includes('<PersonSelector mode="compact"'),'active person selection intact');
 ok(more.includes('aria-label="Acessos de saúde"')&&more.includes('router.push("/inteligencia")'),'Brain route and clinical shortcuts remain');
 ok(more.includes('aria-label="Abrir mapa de todas as áreas de saúde"')&&more.includes('/saude/mapa?return_to=%2Fmais'),'Explore and contextual return preserved');
-ok(more.includes('NativeDoseAgendaInspection')&&more.includes('id="mais-atualizacoes"')&&more.includes('OperationalReadinessM103'),'notification audit, updates and readiness preserved');
+ok(more.includes('NativeDoseAgendaInspection')&&more.includes('<MoreArea id="atualizacoes"')&&more.includes('OperationalReadinessM103'),'notification audit, updates and readiness preserved');
 ok(more.includes('<ExportButton variant="settings" />')&&more.includes('Limpar dados locais'),'export and guarded clear remain');
 ok(more.includes('pb-[calc(8rem+env(safe-area-inset-bottom,0px))]')&&!more.includes('min-h-[100dvh] overflow-y-auto bg-void'),'safe area and no nested page scroller');
 ok(more.includes('min-h-12 w-full items-center')&&more.includes('grid min-w-0 grid-cols-2 gap-2'),'compact but usable access to health');
