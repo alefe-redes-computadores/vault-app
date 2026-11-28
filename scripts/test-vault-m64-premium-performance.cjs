@@ -31,6 +31,15 @@ for(const p of files){
  check(!f.parseDiagnostics.length,`sem erro sintático ${p}`);
  check(!/<input\b[^>]*type\s*=\s*["'](?:date|time|datetime-local)["']/s.test(source),`M64 sem novo input nativo em ${p}`);
 }
+// H01: a repeated negative-balance prefix may be compacted only when an independent divergence alert remains visible.
+const {MedicationOperationalStrip}=load('components/saude/MedicationOperationalStrip.tsx');
+const negativeProps={today:{label:'Próxima dose às 20:00',detail:'',tone:'text-emerald-400'},stockLabel:'Saldo divergente: -2 comprimido',stockDetail:'',stockTone:'empty',doseOutcome:'unconfirmed',flowLayoutH01:true,alignedH01:true,compact:true};
+const readStock=tree=>tree.props.children[1].props.children.props.children[1].props.children;
+const compactNegative=MedicationOperationalStrip({...negativeProps,stockDivergenceAlertH01:true});
+check(readStock(compactNegative)==='-2 comp.','H01 saldo negativo: valor e unidade sem alerta duplicado');
+check(compactNegative.props['aria-label'].includes('Saldo divergente: -2 comprimido'),'H01 saldo negativo: evidência acessível integral');
+check(readStock(MedicationOperationalStrip(negativeProps))==='Saldo divergente: -2 comp.','H01 saldo negativo: alerta não suprimido sem aviso independente');
+check(file('app/saude/medicamentos/page.tsx').includes('stockDivergenceAlertH01={stockNegative && showStockBannerH01 && (stockReview || prescriptionReview360 || isEstoqueZerado)}'),'H01 saldo negativo: consumidor vincula compactação a alerta visível');
 const accent = load('lib/medications/list-personal-accent.ts');
 check(accent.medicationPersonalAccent({cor_principal:'#af2',cores:['#123456']})==='#AAFF22','cor principal do usuário tem prioridade');
 check(accent.medicationPersonalAccent({cor_principal:'',cores:['#123456']})==='#123456','cor farmacêutica registrada é fallback');

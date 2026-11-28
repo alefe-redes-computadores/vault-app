@@ -14,10 +14,11 @@ type Props = {
   flowLayoutH01?: boolean;
   alignedH01?: boolean;
   completedBadgeH01?: boolean;
+  stockDivergenceAlertH01?: boolean;
 };
 
 /** P14 R6 — UI-only summary: never interprets a dose as taken or changes stock. */
-export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome,compact=false,flowLayoutH01=false,alignedH01=false,completedBadgeH01=false}:Props) {
+export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome,compact=false,flowLayoutH01=false,alignedH01=false,completedBadgeH01=false,stockDivergenceAlertH01=false}:Props) {
   const tone=stockTone==="empty"?"text-coral":stockTone==="low"?"text-amber-400":stockTone==="unknown"?"text-ink-muted":"text-emerald-400";
   const redundantEmptyDetail = stockTone === "empty" && /^(?:[≈~=]\s*)?0\s+(?:dose|doses|unidade|unidades)\b/i.test(stockDetail.trim());
   const repeatedEmptyStatusH01 = flowLayoutH01 && stockTone === "empty" && /^(?:sem estoque|estoque zerado|saldo registrado zerado)[.!]?$/i.test(stockDetail.trim());
@@ -28,7 +29,8 @@ export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTo
     const isFuture = clock?.[1] === "Próxima dose";
     const shortDose = clock ? (completedBadgeH01 && !isFuture ? clock[2] : `${isFuture ? "Próx." : "Tomada"} ${clock[2]}`) : today.label;
     const doseHeading = clock ? (isFuture ? "Próxima dose" : "Dose tomada") : "Dose de hoje";
-    const shortStock = stockLabel.replace(/\bcomprimidos?\b/gi,"comp.").replace(/\bcápsulas?\b/gi,"cáps.");
+    const visibleStock = compact && stockDivergenceAlertH01 ? stockLabel.replace(/^Saldo divergente:\s*(?=-\d)/i,"") : stockLabel;
+    const shortStock = visibleStock.replace(/\bcomprimidos?\b/gi,"comp.").replace(/\bcápsulas?\b/gi,"cáps.");
     const StatusIcon = doseOutcome === "ignored" ? MinusCircle : doseOutcome === "completed" ? CheckCircle2 : isFuture ? Clock3 : Circle;
     return <div data-vault-h01-operational-strip="true" data-vault-h01-aligned-strip="true"
       aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`} title={`${today.detail} · ${stockDetail}`}>
