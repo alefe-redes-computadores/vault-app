@@ -15,6 +15,7 @@ export type PreparationHost={
  synchronize():Promise<boolean>;
  capture():Promise<{bytes:string;sha256:string}>;
  inspect(bytes:string):void;
+ preflight?(bytes:string):Promise<void>;
  digest(bytes:string):Promise<string>;
  uuid():string;
  store:PreparationStore;
@@ -32,10 +33,10 @@ export async function prepareMacro02Automatically(h:PreparationHost,uid:string):
  if(!uuid(uid)||(await enrollment(h,uid)).state!=='legacy')return fail('NOT_LEGACY');
  const existing=await h.store.read(uid);h.guard();
  // Never silently replace a preparation, including after app restart.
- if(existing){const v=await check(h,uid,existing);if(v.epoch||v.completed)return fail('ALREADY_BOUND');const image=await h.capture();h.guard();if(image.bytes!==v.bytes||image.sha256!==v.sha256)return fail('LOCAL_CHANGED');if((await enrollment(h,uid)).state!=='legacy')return fail('NOT_LEGACY');return preparationScope(v);}
+ if(existing){const v=await check(h,uid,existing);if(v.epoch||v.completed)return fail('ALREADY_BOUND');const image=await h.capture();h.guard();if(image.bytes!==v.bytes||image.sha256!==v.sha256)return fail('LOCAL_CHANGED');if(h.preflight){await h.preflight(image.bytes);h.guard();}if((await enrollment(h,uid)).state!=='legacy')return fail('NOT_LEGACY');return preparationScope(v);}
  if(!await h.synchronize())return fail('SYNC_NOT_CONFIRMED');h.guard();
  if((await enrollment(h,uid)).state!=='legacy')return fail('NOT_LEGACY');
- const image=await h.capture();h.guard();h.inspect(image.bytes);
+ const image=await h.capture();h.guard();if(h.preflight){await h.preflight(image.bytes);h.guard();}h.inspect(image.bytes);
  if(!hash(image.sha256)||await h.digest(image.bytes)!==image.sha256)return fail('CAPTURE_HASH');
  const value:SavedPreparation={account_id:uid,operation_id:h.uuid(),sha256:image.sha256,epoch:null,completed:false,bytes:image.bytes};
  if(!uuid(value.operation_id))return fail('OPERATION');h.guard();

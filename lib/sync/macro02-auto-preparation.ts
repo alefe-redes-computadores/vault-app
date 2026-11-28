@@ -1,3 +1,4 @@
+import {preflightMacro02BeforeFreeze} from './macro02-preflight';
 import {Capacitor} from '@capacitor/core';
 import {supabase} from '@/lib/supabase/client';
 import {readMacro02EnrollmentR5} from './macro02-enrollment-r5';
@@ -18,7 +19,7 @@ async function run<T>(uid:string,synchronize:()=>Promise<boolean>,fn:(h:Preparat
  const guard=()=>{if(invalid)throw Error('M02_RECOVERY_AUTO_SESSION_CHANGED');};
  const enrollment=async()=>{guard();const e=await readMacro02EnrollmentR5(uid);guard();return e;};
  const inspect=(bytes:string)=>{guard();assertMacro02LocalPreparation(normalizeMacro02LocalForComparison(readMacro02ExactRecoveryImage(JSON.parse(bytes),uid)));};
- try{await enrollment();return await fn({guard,enrollment,synchronize,capture:()=>exportAuthenticatedMacro02RecoveryImage(uid),inspect,digest,uuid:()=>crypto.randomUUID(),store,recover:restoreAuthenticatedMacro02RecoveryImage});}
+ try{await enrollment();return await fn({guard,enrollment,synchronize,capture:()=>exportAuthenticatedMacro02RecoveryImage(uid),preflight:bytes=>preflightMacro02BeforeFreeze(uid,bytes,guard),inspect,digest,uuid:()=>crypto.randomUUID(),store,recover:restoreAuthenticatedMacro02RecoveryImage});}
  finally{invalidate();subscription.unsubscribe();window.removeEventListener('pagehide',invalidate);document.removeEventListener('visibilitychange',invalidate);store.close();}
 }
 export const prepareMacro02Private=(uid:string,sync:()=>Promise<boolean>)=>run(uid,sync,h=>prepareMacro02Automatically(h,uid));

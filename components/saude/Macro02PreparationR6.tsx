@@ -1,4 +1,5 @@
 'use client';
+import {macro02PreflightDiagnostic} from '@/lib/dose-premium/cutover-preflight-diagnostic';
 import {useEffect,useRef,useState} from 'react';
 import {readMacro02EnrollmentR5} from '@/lib/sync/macro02-enrollment-r5';
 import {prepareMacro02Private,resumeMacro02Private,readMacro02PrivateStatus} from '@/lib/sync/macro02-auto-preparation';
@@ -13,7 +14,7 @@ export function Macro02PreparationR6({uid,synchronize,syncBusy}:{uid:string;sync
  async function action(kind:'prepare'|'resume'){
   if(running.current)return;running.current=true;setBusy(true);setMessage('');setReady(false);
   try{const result=kind==='prepare'?await prepareMacro02Private(uid,synchronize):await resumeMacro02Private(uid);if(!alive.current)return;setSaved(result);setReady(kind==='prepare');setMessage(kind==='prepare'?'Cópia privada persistida e conferida. Preparação concluída; informe ao operador para iniciar a transição.':'Recibo confirmado pela recuperação autenticada. A ativação depende da conferência do operador.');}
-  catch(e){if(alive.current)setMessage('Preparação interrompida. A cópia existente e os dados foram preservados. Código: '+macro02RecoveryDiagnostic(e));}
+  catch(e){if(alive.current)setMessage('Preparação interrompida. A cópia existente e os dados foram preservados. Código: '+(macro02PreflightDiagnostic(e)??macro02RecoveryDiagnostic(e)));}
   finally{running.current=false;if(alive.current)setBusy(false);}
  }
  useEffect(()=>{alive.current=true;let current=true;

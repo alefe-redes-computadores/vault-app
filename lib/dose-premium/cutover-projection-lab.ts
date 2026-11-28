@@ -1,5 +1,5 @@
-import {validateRawCutoverEvidence} from './cutover-fence-read';
-import {CUTOVER_TABLES,cutoverCanonical,cutoverLocalIdentity,inspectMacro02Cutover,planMacro02FencedRecovery,type CutoverLocal,type CutoverRows,type FencedSnapshotWire} from './cutover-recovery';
+import {validateRawCutoverEvidence,validateMacro02ScopedRows} from './cutover-fence-read';
+import {CUTOVER_TABLES,cutoverCanonical,cutoverLocalIdentity,compareMacro02ScopedRows,planMacro02FencedRecovery,type CutoverLocal,type CutoverRows,type CutoverTable,type FencedSnapshotWire} from './cutover-recovery';
 
 type Row=Record<string,unknown>;
 const fail=(reason:string):never=>{throw Error('MACRO02_PROJECTION_'+reason);};
@@ -21,10 +21,15 @@ const sameIds=(a:unknown,b:readonly string[])=>cutoverCanonical(canonicalIds(a))
  * cannot turn an unproven remote fact into authoritative recovery evidence. */
 function project(raw:unknown,local:CutoverLocal,epoch:string){
  const uid=local.account_id;
- // Validate local scope, queue shape and original exact identity first.
- const originalLocalIdentity=cutoverLocalIdentity(local);
  const evidence=validateRawCutoverEvidence(raw,uid,epoch);
- const rows=Object.fromEntries(CUTOVER_TABLES.map(table=>[table,evidence.rows[table].map(row=>clone(row))]));
+ const expected={account_id:uid,fence_id:evidence.fence_id,epoch};
+ const {rows,...result}=projectRows(evidence.rows,local);
+ const wire:FencedSnapshotWire={version:1,...expected,complete:true,rows};
+ return {...result,evidence,expected,wire};
+}
+function projectRows(source:CutoverRows,local:CutoverLocal,diagnosticFields?:Partial<Record<CutoverTable,readonly string[]>>){
+ const originalLocalIdentity=cutoverLocalIdentity(local);
+ const rows=Object.fromEntries(CUTOVER_TABLES.map(table=>[table,source[table].map(row=>clone(row))]));
  const byMedication=new Map<string,string[]>(),remotePairs=new Set<string>();
  for(const row of rows.medicamento_tratamentos){
   const key=pair(row);remotePairs.add(key);
@@ -63,12 +68,10 @@ function project(raw:unknown,local:CutoverLocal,epoch:string){
   cached.push(clone(row));
  }
  rows.medicamento_tratamentos=cached;
- const expected={account_id:uid,fence_id:evidence.fence_id,epoch};
- const wire:FencedSnapshotWire={version:1,...expected,complete:true,rows:rows as unknown as CutoverRows};
- const inspected=inspectMacro02Cutover(local,wire,expected);
+ const inspected=compareMacro02ScopedRows(local,rows,diagnosticFields);
  const inspection={...inspected,blockers:[...inspected.blockers,...issues].sort(),localMatchesFence:inspected.localMatchesFence&&issues.size===0};
  if(cutoverLocalIdentity(local)!==originalLocalIdentity)return fail('LOCAL_CHANGED');
- return {evidence,wire,expected,inspection,issues:[...issues].sort(),remoteLinkCount:remotePairs.size,localLinkCacheCount:cached.length,allowsActivation:false as const,allowsReplay:false as const,allowsAck:false as const,allowsLiveRestore:false as const};
+ return {rows:rows as unknown as CutoverRows,inspection,issues:[...issues].sort(),remoteLinkCount:remotePairs.size,localLinkCacheCount:cached.length,allowsActivation:false as const,allowsReplay:false as const,allowsAck:false as const,allowsLiveRestore:false as const};
 }
 
 /** Public read-only projection: raw evidence is retained but the internal
@@ -107,4 +110,13 @@ export async function inspectMacro02ProjectedCutoverLab(host:{
  const after=await host.readLocal();guard();
  if(after.account_id!==uid||cutoverLocalIdentity(after)!==identity)return fail('LOCAL_CHANGED');
  const result=projectMacro02CutoverLab(next,after,epoch);guard();return result;
+}
+
+/** Read-only preview from ordinary authenticated reads, NOT frozen evidence.
+ * Never use this result to activate, restore, issue a receipt or ACK. */
+export function previewMacro02UnfencedComparison(raw:unknown,local:CutoverLocal,diagnosticFields?:Partial<Record<CutoverTable,readonly string[]>>){
+ const source=validateMacro02ScopedRows(raw,local.account_id);
+ const p=projectRows(source,local,diagnosticFields);
+ const {blockers,counts,dependencies,differences}=p.inspection;
+ return {blockers,counts,dependencies,differences,allowsActivation:false as const,allowsReplay:false as const};
 }
