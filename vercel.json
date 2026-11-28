@@ -1,5 +1,6 @@
 {
   "framework": null,
+  "git": { "deploymentEnabled": { "vault-lab/experience-360-work-20261128": false } },
   "installCommand": "npm ci",
   "buildCommand": "export CAPACITOR_BUILD=0 VAULT_WEB_STATIC_BUILD=1 NEXT_PUBLIC_VAULT_NATIVE_RUNTIME=web; node scripts/test-vault-static-offline-guard.cjs && npm run build && node scripts/verify-static-release-stability.cjs web",
   "outputDirectory": "out",
