@@ -1594,7 +1594,7 @@ export default function MedicamentosListPage() {
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               <div data-vault-r5-operational className={`${actionLayoutM150P3.primary ? (compactCards ? "grid grid-cols-[minmax(0,1fr)_auto]" : "grid grid-cols-[minmax(0,1fr)_88px]") : "flex"} min-w-0 items-end gap-1`}>
                 <div data-vault-h01-facts className="min-w-0 flex-1">
-              <MedicationOperationalStrip today={todayStatus} compact={compactCards} flowLayoutH01 alignedH01 completedBadgeH01={completedBadgeH01} stockDivergenceAlertH01={stockNegative && showStockBannerH01 && (stockReview || prescriptionReview360 || isEstoqueZerado)}
+              <MedicationOperationalStrip today={todayStatus} compact={compactCards} flowLayoutH01 alignedH01 completedBadgeH01={completedBadgeH01} stockDivergenceAlertH01={stockNegative && showStockBannerH01 && Boolean(stockReview || prescriptionReview360 || isEstoqueZerado)}
               stockLabel={stockUnknown ? "Estoque não registrado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
