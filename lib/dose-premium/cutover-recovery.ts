@@ -30,7 +30,22 @@ const personTables=new Set(['medicamentos','renovacoes','retiradas','doseLogs','
 const refs:Readonly<Record<string,CutoverTable>>={medicamento_id:'medicamentos',renovacao_origem_id:'renovacoes',renovacao_realizada_id:'renovacoes',renovacao_anterior_id:'renovacoes',renovacao_atual_id:'renovacoes',retirada_id:'retiradas',medico_id:'medicos',profissional_id:'medicos',farmacia_id:'farmacias',hospital_id:'hospitais',local_id:'locais',tratamento_id:'tratamentos',cid_id:'cids',fornecimento_id:'fornecimentos',processo_id:'fornecimentos',fornecimento_ciclo_id:'fornecimento_ciclos',ciclo_id:'fornecimento_ciclos',documento_id:'documents',document_id:'documents',medico_descontinuacao_id:'medicos',substituido_por_id:'medicamentos'};
 /** Every table must be represented, including empty tables. Missing old
  * dependencies remain blockers; do not generate replacement rows or people. */
-function indexRows(uid:string,raw:unknown):{index:Indexed;missing:number} {
+export type DependencyFinding={table:CutoverTable;field:string;category:'MISSING_REQUIRED'|'DETACHED_RENEWAL';count:number};
+const civilDay=(v:unknown):boolean=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
+/** A detached renewal is a retained legacy record, not an authenticated
+ * acquisition or a medication. Only this nullable reference can be advisory.
+ * Never infer a drug, stock, dose, person, deletion or acquisition status.
+ * Operational inbound links keep the dependency blocking. Full parity with
+ * the cloud is still mandatory; the original row/ID remains in every digest. */
+function detachedRenewal(index:Indexed,row:Row):boolean{
+ if(!id(row.id)||!id(row.person_id)||!index.get('persons')!.has(row.person_id)||!id(row.medicamento_id)||!civilDay(row.data))return false;
+ if(row.data_aquisicao!=null&&!civilDay(row.data_aquisicao))return false;
+ const mid=row.medicamento_id,rid=row.id;
+ for(const t of ['retiradas','a1_prescription_links'] as const)for(const r of index.get(t)!.values())if(r.medicamento_id===mid||r.renovacao_origem_id===rid||r.renovacao_realizada_id===rid||r.renovacao_anterior_id===rid||r.renovacao_atual_id===rid)return false;
+ for(const t of ['doseLogs','fornecimento_itens'] as const)for(const r of index.get(t)!.values())if(r.medicamento_id===mid)return false;
+ return true;
+}
+function indexRows(uid:string,raw:unknown):{index:Indexed;missing:number;dependencies:DependencyFinding[]} {
  if(!id(uid)||!isRow(raw)||Object.keys(raw).length!==CUTOVER_TABLES.length)fail('TABLE_SCOPE');
  const index:Indexed=new Map();
  for(const table of CUTOVER_TABLES){
@@ -45,19 +60,21 @@ function indexRows(uid:string,raw:unknown):{index:Indexed;missing:number} {
   }index.set(table,m);
  }
  let missing=0;const people=index.get('persons')!,pairs=new Set<string>();
+ const findings=new Map<string,DependencyFinding>();
+ const note=(table:CutoverTable,field:string,category:DependencyFinding['category']='MISSING_REQUIRED')=>{const key=table+':'+field+':'+category;const prior=findings.get(key);findings.set(key,{table,field,category,count:(prior?.count??0)+1});if(category==='MISSING_REQUIRED')missing++;};
  for(const [table,rows] of index){for(const r of rows.values()){
   if(table==='medicamento_tratamentos'){
    if(!id(r.medicamento_id)||!id(r.tratamento_id))fail('LINK_SCOPE');
    const med=index.get('medicamentos')!.get(r.medicamento_id),t=index.get('tratamentos')!.get(r.tratamento_id),pair=JSON.stringify([r.medicamento_id,r.tratamento_id]);
    if(pairs.has(pair))fail('DUPLICATE_LINK');pairs.add(pair);
-   if(!med||!t){missing++;continue;}if(med.person_id!==t.person_id)fail('CROSS_PERSON');continue;
+   if(!med||!t){if(!med)note(table,'medicamento_id');if(!t)note(table,'tratamento_id');continue;}if(med.person_id!==t.person_id)fail('CROSS_PERSON');continue;
   }
-  if(table!=='persons'&&r.person_id!=null){if(!id(r.person_id))fail('PERSON_ID');if(!people.has(r.person_id))missing++;}
-  if(personTables.has(table)&&!id(r.person_id))missing++;
+  if(table!=='persons'&&r.person_id!=null){if(!id(r.person_id))fail('PERSON_ID');if(!people.has(r.person_id))note(table,'person_id');}
+  if(personTables.has(table)&&!id(r.person_id))note(table,'person_id');
   const listRefs:Readonly<Record<string,CutoverTable>>=table==='medicamentos'?{tratamento_ids:'tratamentos',cid_ids:'cids'}:table==='tratamentos'?{medicamento_ids:'medicamentos',cid_ids:'cids',medico_ids:'medicos',hospital_ids:'hospitais',local_ids:'locais'}:{};
-  for(const [field,target] of Object.entries(listRefs)){const values=r[field];if(values==null)continue;if(!Array.isArray(values)||values.some(v=>!id(v))||new Set(values).size!==values.length)fail('REFERENCE_LIST');for(const v of values){const linked=index.get(target)!.get(v);if(!linked){missing++;continue;}if(personTables.has(target)&&r.person_id!=null&&linked.person_id!=null&&r.person_id!==linked.person_id)fail('CROSS_PERSON');}}
-  for(const [field,target] of Object.entries(refs)){const v=r[field];if(v==null||v==='')continue;if(!id(v))fail('REFERENCE_ID');const linked=index.get(target)!.get(v);if(!linked){missing++;continue;}if(personTables.has(table)&&personTables.has(target)&&r.person_id!=null&&linked.person_id!=null&&r.person_id!==linked.person_id)fail('CROSS_PERSON');}
- }}return {index,missing};
+  for(const [field,target] of Object.entries(listRefs)){const values=r[field];if(values==null)continue;if(!Array.isArray(values)||values.some(v=>!id(v))||new Set(values).size!==values.length)fail('REFERENCE_LIST');for(const v of values){const linked=index.get(target)!.get(v);if(!linked){note(table,field);continue;}if(personTables.has(target)&&r.person_id!=null&&linked.person_id!=null&&r.person_id!==linked.person_id)fail('CROSS_PERSON');}}
+  for(const [field,target] of Object.entries(refs)){const v=r[field];if(v==null||v==='')continue;if(!id(v))fail('REFERENCE_ID');const linked=index.get(target)!.get(v);if(!linked){note(table,field,table==='renovacoes'&&field==='medicamento_id'&&detachedRenewal(index,r)?'DETACHED_RENEWAL':'MISSING_REQUIRED');continue;}if(personTables.has(table)&&personTables.has(target)&&r.person_id!=null&&linked.person_id!=null&&r.person_id!==linked.person_id)fail('CROSS_PERSON');}
+ }}return {index,missing,dependencies:[...findings.values()]};
 }
 function queueIndex(local:CutoverLocal){
  if(![local.omitted_unowned_count,local.unscoped_rows_count,local.external_dependency_queue_count].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(local.queue))fail('QUEUE_SCOPE');
@@ -88,10 +105,16 @@ export type FencedSnapshotWire=Readonly<{version:1;account_id:string;fence_id:st
  * A plain JSON file or an ordinary pull is not such an RPC. */
 export function inspectMacro02Cutover(local:CutoverLocal,wire:unknown,expected:{account_id:string;fence_id:string;epoch:string}){
  if(!isRow(wire)||wire.version!==1||wire.complete!==true||!id(expected.account_id)||!id(expected.fence_id)||!id(expected.epoch)||local.account_id!==expected.account_id||wire.account_id!==expected.account_id||wire.fence_id!==expected.fence_id||wire.epoch!==expected.epoch)fail('FENCE');
- const l=indexRows(local.account_id,local.rows),r=indexRows(local.account_id,wire.rows),q=queueIndex(local);
+ return compareMacro02ScopedRows(local,wire.rows);
+}
+/** Scoped row comparison only. This cannot prove a fence or permit recovery. */
+export function compareMacro02ScopedRows(local:CutoverLocal,remoteRows:unknown,diagnosticFields?:Partial<Record<CutoverTable,readonly string[]>>){
+ const l=indexRows(local.account_id,local.rows),r=indexRows(local.account_id,remoteRows),q=queueIndex(local);
  const counts={legacy:q.counts.legacy,premium:q.counts.premium,unclassified:q.counts.unclassified,dependency:q.pending.length-q.counts.legacy-q.counts.premium-q.counts.unclassified};
  let localOnly=0,remoteOnly=0,divergent=0,equal=0,unsyncedRows=0;
- for(const table of CUTOVER_TABLES){const a=l.index.get(table)!,b=r.index.get(table)!;for(const [key,row] of a){if(row.synced===false)unsyncedRows++;if(!b.has(key))localOnly++;else if(same(row,b.get(key)))equal++;else divergent++;}for(const key of b.keys())if(!a.has(key))remoteOnly++;}
+ const differences:{table:CutoverTable;field?:string;category:string;count:number}[]=[];
+ const diff=(table:CutoverTable,category:string,field?:string)=>{const old=differences.find(x=>x.table===table&&x.category===category&&x.field===field);if(old)old.count++;else differences.push({table,category,field,count:1});};
+ for(const table of CUTOVER_TABLES){const a=l.index.get(table)!,b=r.index.get(table)!;for(const [key,row] of a){if(row.synced===false){unsyncedRows++;diff(table,'UNSYNCED_ROWS');}if(!b.has(key)){localOnly++;diff(table,'LOCAL_ONLY');}else if(same(row,b.get(key)))equal++;else{divergent++;diff(table,'DIVERGENT_ROWS');if(diagnosticFields){const other=b.get(key)!;const allowed=new Set(diagnosticFields[table]??[]);const fields=new Set([...Object.keys(row),...Object.keys(other)]);const changed=new Set<string>();for(const field of fields)if(Object.hasOwn(row,field)!==Object.hasOwn(other,field)||(Object.hasOwn(row,field)&&!same(row[field],other[field])))changed.add(allowed.has(field)?field:'UNMAPPED');for(const field of changed)diff(table,'FIELD_DIVERGENCE',field);}}}for(const key of b.keys())if(!a.has(key)){remoteOnly++;diff(table,'REMOTE_ONLY');}}
  // A matching row is not an ACK. A missing row is not authorization to replay,
  // including delete intents. Preserve original queue bytes and identifiers.
  const intents=q.pending.map(item=>{const remote=r.index.get(item.table as CutoverTable)!.get(String(item.payload.id));
@@ -101,7 +124,7 @@ export function inspectMacro02Cutover(local:CutoverLocal,wire:unknown,expected:{
  const blockers:string[]=[];
  if(local.omitted_unowned_count)blockers.push('UNOWNED_QUEUE');if(local.unscoped_rows_count)blockers.push('UNSCOPED_ROWS');if(local.external_dependency_queue_count)blockers.push('EXTERNAL_DEPENDENCY_QUEUE');if(q.pending.length)blockers.push('PENDING_QUEUE');
  if(unsyncedRows)blockers.push('UNSYNCED_ROWS');if(l.missing||r.missing)blockers.push('MISSING_DEPENDENCY');if(localOnly)blockers.push('LOCAL_ONLY');if(remoteOnly)blockers.push('REMOTE_ONLY');if(divergent)blockers.push('DIVERGENT_ROWS');
- return {counts:{...counts,omittedUnowned:local.omitted_unowned_count,unscopedRows:local.unscoped_rows_count,externalDependencyQueue:local.external_dependency_queue_count,localOnly,remoteOnly,divergent,equal,unsyncedRows,missingDependencies:l.missing+r.missing},blockers,intents,localMatchesFence:!blockers.length,allowsActivation:false as const,allowsReplay:false as const,allowsAck:false as const};
+ return {dependencies:{local:l.dependencies,remote:r.dependencies},differences,counts:{...counts,omittedUnowned:local.omitted_unowned_count,unscopedRows:local.unscoped_rows_count,externalDependencyQueue:local.external_dependency_queue_count,localOnly,remoteOnly,divergent,equal,unsyncedRows,missingDependencies:l.missing+r.missing},blockers,intents,localMatchesFence:!blockers.length,allowsActivation:false as const,allowsReplay:false as const,allowsAck:false as const};
 }
 
 /** Conservative add-only recovery candidate: a backup row must equal the exact
