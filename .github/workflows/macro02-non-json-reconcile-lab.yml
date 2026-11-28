@@ -1,0 +1,39 @@
+name: VAULT NON_JSON + Guardian H01 - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-non-json-h01-49c3aabde83b']
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact integrated source and both ancestries
+        run: |
+          test "$(git rev-parse HEAD^)" = "49c3aabde83bf0b2480a84bb5e967922e41975f2"
+          git checkout --detach 49c3aabde83bf0b2480a84bb5e967922e41975f2
+          test "$(git rev-parse HEAD^{tree})" = "22e224eae88d5dba466c96b7df4abd2d956aa6cb"
+          git merge-base --is-ancestor 9ac387f4cb750611c73e4a66ace8a18c014ca8e6 HEAD
+          git merge-base --is-ancestor 2e3a8a99a0ba033a8b682ac8d88ae86e6b3cbebc HEAD
+          git diff --check 9ac387f4cb750611c73e4a66ace8a18c014ca8e6 HEAD
+          git diff --exit-code 9ac387f4cb750611c73e4a66ace8a18c014ca8e6 HEAD -- scripts/test-v63-release-gate.mjs scripts/test-vault-stability-360.cjs scripts/macro02-auto-preparation-contracts.cjs
+          test "$(git rev-parse HEAD:lib/dose-premium/cutover-storage-codec.ts)" = "e4b6d61f583d6104f13143bc355bfb4a9c0f2783"
+          test "$(git rev-parse HEAD:scripts/test-vault-macro02-operational-recovery.cjs)" = "702b15e988d7d222a4a8147a78188f843262c53f"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node scripts/test-vault-macro02-operational-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-recovery.cjs
+      - run: node node_modules/typescript/bin/tsc --noEmit
+      - name: V63 cumulative release contracts
+        run: node scripts/test-v63-release-gate.mjs
+      - name: Android Web export (synthetic configuration)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+        run: npm run build:export
