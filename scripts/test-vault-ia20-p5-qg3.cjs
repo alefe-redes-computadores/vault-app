@@ -26,14 +26,14 @@ const [today,rail,documents,more,bottom,legacy,gate]=files.map(read);
 // First-fold navigation is always an action on existing DOM anchors, never a dose operation.
 ok(/<TodayJourneyRailP5\s+isToday=\{isHoje\}\s+pendingCount=\{isHoje\s*\?\s*totalPendentes\s*:\s*0\}/.test(today),'Hoje: pending count from actual filtered view and only current day');
 ok((today.match(/<TodayJourneyRailP5\b/g)||[]).length===1,'Hoje: one contextual navigation');
-for(const id of ['hoje-doses','hoje-agenda','hoje-diario']){
+for(const id of ['hoje-doses','hoje-agenda','hoje-cuidado','hoje-diario','hoje-brain']){
  ok(today.includes(`id="${id}"`),`Hoje: destination ${id} still exists`);
- ok(rail.includes(`id:"${id}"`),`Hoje: direct navigation to ${id}`);
+ ok(rail.includes(`id: "${id}"`),`Hoje: direct navigation to ${id}`);
 }
-ok(rail.includes('...(isToday?['),'Today diary not shown for past or future');
-ok(rail.includes('pendingCount>0')&&rail.includes('doses pendentes'),'pending only when real count exceeds zero');
+ok(rail.includes('!daily || dailySections') && today.includes('dailySections={isHoje && !retroReviewMode}'),'Daily destinations hidden for other dates and retro review');
+ok(rail.includes('pendingCount > 0')&&rail.includes('doses pendentes'),'pending only when real count exceeds zero');
 ok(rail.includes('document.getElementById(id)')&&rail.includes('target.scrollIntoView'),'anchors navigate to a real DOM section');
-ok(rail.includes('(prefers-reduced-motion: reduce)')&&rail.includes('reduced?"auto":"smooth"'),'honors reduced motion');
+ok(rail.includes('(prefers-reduced-motion: reduce)')&&rail.includes('? "auto" : "smooth"'),'honors reduced motion');
 ok(rail.includes('min-h-11')&&rail.includes('focus-visible:outline'),'44px targets and focus');
 ok(!/\bdb\.|fetch\(|\.put\(|\.update\(|marcarDose\(|ignorar\(/.test(rail),'navigation cannot write clinical data');
 ok(today.includes('TodayDateNavigation')&&today.includes('TodayRoutinePulse')&&today.includes('TodayNavigationContextM120'),'day/time/origin authorities intact');
@@ -77,5 +77,5 @@ ok(validCard('min-h-11')&&!validCard('min-h-[30px]'),'negative: below-touch targ
 const localDestination=p=>/^\/(?!\/)[a-z0-9/-]+$/.test(p);
 ok(localDestination('/hoje')&&!localDestination('https://wrong.test')&&!localDestination('//wrong.test'),'negative: no external or protocol-relative anchors');
 const distinct=(ids)=>new Set(ids).size===ids.length;
-ok(distinct(['hoje-doses','hoje-agenda','hoje-diario'])&&!distinct(['hoje-doses','hoje-doses']),'negative: duplicate anchor rejected');
+ok(distinct(['hoje-doses','hoje-agenda','hoje-cuidado','hoje-diario','hoje-brain'])&&!distinct(['hoje-doses','hoje-doses']),'negative: duplicate anchor rejected');
 console.log(`VAULT_IA20_P5_QG3_OK: ${count} testes de estrutura, UX, acesso, integridade e regressao; Android real permanece a homologar`);

@@ -1410,16 +1410,17 @@ function PremiumHojePage() {
         </header>
         {/* P5: a navegação de seções é uma camada de apresentação sobre dados já selecionados. */}
         <div className="mx-auto max-w-3xl px-4 pt-2">
-          <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
           <TodayJourneyRailP5
             isToday={isHoje}
             pendingCount={isHoje ? totalPendentes : 0}
+            dailySections={isHoje && !retroReviewMode}
             onInteraction={() => trigger("vibrate")}
           />
         </div>
-        <div className="mx-auto max-w-3xl px-4 pt-3">
+        <section id="hoje-cuidado" aria-label="Cuidado" className="mx-auto max-w-3xl scroll-mt-24 space-y-2 px-4 pt-3">
+          <VitalContextCard origin="/hoje" day={dataSelecionada} returnTo={buildTimelineUrl(dataSelecionada)}/>
           <CareFlowSummaryM2 />
-        </div>
+        </section>
         <div className="mx-auto max-w-3xl px-4 pt-2">
           <ExamAgendaM2 day={dataSelecionada} />
         </div>
@@ -1634,7 +1635,7 @@ function PremiumHojePage() {
           {/* Conteudo de evidencias separado da autoridade do registro de doses. */}
 
           {/* R4: Brain na area de prioridades, fora dos grupos cronologicos de doses. */}
-          <section aria-label="Prioridades do dia" className="space-y-2">
+          <section id="hoje-brain" aria-label="Prioridades do dia" className="scroll-mt-24 space-y-2">
             {isHoje && !retroReviewMode ? (
               <TodayActionCenter
                 pendingDoses={totalPendentes}

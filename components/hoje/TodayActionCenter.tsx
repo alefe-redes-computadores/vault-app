@@ -4,6 +4,8 @@ import { Activity, ChevronRight } from "lucide-react";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 import { CareCommandStrip } from "@/components/saude/CareCommandStrip";
 
+const brainHref = "/inteligencia?return_to=%2Fhoje#insight-decisoes";
+
 type BrainFallback = { insightId: string; headline: string; title: string; supporting: number };
 
 export function TodayActionCenter({ pendingDoses, command, brainFallback, onOpenDoses, onNavigate, showDoseShortcut = true }: {
@@ -23,7 +25,16 @@ export function TodayActionCenter({ pendingDoses, command, brainFallback, onOpen
         <span className="min-w-0"><strong className="block text-sm text-amber-300">{pendingDoses} dose{pendingDoses === 1 ? "" : "s"} pendente{pendingDoses === 1 ? "" : "s"}</strong><span className="block text-xs leading-relaxed text-ink-muted">Abrir horários e revisar cada medicamento</span></span><ChevronRight size={18} className="shrink-0 text-amber-300" aria-hidden="true"/>
       </button> : null}
 
-      <CareCommandStrip command={command} onNavigate={onNavigate} insightHref="/inteligencia?return_to=%2Fhoje#insight-decisoes" />
+      <CareCommandStrip command={command} onNavigate={onNavigate} insightHref={brainHref} />
+
+      {!actionable && !brainFallback && (
+        <button type="button" onClick={() => onNavigate(brainHref)}
+          className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-left text-sm font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+          <Activity size={17} className="text-ice" aria-hidden="true" />
+          Abrir Vault Brain
+          <ChevronRight size={15} className="ml-auto" aria-hidden="true" />
+        </button>
+      )}
 
       {!actionable && brainFallback ? <button type="button" onClick={() => onNavigate(`/inteligencia/alertas?insight=${encodeURIComponent(brainFallback.insightId)}&return_to=${encodeURIComponent("/hoje")}`)} className="flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-violet-400/20 bg-gradient-to-r from-violet-400/[0.07] to-surface p-3 text-left active:scale-[0.985] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={17}/></span>

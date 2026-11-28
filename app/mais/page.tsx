@@ -5,6 +5,7 @@ import { isVaultNative } from "@/lib/native-runtime";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { MoreSectionIndex } from "@/components/MoreSectionIndex";
 import { VaultUpdateDisclosureR4 } from "@/components/updates/VaultUpdateDisclosureR4";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -952,12 +953,13 @@ export default function MaisPage() {
         </header>
 
         <section className="space-y-3 px-4 pt-2 sm:px-5">
+          <MoreSectionIndex />
           {/* ===================================================
               PERFIL
           =================================================== */}
 
           {/* VAULT_MORE_INFORMATION_ARCHITECTURE_V79 */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} className="space-y-4">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} id="mais-conta" tabIndex={-1} className="scroll-mt-24 space-y-4">
             <div className="rounded-[20px] border border-surface-border/50 bg-surface p-2.5 shadow-sm">
               <div className="flex items-center gap-2.5">
                 <div className="relative shrink-0">
@@ -975,7 +977,7 @@ export default function MaisPage() {
               </div>
             </div>
 
-            <div>
+            <div id="mais-cuidado" tabIndex={-1} className="scroll-mt-24">
               <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/mapa?return_to=%2Fmais"); }}
                 className="mb-2 flex min-h-12 w-full items-center gap-2.5 rounded-[16px] border border-emerald-300/25 bg-emerald-300/[.06] px-2.5 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
                 aria-label="Abrir mapa de todas as áreas de saúde">
@@ -991,7 +993,7 @@ export default function MaisPage() {
             </div>
 
             {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
-            <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências</h2>
+            <h2 id="mais-preferencias" tabIndex={-1} className="scroll-mt-24 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências</h2>
             <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3" data-vault-remember-r2="preferences">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span>Preferências e lembretes</span>
@@ -1013,7 +1015,7 @@ export default function MaisPage() {
             </details>
 
             {/* P4: atualização básica separada das preferências. Diagnóstico técnico fica abaixo e recolhido. */}
-            <section id="mais-atualizacoes" aria-label="Atualizações do aplicativo" className="space-y-2">
+            <section id="mais-atualizacoes" tabIndex={-1} aria-label="Atualizações do aplicativo" className="scroll-mt-24 space-y-2">
               <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Atualizações</h2>
               <details id="vault-updates-r4" className="group rounded-[20px] border border-surface-border/55 bg-surface/70" data-vault-remember-r2="updates" aria-label="VAULT Update Center recolhido">
                 <VaultUpdateDisclosureR4 />
@@ -1041,7 +1043,7 @@ export default function MaisPage() {
               delay: 0.04,
             }}
           >
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Cofre pessoal</h2>
+            <h2 id="mais-cofre" tabIndex={-1} className="scroll-mt-24 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Cofre pessoal</h2>
             <details className="group rounded-[18px] border border-surface-border/45 bg-surface/30 px-3" aria-label="Ferramentas do cofre pessoal">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span className="flex min-w-0 flex-col gap-0.5"><strong className="font-semibold text-ink-primary">Ferramentas do Cofre</strong><span className="text-[10px] font-normal text-ink-muted">{vaultOverview.total} itens desta pessoa · abrir acessos</span></span>
@@ -1172,7 +1174,7 @@ export default function MaisPage() {
             }}
             className="vault-deferred"
           >
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+            <h2 id="mais-dados" tabIndex={-1} className="scroll-mt-24 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Dados & Nuvem
             </h2>
 
@@ -1405,7 +1407,7 @@ export default function MaisPage() {
             transition={{ duration: 0.28, delay: 0.12 }}
             className="vault-deferred"
           >
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+            <h2 id="mais-ajuda" tabIndex={-1} className="scroll-mt-24 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Ajuda
             </h2>
 
