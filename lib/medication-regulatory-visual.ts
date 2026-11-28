@@ -13,12 +13,25 @@ export type MedicationRegulatoryTone =
   | "yellow"
   | "unknown";
 
+/** A class evidenced by the catalog is descriptive, not a patient-specific prescription.
+ * Applicability and product/presentation confidence remain independent. */
+export type MedicationRegulatoryClassEvidence = {
+  label: string;
+  modelCode: MedicationRegulatoryPrescriptionModelCode;
+  sourceLabel: string;
+  scope: "product" | "substance" | "reference";
+  railColor: string;
+};
 export type MedicationRegulatoryVisual = {
   tone: MedicationRegulatoryTone;
   label: string;
   detail: string;
   verified: boolean;
   sourceLabel?: string;
+  classEvidence?: MedicationRegulatoryClassEvidence;
+  reviewReasons?: readonly string[];
+  identifiedIngredients?: readonly string[];
+  referenceIdentity?: "confirmed" | "compatible" | "possible_divergence" | "unvalidated";
   accent: string;
   badgeClass: string;
 };
@@ -58,6 +71,19 @@ const UNKNOWN: MedicationRegulatoryVisual = {
   badgeClass:
     "border-slate-500/30 bg-slate-500/10 text-slate-300",
 };
+
+export function medicationRegulatoryListIdentity(profile?: Pick<MedicationRegulatoryVisual, "label" | "verified" | "classEvidence"> | null) {
+  const classes: Readonly<Record<string,{label:string;color:string}>> = {
+    "Receita comum": {label:"Comum",color:"#94a3b8"},
+    "Controle especial": {label:"Especial",color:"#cbd5e1"},
+    "Notificação A": {label:"Amarela",color:"#eab308"},
+    "Notificação B": {label:"Azul B",color:"#3b82f6"},
+    "Notificação B2": {label:"Azul B2",color:"#3b82f6"},
+    "Notificação especial": {label:"Especial",color:"#fb7185"},
+  };
+  const label = profile?.classEvidence?.label || (profile?.verified ? profile.label : undefined);
+  return label && Object.prototype.hasOwnProperty.call(classes,label) ? classes[label] : null;
+}
 
 function visualForModel(
   code?: MedicationRegulatoryPrescriptionModelCode,
@@ -249,11 +275,25 @@ export function resolveMedicationRegulatoryVisual(
         .map((source) => source.label)
         .filter(Boolean)[0];
 
+      const rule = safeRules[0];
+      const classEvidence = safeRules.length === rules.length && visuals.length === rules.length &&
+        rule?.prescriptionModelCode &&
+        rules.every(r => r.sources?.some(source => source.authority === "anvisa" || source.authority === "ministerio_saude")) &&
+        rules.every(r => r.prescriptionModelCode === rule.prescriptionModelCode)
+        ? {
+            label: visual.label,
+            modelCode: rule.prescriptionModelCode,
+            sourceLabel: sourceLabel || visual.sourceLabel || "Catálogo regulatório",
+            scope: reference?.regulatoryIdentity?.referenceType || "reference",
+            railColor: visual.label === "Receita comum" ? "#94a3b8" : getMedicationRegulatorySurface(visual).rail,
+          } satisfies MedicationRegulatoryClassEvidence
+        : undefined;
       return {
         ...visual,
         sourceLabel:
           sourceLabel ||
           visual.sourceLabel,
+        ...(classEvidence ? {classEvidence} : {}),
       };
     }
 

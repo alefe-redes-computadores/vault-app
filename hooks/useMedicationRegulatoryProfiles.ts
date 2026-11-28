@@ -487,17 +487,18 @@ export type MedicationCatalogIdentity = {
 };
 
 /** MED-06: surface an evidence conflict; never rewrite the Details regulator. */
-function regulatoryNeedsReviewMED04(medication: Medicamento, reference: MedicationReference | null): boolean {
-  if (!reference) return false;
+function regulatoryReviewReasonsMED04(medication: Medicamento, reference: MedicationReference | null): string[] {
+  if (!reference) return [];
+  const reasons: string[] = [];
   const identity = catalogAuthorityForMedicationSTB(medication, reference);
-  if (identity.state === "possible_divergence") return true;
+  if (identity.state === "possible_divergence") reasons.push("identity-divergence");
   const rules = reference.regulatoryRules || [];
-  if (!rules.length) return false;
+  if (!rules.length) return reasons;
   const isOfficial = (source: { authority?: string }) =>
     source.authority === "anvisa" || source.authority === "ministerio_saude";
-  if (!rules.every(rule => rule.sources?.some(isOfficial))) return true;
-  if (reference.regulatoryIdentity?.referenceType === "substance") return true;
-  if (!resolveMedicationRegulatoryVisual(medication, reference).verified) return true;
+  if (!rules.every(rule => rule.sources?.some(isOfficial))) reasons.push("source-review");
+  if (reference.regulatoryIdentity?.referenceType === "substance") reasons.push("substance-scope");
+  if (!resolveMedicationRegulatoryVisual(medication, reference).verified) reasons.push("applicability-review");
   // Explicit presentation contradictions cannot be presented as unambiguous facts.
   const tokens = (value: unknown) => [...String(value || "").toLowerCase()
     .replace(/,/g, ".").matchAll(/\d+(?:\.\d+)?\s*(?:mcg\/ml|mg\/ml|ui\/ml|mcg|mg|g|ml|ui|%)/g)]
@@ -507,9 +508,13 @@ function regulatoryNeedsReviewMED04(medication: Medicamento, reference: Medicati
     tokens(`${item.label} ${item.value ?? ""} ${item.unit ?? ""}`)
   ).filter(values => values.length);
   if (registered.length && candidates.length &&
-    !candidates.some(values => registered.every(token => values.includes(token)))) return true;
-  if (catalogPresentationFitSTB(medication,reference) !== "match") return true;
-  return false;
+    !candidates.some(values => registered.every(token => values.includes(token)))) reasons.push("strength-review");
+  if (catalogPresentationFitSTB(medication,reference) !== "match") reasons.push("presentation-review");
+  return reasons;
+}
+
+function regulatoryNeedsReviewMED04(medication: Medicamento, reference: MedicationReference | null): boolean {
+  return regulatoryReviewReasonsMED04(medication, reference).length > 0;
 }
 
 function identityFor(medication: Medicamento, reference: MedicationReference | null): MedicationCatalogIdentity {
@@ -541,7 +546,7 @@ function identityFor(medication: Medicamento, reference: MedicationReference | n
   };
 }
 
-export function useMedicationCatalogProfiles(medications: Medicamento[]): {
+export function useMedicationCatalogProfiles(medications: Medicamento[], allowRefresh = true): {
   regulatoryProfiles: Record<string, MedicationRegulatoryVisual>;
   catalogIdentities: Record<string, MedicationCatalogIdentity>;
 } {
@@ -551,10 +556,11 @@ export function useMedicationCatalogProfiles(medications: Medicamento[]): {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
+    if (!allowRefresh) return;
     void ensureMedicationBatch(latestMedications.current);
     const refresh = window.setInterval(() => void ensureMedicationBatch(latestMedications.current), RETRY_TTL_MS);
     return () => window.clearInterval(refresh);
-  }, [collectionSignature]);
+  }, [collectionSignature, allowRefresh]);
 
   return useMemo(() => {
     const regulatoryProfiles: Record<string, MedicationRegulatoryVisual> = {};
@@ -566,8 +572,15 @@ export function useMedicationCatalogProfiles(medications: Medicamento[]): {
     for (const medication of medications) {
       if (!medication.id) continue;
       const reference = knownReference(medication)?.reference || null;
-      regulatoryProfiles[medication.id] = resolveMedicationRegulatoryVisual(medication, reference);
-      catalogIdentities[medication.id] = identityFor(medication, reference);
+      const identity = identityFor(medication, reference);
+      const regulatory = resolveMedicationRegulatoryVisual(medication, reference);
+      regulatoryProfiles[medication.id] = {
+        ...regulatory,
+        reviewReasons: regulatoryReviewReasonsMED04(medication, reference),
+        referenceIdentity: identity.authorityState,
+        identifiedIngredients: identity.activeIngredients,
+      };
+      catalogIdentities[medication.id] = identity;
     }
 
     return { regulatoryProfiles, catalogIdentities };

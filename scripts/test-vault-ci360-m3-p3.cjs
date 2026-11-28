@@ -60,6 +60,11 @@ const careflow=[{...own,id:'order-1',kind:'exam_order',parent_id:null,related_id
   {...own,id:'item-1',kind:'exam_item',parent_id:'foreign-parent',related_id:null,payload:{name:'Exame explicitamente pedido'},created_at:timestamp}];
 const before=JSON.stringify({c,careflow});
 const result=med.buildMedicalDossierP3({...args(c),careflow});
+const classDossier=med.buildMedicalDossierP3({...args(c),careflow,regulatoryDescriptions:{'med-1':'CLASSE CONHECIDA — catálogo em conferência','med-other':'CLASSE DE OUTRA PESSOA'}});
+assert.ok(classDossier.rows.some(r=>r.sourceId==='med-1'&&r.detail.includes('CLASSE CONHECIDA')),'CareFlow consumes current scoped knowledge');
+assert.ok(!classDossier.rows.some(r=>r.sourceId==='d-ok'&&r.detail.includes('CLASSE CONHECIDA')),'Current class is not retroactive to historical dose');
+assert.ok(!JSON.stringify(classDossier).includes('CLASSE DE OUTRA PESSOA'),'Foreign class stays outside dossier');
+
 assert.ok(result.rows.some(r=>r.title==='Exemplo próprio'));
 assert.ok(result.rows.some(r=>r.title==='Solicitação real'&&r.relations.some(x=>x.includes('Clínica'))));
 assert.ok(!result.rows.some(r=>r.title.includes('PROIBIDO')));

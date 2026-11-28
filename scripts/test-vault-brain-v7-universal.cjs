@@ -92,6 +92,8 @@ ok(text.includes('VAULT — DOSSIÊ OBSERVACIONAL'),'dossiê estruturado');
 ok(text.includes('Lab A')&&!text.includes('Segredo de outro perfil'),'identidade fabricante de aquisição autorizada e isolamento de justificativas');
 ok(!text.includes('R$ 1000')&&!text.includes('R$ 90'),'eventos futuros e de outra pessoa não contam custos');
 ok(text.includes('NÃO foram silenciados')&&text.includes('não comprovam segurança'),'dossiê nunca suprime alertas regulatórios');
+const scopedRegulatory=dossier.prepareBrainV7Dossier({report:r,userId:'u1',personId:'p1',medications:fixture.medications,acquisitions:fixture.acquisitions,rationales:[],regulatoryDescriptions:{base:'Princípio ativo sintético · Classificação cadastrada','foreign':'NAO_VAZAR_CLASSIFICACAO'}});
+ok(scopedRegulatory.includes('Princípio ativo sintético · Classificação cadastrada')&&!scopedRegulatory.includes('NAO_VAZAR_CLASSIFICACAO'),'dossiê consome informação descritiva apenas de medicamentos do escopo');
 ok(dossier.prepareBrainV7Dossier({...fixture,report:{...r,authorized:false},rationales:[]}).includes('indisponíveis'),'nenhum dossiê sem autorização');
 const consoleSource=read(ui);
 ok(consoleSource.includes("'[user_id+person_id+data]'")&&consoleSource.includes("'[user_id+person_id]'"),'queries Dexie indexadas por pessoa e conta');

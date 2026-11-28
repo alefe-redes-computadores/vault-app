@@ -59,9 +59,51 @@ def top_geometry(p):
 def inspect(c):
     g=h.geometry(c)
     g.update(c.evaluate('''e=>{const rect=n=>{if(!n)return null;const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height,cx:x.x+x.width/2,cy:x.y+x.height/2}};const card=rect(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]'),title=e.querySelector('[data-vault-med360-entry="name"] > span:first-child > span:first-child'),meta=e.querySelector('[data-vault-h01-identity-meta]'),man=e.querySelector('[data-vault-h01-manufacturer]'),chip=e.querySelector('[data-vault-h01-chips]'),strip=e.querySelector('[data-vault-h01-operational-strip]'),panel=e.querySelector('[data-vault-r5-operational]'),base=e.querySelector('[data-vault-h01-final-base]'),action=e.querySelector('[data-vault-r4-main-action],[data-vault-h01-status-slot]'),done=e.querySelector('[data-vault-h01-completed]'),icon=e.querySelector('[data-vault-med-flow-icon]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-h01-manufacturer],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {viewportWidth:innerWidth,rail:rail?.innerText||'',railRect:rect(rail),railColor:rail?getComputedStyle(rail.parentElement).backgroundColor:'',railTextRect:rect(rail?.querySelector('span[aria-hidden] > span')),regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',manufacturer:man?.innerText||'',manufacturerFactory:!!man?.querySelector('svg[data-vault-guardian-factory="true"]'),manufacturerBadge:!!man&&man.getAttribute('data-vault-guardian-laboratory-badge')==='true'&&getComputedStyle(man).boxShadow!=='none'&&getComputedStyle(man).backgroundColor!=='rgba(0, 0, 0, 0)',factsAria:strip?.getAttribute('aria-label')||'',factsText:strip?.innerText||'',completed:done?.innerText||'',completedInteractive:!!done?.closest('button,a,[role="button"],[data-vault-r4-main-action]'),axis:{title:rect(title),meta:rect(meta),chips:rect(chip),recipe:rect(rx),recipeIcon:rect(rx?.querySelector('svg')),panel:rect(panel),base:rect(base),action:rect(action),icon:rect(icon),facts:rect(strip)},outside:visible.filter(n=>{const a=rect(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
+    g['finalGeometry']=c.evaluate('''e=>{
+      const q=s=>e.querySelector(s);
+      const box=n=>{if(!n)return null;const r=n.getBoundingClientRect();if(!r.width||!r.height)return null;const range=document.createRange();range.selectNodeContents(n);const lines=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom,text:n.innerText||'',lines:lines.map(x=>({x:x.x,y:x.y,w:x.width,h:x.height})),font:getComputedStyle(n).fontSize}};
+      const dose=q('[data-vault-h01-dose]'),stock=q('[data-vault-h01-stock]'),meta=q('[data-vault-h01-identity-meta]');
+      return {dose:box(dose),stock:box(stock),doseIcon:box(dose?.querySelector('svg')),stockIcon:box(stock?.querySelector('svg')),doseLabel:box(dose?.querySelector('[data-vault-h01-fact-label]')),stockLabel:box(stock?.querySelector('[data-vault-h01-fact-label]')),doseValue:box(dose?.querySelector('[data-vault-h01-fact-value]')),stockValue:box(stock?.querySelector('[data-vault-h01-fact-value]')),action:box(q('[data-vault-r4-main-action] > button,[data-vault-h01-completed]')),meta:box(meta),ingredient:box(q('[data-vault-r5-active-ingredient]')),factory:box(q('[data-vault-h01-manufacturer]')),recipe:box(q('[data-vault-v34x-receita-cadastro]')),docs:box(q('[data-vault-r5-comfort-context]')),panel:box(q('[data-vault-r5-operational]'))};
+    }''')
     return g
 
-def check(kind,g,mode,after):
+def definitive_geometry(cards,mode):
+    errors=[]
+    def verify(ok,msg):
+        if not ok:errors.append(msg)
+    ref=cards.get('normal',{}).get('finalGeometry',{})
+    for kind,g in cards.items():
+        d=g.get('finalGeometry',{})
+        for slot in ('dose','stock'):
+            a,b=ref.get(slot),d.get(slot)
+            verify(bool(a and b and abs(a['x']-b['x'])<=2 and abs(a['w']-b['w'])<=2),kind+' fixed '+slot)
+        a,b=d.get('dose'),d.get('stock')
+        verify(bool(a and b and a['right']<=b['x']+1),kind+' dose/stock columns overlap or stacked')
+        if kind in ('normal','ignored','zero','taken'):
+            a,b=ref.get('action'),d.get('action')
+            verify(bool(a and b and b['h']>=43 and abs(a['x']-b['x'])<=2 and abs(a['w']-b['w'])<=2 and abs(a['h']-b['h'])<=2),kind+' CTA proportions')
+            verify(bool(b and d.get('stock') and b['x']>=d['stock']['right']-1),kind+' CTA column')
+        if mode=='comfort':
+            for a,b in (('doseLabel','stockLabel'),('doseValue','stockValue')):
+                x,y=d.get(a),d.get(b)
+                verify(bool(x and y and abs(x['y']-y['y'])<=2),kind+' aligned '+a)
+            if kind=='normal':
+                v=d.get('stockValue')
+                verify(bool(v and re.search(r'35\s*(?:comp\.|comprimidos?)',v['text'],re.I)),kind+' quantity and unit together')
+            for a,b in (('recipe','docs'),('docs','panel')):
+                x,y=d.get(a),d.get(b)
+                if x and y:
+                    verify(5<=y['y']-x['bottom']<=12,kind+' spacing '+a+' to '+b)
+        else:
+            for slot in ('dose','stock'):
+                a,b=d.get(slot),d.get(slot+'Icon')
+                verify(bool(a and b and abs(a['y']-b['y'])<=4),kind+' icon alignment '+slot)
+        i,m,f=d.get('ingredient'),d.get('meta'),d.get('factory')
+        if i and m and f and i['w']+f['w']+8<=m['w'] and i['h']<=float(i['font'].rstrip('px'))*1.8:
+            verify(abs(i['y']-f['y'])<=3,kind+' Factory not inline despite available room')
+    return errors
+
+def check(kind,g,mode,after,final=False):
     require(g['card']['height']>0,kind+' absent')
     text=g['text']; facts=g['reg']+' '+g['regTitle']+' '+g['rail']; aria=g['factsAria']; visible=g['factsText']
     if kind in ('normal','long','ignored'):
@@ -69,7 +111,7 @@ def check(kind,g,mode,after):
         require(re.search(r'fonte oficial|Fonte:',g['reg']+' '+g['regTitle'],re.I),'official origin missing '+kind)
     if kind=='review':
         require(re.search(r'revis[aã]o|sem confirma',facts,re.I),'review classification not evidenced')
-        require('Notificação amarela' in text,'declared yellow missing')
+        require('Notificação amarela' in (g['regTitle'] if final else text),'declared yellow missing')
         require('fonte oficial' not in g['reg'].lower(),'review promoted to official')
     if kind in ('normal','long','ignored','review','taken'):
         if not after or mode=='comfort':require(bool(re.search(r'\d{2}/\d{2}/\d{4}',g['rx'])),'registered date absent '+kind)
@@ -169,9 +211,9 @@ def check_sheet(p,kind,row,linked,diagnostics):
 
 
 
-def guardian_declared(p,after,evidence,key):
+def guardian_declared(p,authority,after,evidence,key):
     rows=q.TABLES['medicamentos']; original=list(rows)
-    matrix=[('comum','CAD. COMUM','rgb(148, 163, 184)'),('branca','CAD. ESPECIAL','rgb(203, 213, 225)'),('azul','CAD. AZUL','rgb(96, 165, 250)'),('amarela','CAD. AMARELA','rgb(250, 204, 21)'),(None,'REG. PENDENTE','rgb(100, 116, 139)')]
+    matrix=[('comum','COMUM · CAD.','rgb(148, 163, 184)'),('branca','ESPECIAL · CAD.','rgb(203, 213, 225)'),('azul','AZUL · CAD.','rgb(96, 165, 250)'),('amarela','AMARELA · CAD.','rgb(250, 204, 21)'),(None,'REG. REVISÃO','rgb(100, 116, 139)')]
     cases=[]
     for i,(declared,expected,color) in enumerate(matrix):
         name=f'QA SEM REFERENCIA ZZ {i+1}'; row=q.med(h.uid(3,800+i),q.PERSON_A,name)
@@ -180,6 +222,8 @@ def guardian_declared(p,after,evidence,key):
         rows.append(row);cases.append((name,declared,expected,color))
     try:
         p.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(p);h.seed_fixture(p);seed_device(p)
+        expect(p.locator('[role="status"][aria-label="Abrindo o Vault"]')).to_have_count(0,timeout=20000)
+        check_modal(p,authority)
         results={}
         for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
             p.get_by_role('button',name=label,exact=True).click()
@@ -210,6 +254,31 @@ def guardian_declared(p,after,evidence,key):
     finally:
         rows[:]=original
 
+def guardian_declared_controlled(browser,width,authority,after,evidence,key):
+    # Classification tests are independent of medication date/clock arithmetic.
+    # Use a fresh real-clock context for both R4 and candidate; fixture time is
+    # retained as an advancing noon anchor for geometry/drawer tests. No force, no timer
+    # manipulation and no reduced assertions. A real-clock splash or RPC
+    # failure blocks certification.
+    ctx=q.new_context(browser,width)
+    page=ctx.new_page()
+    errors=[]
+    page.on('pageerror',lambda e:errors.append(str(e)[:500]))
+    start=len(ENROLL_READS)
+    try:
+        q.login(page)
+        result=guardian_declared(page,authority,after,evidence,key)
+        require(authority in ENROLL_READS[start:],'declared matrix has no actual authority RPC')
+        require(not errors,'declared real-clock page errors '+str(errors))
+        require(set(result)=={'compact','comfort'} and all(len(v)==5 for v in result.values()),'incomplete declared matrix')
+        print('H01_DECLARED_REAL_CLOCK_PASS',key,flush=True)
+        return result
+    except Exception:
+        try:page.screenshot(path=str(evidence/f'{key}-declared-real-clock-failure.png'),animations='disabled')
+        except Exception:pass
+        raise
+    finally:ctx.close()
+
 FAB_MATRIX=[('Treino', 'sky'), ('Refeição', 'emerald'), ('Medicamento', 'emerald'), ('Tratamento', 'violet'), ('Renovação', 'violet'), ('Médico', 'sky'), ('Farmácia', 'emerald'), ('Hospital', 'emerald'), ('Posto / Local', 'emerald'), ('Exame', 'cyan'), ('Consulta', 'sky'), ('Cirurgia', 'violet'), ('CID', 'violet'), ('Sintoma / Medição', 'rose'), ('Vacinação', 'teal'), ('Procedimento', 'teal'), ('Hidratação', 'cyan'), ('Lembrete', 'amber'), ('Documento / Receita', 'violet'), ('Retirada', 'emerald'), ('Alergia / Reação', 'rose'), ('Dose rápida', 'emerald')]
 def guardian_fab(p,after,evidence,key,navigate=True):
     if navigate:p.goto(q.ORIGIN+'/');q.wait_nav(p)
@@ -235,18 +304,18 @@ def guardian_fab(p,after,evidence,key,navigate=True):
     return data
 
 def guardian_fab_controlled(p,browser,width,after,evidence,key,diagnostics):
-    # The original frozen-date context is an explicit control. A failed splash
-    # exit is evidence, not an excuse to force the click or claim it succeeded.
+    # The anchored but naturally advancing fixture clock is a control. A
+    # failed splash exit is evidence; the independent real clock must pass.
     p.goto(q.ORIGIN+'/');q.wait_nav(p)
     splash=p.locator('[role="status"][aria-label="Abrindo o Vault"]')
     try:
         expect(splash).to_have_count(0,timeout=10000)
     except AssertionError:
         require(splash.count()==1,'fixed-clock splash failure without the expected overlay')
-        diagnostics['fixedClock']={'status':'BLOCKED_BY_SPLASH','present':True}
-        p.screenshot(path=str(evidence/f'{key}-fixed-clock-splash.png'),animations='disabled')
+        diagnostics['fixtureClock']={'status':'BLOCKED_BY_SPLASH','present':True}
+        p.screenshot(path=str(evidence/f'{key}-fixture-clock-splash.png'),animations='disabled')
     else:
-        diagnostics['fixedClock']={'status':'PASS','matrix':guardian_fab(p,after,evidence,key+'-fixed-clock',navigate=False)}
+        diagnostics['fixtureClock']={'status':'PASS','matrix':guardian_fab(p,after,evidence,key+'-fixture-clock',navigate=False)}
     # Independent real clock; same viewport, authentication, fixture, authority
     # and list-to-home route. All 22 original checks still run, unchanged.
     real=q.new_context(browser,width)
@@ -258,7 +327,7 @@ def guardian_fab_controlled(p,browser,width,after,evidence,key,diagnostics):
         matrix=guardian_fab(page,after,evidence,key+'-real-clock')
         require(not errors,'real-clock FAB page errors '+str(errors))
         diagnostics['realClock']={'status':'PASS','matrix':matrix}
-        diagnostics['classification']='FIXED_CONTEXT_BLOCKED_REAL_CLOCK_PASSED' if diagnostics['fixedClock']['status']=='BLOCKED_BY_SPLASH' else 'BOTH_PASS'
+        diagnostics['classification']='FIXTURE_CLOCK_BLOCKED_REAL_CLOCK_PASSED' if diagnostics['fixtureClock']['status']=='BLOCKED_BY_SPLASH' else 'BOTH_PASS'
         print('H01_FAB_CLOCK_CONTROL',key,diagnostics['classification'],flush=True)
         return matrix
     except Exception as exc:
@@ -354,7 +423,7 @@ def main():
                 for authority in ('legacy','premium'):
                     AUTH_MODE=authority;ctx=None;key=f'{width}-{authority}';errors=[];report['cases'][key]={}
                     try:
-                        n=len(ENROLL_READS);ctx=q.new_context(browser,width);p=ctx.new_page();p.on('pageerror',lambda e:errors.append(str(e)[:500]));p.clock.set_fixed_time(datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')))
+                        n=len(ENROLL_READS);ctx=q.new_context(browser,width);p=ctx.new_page();p.on('pageerror',lambda e:errors.append(str(e)[:500]));p.clock.install(time=datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')))
                         q.login(p);h.seed_fixture(p);seed_device(p);p.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(p);expect(h.card(p,h.NAMES['normal'])).to_be_visible(timeout=45000)
                         p.get_by_role('button',name='Lista',exact=True).click();check_modal(p,authority);require(authority in ENROLL_READS[n:],'no actual authority RPC')
                         for scale in (1,1.25):
@@ -386,20 +455,26 @@ def main():
                                 if after:require(not top['overflow'],'viewport overflow')
                                 for kind,name in h.NAMES.items():
                                     c=h.card(p,name);expect(c).to_be_visible(timeout=30000);c.evaluate("e=>e.scrollIntoView({block:'center',behavior:'instant'})");p.wait_for_timeout(100);g=inspect(c);data['cards'][kind]=g
-                                    if scale==1 and kind in ('normal','ignored','review','long'):p.screenshot(path=str(args.evidence/f'{key}-{mode}-{kind}.png'),animations='disabled')
+                                    if kind in ('normal','ignored','review','long','taken','zero'):p.screenshot(path=str(args.evidence/f'{key}-{scale}-{mode}-{kind}.png'),animations='disabled')
                                     try:
-                                        check(kind,g,mode,True)
+                                        check(kind,g,mode,True,final=after)
                                         if after:
                                             require(g['manufacturerBadge'] and g['manufacturerFactory'],'separate manufacturer Factory badge absent '+kind)
                                             if kind=='review':
                                                 require(g['railColor']=='rgb(250, 204, 21)','review lost declared yellow identity '+repr(g['railColor']))
-                                                require('REG. REVISÃO' in g['rail'].upper(),'review status hidden')
+                                                require('AMARELA · CAD.' in g['rail'].upper() and g['regHidden'],'declared classification must be visible; review belongs to evidence')
                                                 require('Cor da tarja: cadastro' in g['regTitle'],'review color provenance absent')
                                             elif kind in ('normal','long','ignored','conflict'):
                                                 require(g['railColor']=='rgb(203, 213, 225)','confirmed official control color changed '+kind+' '+repr(g['railColor']))
                                             elif kind in ('zero','unit','negative','sos','taken'):
                                                 require(g['railColor']=='rgb(148, 163, 184)','confirmed ordinary prescription not gray '+kind+' '+repr(g['railColor']))
                                     except AssertionError as exc:report['failures'][f'{key}-{scale}-{mode}-{kind}']=str(exc);print('H01_CARD_FAIL',key,scale,mode,kind,str(exc),flush=True)
+                                if after:
+                                    data['definitiveErrors']=definitive_geometry(data['cards'],mode)
+                                    for i,msg in enumerate(data['definitiveErrors']):
+                                        report['failures'][f'{key}-{scale}-{mode}-definitive-{i}']=msg
+                                        print('H01_DEFINITIVE_FAIL',key,scale,mode,msg,flush=True)
+                                    if not data['definitiveErrors']:print('H01_DEFINITIVE_PASS',key,scale,mode,flush=True)
                                 if reference_ready:
                                     b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());
                                     data['card_delta_px']={kind:round(g['card']['height']-b['cards'][kind]['card']['height'],2) for kind,g in data['cards'].items()}
@@ -409,7 +484,7 @@ def main():
                             for kind in ('normal','ignored','review','long'):
                                 require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)
                         scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors))
-                        if width in (320,430):report['cases'][key]['guardian_declared']=guardian_declared(p,after,args.evidence,key)
+                        if width in (320,430):report['cases'][key]['guardian_declared']=guardian_declared_controlled(browser,width,authority,after,args.evidence,key)
                         if authority=='legacy':
                             diagnostics=report['cases'][key].setdefault('fab_clock_control',{})
                             report['cases'][key]['guardian_fab']=guardian_fab_controlled(p,browser,width,after,args.evidence,key,diagnostics)

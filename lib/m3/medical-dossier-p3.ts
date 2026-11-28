@@ -110,6 +110,7 @@ const human=(text:string):string=>text
 export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
   treatmentFacts?:readonly A4ClinicalFact[];
+  regulatoryDescriptions?:Readonly<Record<string,string>>;
   vitalEvidence?:VitalEvidence;
   longitudinalA10?:readonly A10Fact[];
   hospitalizationLinksA10?:readonly Record<string,unknown>[];
@@ -208,7 +209,8 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
     // Report360 already projects the original historical unit; preserve its factual wording.
     const factualDetailB=row.detail;
     const safeDetailB=preciseSleep?`${factualDetailB} · Duração: ${preciseSleep} · ${originLabelB(reading?.source)}`:factualDetailB;
-    add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:safeDetailB,source:row.source,
+    const descriptive=row.category==='medications'&&medForRow?.id?safe(input.regulatoryDescriptions?.[medForRow.id],500):'';
+    add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:descriptive?safeDetailB+' · '+descriptive:safeDetailB,source:row.source,
       sourceId:row.sourceId,registeredAt:null,provenance:row.category==='brain'?'motor':row.category==='symptoms'||row.category==='consultations'?'declarado':'registrado',relations,
        visualB:pharma?{kind:'medication',formato:pharma.formato||pharma.forma_farmaceutica||undefined,cores:pharma.cores,name:pharma.nome}:medForRow?{kind:'medication',formato:medForRow.formato||medForRow.forma_farmaceutica,cores:medForRow.cores?.length?medForRow.cores:medForRow.cor_principal?[medForRow.cor_principal,medForRow.cor_secundaria||medForRow.cor_principal]:[],name:medForRow.nome}:reading?{kind:'measurement',metric:measurementB||undefined}:undefined,
       href:dose?.id?`/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(dose.id)}`:

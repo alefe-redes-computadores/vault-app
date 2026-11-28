@@ -61,10 +61,13 @@ export function reconcileMedicationP6(input:{
  if(med.tipo_receita)records.push({kind:'declared',id:`declared:${med.id}`,label:'Tipo informado',note:prescriptionName[med.tipo_receita]});
  const ref=med.catalog_snapshot?.reference as Partial<MedicationReference>|undefined;
  const exact=med.catalog_snapshot?.match_kind==='exact' && ref?.regulatoryIdentity?.referenceType==='product';
- const official=regulatory?.verified===true;
- let regulatoryStatus:MedicationReconciliationP6['regulatoryStatus']= official?(exact?'official_exact':'official_partial'):med.tipo_receita?'declared_only':'not_confirmed';
+ const official=regulatory?.verified===true&&regulatory.referenceIdentity!=='possible_divergence';
+ const catalogClass=regulatory?.referenceIdentity!=='possible_divergence' ? regulatory?.classEvidence : undefined;
+ const technicalReview=Boolean(regulatory?.reviewReasons?.length);
+ let regulatoryStatus:MedicationReconciliationP6['regulatoryStatus']= official?(exact&&!technicalReview?'official_exact':'official_partial'):med.tipo_receita?'declared_only':'not_confirmed';
  const regulatoryLabel=official?(regulatory?.label||'Classificação regulatória encontrada'):med.tipo_receita?`${prescriptionName[med.tipo_receita]} · informada`:'Classificação não confirmada';
- if(official)records.push({kind:'official',id:`official:${med.id}`,label:exact?'Referência regulatória exata':'Referência regulatória parcial',note:`${regulatoryLabel}. Não substitui a receita individual.`});
+ if(official)records.push({kind:'official',id:`official:${med.id}`,label:exact&&!technicalReview?'Referência regulatória exata':'Referência regulatória parcial',note:`${regulatoryLabel}. Não substitui a receita individual.`});
+ if(catalogClass&&technicalReview)records.push({kind:'review',id:'catalog-review:'+med.id,label:'Classe conhecida no catálogo',note:catalogClass.label+' · '+catalogClass.sourceLabel+' · Conferir aplicabilidade; não confirma receita pessoal.'});
  const missing=[...ids].filter(id=>!byId.has(id));
  const clinicalDay=new Date().toISOString().slice(0,10);
  const safelyComparable=(ref?.regulatoryRules||[]).filter(rule=>
@@ -76,11 +79,12 @@ export function reconcileMedicationP6(input:{
  const limitations:string[]=[];
  if(missing.length)limitations.push(`${missing.length} vínculo(s) de documento ainda não resolvido(s) na pessoa ativa.`);
  if(!official)limitations.push('Tipo informado e documento existente não comprovam o regime regulatório oficial.');
+ if(technicalReview)limitations.push('Referência em conferência técnica: conhecimento descritivo preservado; não confirma a apresentação ou prescrição individual.');
  if(hasRegulatoryConflict)limitations.push('Cadastro e referência regulatória divergem; nenhuma informação foi alterada.');
  if(records.length===0)limitations.push('Nenhum documento de receita ou classificação confirmada foi localizado pelos IDs conhecidos.');
  return {medicationId:med.id,records,directDocumentCount:byId.size,sourceDocumentCount:rxEvents.length,
    declaredType:med.tipo_receita||null,regulatoryStatus,regulatoryLabel,hasDocumentEvidence:byId.size>0,
-   hasRegulatoryConflict,needsReview:missing.length>0||hasRegulatoryConflict||!official,limitations};
+   hasRegulatoryConflict,needsReview:missing.length>0||hasRegulatoryConflict||!official||technicalReview,limitations};
 }
 
 export function medicationListEvidenceLabelP6(summary:MedicationReconciliationP6,official?:MedicationRegulatoryVisual|null):string|null {
