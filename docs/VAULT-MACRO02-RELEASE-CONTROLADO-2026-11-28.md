@@ -15,3 +15,8 @@ Parecer independente Guardian APPROVED recebido do proprietário neste chat, com
 Confirmar deployment Production READY e SHA. Confirmar conclusão da Action de compilação e logs da validação de assinatura/versionCode. Localizar promoção oficial para o run 46180002893, verificar SHA da origem, esperar/requerer approval pelo revisor do Environment protegido (se necessário); não desabilitar proteção, não publicar APK manual por fora do gate. O conector GitHub não oferece aprovação de deployments de environment e gh auth status no sandbox não está autenticado. Consultar release latest e confirmar SHA, tag, build superior, certificado, appId, hash e digest do asset antes de orientar atualização.
 
 Somente após release verificado: atualizar APK sobre instalação existente, sem desinstalar/limpar dados. Central de segurança > Preparar Central Premium, confirmar demais aparelhos sincronizados e fora de uso. Aguardar mensagem de cópia privada persistida e conferida, operação e SHA-256. Preservar dados; nenhum congelamento até validação real da preparação. Recovery claim/recibo e ativação somente com evidência real, via autoridades canônicas; sem dose fictícia e sem modificar estoque artificialmente. A homologação física e a ativação ainda não ocorreram.
+
+## Publicação web confirmada
+- Deployment dpl_Ar97y5EVMh6aB4ujbZ9NZniAadpK: READY, target production, SHA 2b0103b71420c96b2d067dda2a56a4564d0abc8a. Alias canônico https://vault-app-ebon.vercel.app.
+- Verificação HTTP pública: /, /recuperacao, /hoje, /manifest.json e /sw.js responderam 200 com tipos esperados. Sem autenticação, sem dados clínicos e sem mutação.
+- Build Android 2246 passou o step V63 estrito e TypeScript, segue exportação Capacitor. O checkpoint não constitui prova de APK final.
