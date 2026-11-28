@@ -59,9 +59,102 @@ check(Boolean(cardColorAttribute && ts.isJsxAttribute(cardColorAttribute) &&
  cardRailAttribute && list.includes('railSize="label"') &&
  list.includes('[writing-mode:vertical-rl]') &&
  (list.includes('setSelectedRegulatoryScope({medicationId: med.id || "", userId: treatmentOwner?.id || "", personId: activePersonId || ""})') && list.includes('med.id === selectedRegulatoryScope.medicationId') && list.includes('med.user_id === selectedRegulatoryScope.userId') && list.includes('med.person_id === selectedRegulatoryScope.personId') && list.includes('regulatoryProfiles[selectedRegulatoryMedication.id') && list.includes('selectedRegulatory && selectedRegulatoryMedication') && list.includes('onClick={closeRegulatoryModal}') && !list.includes('setSelectedRegulatory(regulatoryProfile)')) &&
- /const\s+regulatoryBorderColor\s*=\s*regulatorySurface\.rail\s*;/.test(list) &&
+ /const\s+regulatoryBorderColor\s*=\s*regulatoryCopy\.listRailColor\s*\?\?\s*regulatorySurface\.rail\s*;/.test(list) &&
  list.includes('aria-label={`Ver classificação da receita:')),
  'classificação na borda e etiqueta regulatória preservada via AST');
+// GUARDIAN closure: execute the real consumer's expressions with the canonical
+// catalogue, reconciliation, and surface modules; never substitute a pigment mock.
+const vm = require('node:vm');
+const regulatoryCatalog = load('lib/medication-catalog/regulatory.ts');
+const regulatoryVisual = load('lib/medication-regulatory-visual.ts', {
+ '@/lib/medication-catalog/regulatory': regulatoryCatalog,
+});
+const regulatoryPresentation = load('lib/medications/regulatory-copy-ux360.ts', {
+ '../medication-regulatory-visual': regulatoryVisual,
+});
+const regulatoryEvidence = load('lib/health-intelligence/pharmalens-reconciliation-p6.ts');
+const regulatoryInitializers = new Map();
+function findRegulatoryInitializers(node) {
+ if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) &&
+     ['regulatoryCopy','regulatorySurface','regulatoryBorderColor','regulatoryMeaning'].includes(node.name.text)) {
+  assert.ok(node.initializer, `M64: ${node.name.text} sem expressão`);
+  assert.ok(!regulatoryInitializers.has(node.name.text), `M64: autoridade duplicada ${node.name.text}`);
+  regulatoryInitializers.set(node.name.text,node.initializer.getText(listAst));
+ }
+ ts.forEachChild(node,findRegulatoryInitializers);
+}
+findRegulatoryInitializers(listAst);
+check(regulatoryInitializers.size === 4, 'quatro expressões reais de projeção regulatória');
+function runRegulatoryCase({declaredType, code, linked=false, review=false, identity='confirmed', malformed=false, foreign=false}) {
+ const source='ANVISA — referência sintética M64';
+ const types={receita_comum:'comum',receita_controle_especial:'branca',notificacao_a:'amarela',notificacao_b:'azul',notificacao_b2:'azul'};
+ const rule={prescriptionModelCode:code,vaultPrescriptionType:types[code],sources:[{label:source}],hasMalformedExceptions:malformed};
+ const reference={regulatoryIdentity:{referenceType:'product'},regulatoryRules:code?[rule]:[]};
+ const med={id:'med-a',user_id:'owner-a',person_id:'person-a',tipo_receita:declaredType,
+   ...(linked?{document_id:'doc-a'}:{}),catalog_snapshot:{match_kind:'exact',reference}};
+ const documents=linked?[{id:'doc-a',user_id:foreign?'owner-b':'owner-a',person_id:'person-a',type:'receita',title:'Documento sintético',entidade_tipo:'medicamento',entidade_id:'med-a'}]:[];
+ const regulatoryProfile=regulatoryVisual.resolveMedicationRegulatoryVisual(med,reference,new Date('2026-11-28T12:00:00Z'));
+ const reconciliationP6=regulatoryEvidence.reconcileMedicationP6({medication:med,documents,renewals:[],userId:'owner-a',personId:'person-a',regulatory:regulatoryProfile});
+ const context={regulatoryProfile,reconciliationP6,catalogIdentity:{regulatoryNeedsReview:review,authorityState:identity},
+  receita:{corBorda:'#ff00ff'},regulatoryCopyUX360:regulatoryPresentation.regulatoryCopyUX360,
+  getMedicationRegulatorySurface:regulatoryVisual.getMedicationRegulatorySurface};
+ for(const name of ['regulatoryCopy','regulatorySurface','regulatoryBorderColor','regulatoryMeaning']) {
+  context[name]=vm.runInNewContext(regulatoryInitializers.get(name),context,{timeout:1000});
+ }
+ check(reconciliationP6.hasDocumentEvidence === (linked&&!foreign),'vínculo documental somente por titular e relação explícitos');
+ check(context.regulatoryMeaning.includes(linked&&!foreign?'Documento de receita vinculado':'Documento de receita não localizado nos vínculos'),'proveniência documental no consumidor real');
+ check(context.regulatoryCopy.validity==='Vínculo documental não comprova validade atual.','vínculo não comprova validade');
+ return {copy:context.regulatoryCopy,color:context.regulatoryBorderColor,meaning:context.regulatoryMeaning,source,profile:regulatoryProfile};
+}
+const declaredMatrix=[['comum','#94a3b8','Cad. comum'],['branca','#cbd5e1','Cad. especial'],['azul','#60a5fa','Cad. azul'],['amarela','#facc15','Cad. amarela'],[null,'#64748b','REG. PENDENTE']];
+for(const [declaredType,color,label] of declaredMatrix) for(const linked of [false,true]) {
+ const registered=runRegulatoryCase({declaredType,linked});
+ check(registered.color===color && registered.copy.listRail===label && !registered.copy.official && registered.copy.rail==='REG. PENDENTE',`cadastro/ausência ${declaredType}: cor, legenda e autoridade independentes`);
+ if(declaredType) check(registered.meaning.includes('Cor da tarja: cadastro') && registered.meaning.includes('não representa confirmação oficial'),'proveniência explícita da cor cadastrada');
+ else check(!registered.meaning.includes('Cor da tarja: cadastro'),'não inventa classificação ausente');
+ for(const state of [{review:true},{identity:'possible_divergence'},{code:'notificacao_b',review:true},{code:'notificacao_b',malformed:true,review:true}]) {
+  const disputed=runRegulatoryCase({declaredType,linked,...state});
+  check(disputed.color===color && disputed.copy.review && !disputed.copy.official && disputed.copy.listRail==='REG. REVISÃO',`revisão ${declaredType}: pigmento declarado sem promover a autoridade`);
+ }
+}
+const officialMatrix=[['receita_comum','comum','#94a3b8','Comum'],['receita_controle_especial','branca','#cbd5e1','Especial'],['notificacao_b','azul','#3b82f6','Notif. B'],['notificacao_b2','azul','#3b82f6','Notif. B2'],['notificacao_a','amarela','#eab308','Notif. A']];
+for(const [code,matching,color,label] of officialMatrix) for(const linked of [false,true]) {
+ for(const declaredType of [matching,matching==='azul'?'amarela':'azul',null]) {
+  const current=runRegulatoryCase({declaredType,code,linked});
+  const conflict=Boolean(declaredType&&declaredType!==matching);
+  check(current.color===color && current.copy.official && current.copy.listRail===label,`referência oficial ${code} preserva sua cor com ou sem cadastro/documento`);
+  check(current.copy.source===current.source && current.meaning.includes(`Fonte: ${current.source}`),'fonte oficial real permanece explícita');
+  check(current.copy.declarationConflict===conflict && current.meaning.includes('Cadastro diverge da referência.')===conflict,'divergência real preservada sem reclassificar cadastro');
+  check(!current.meaning.includes('Cor da tarja: cadastro'),'cor oficial não é atribuída ao cadastro');
+ }
+}
+for(const code of ['notificacao_retinoides','notificacao_talidomida']) for(const linked of [false,true]) {
+ const special=runRegulatoryCase({declaredType:null,code,linked});
+ check(special.color==='#fb7185' && special.copy.official && special.copy.listRail==='Especial' && special.copy.source===special.source,'notificação especial: cor oficial vermelha e fonte preservadas');
+}
+const foreignLink=runRegulatoryCase({declaredType:'azul',linked:true,foreign:true});
+check(foreignLink.color==='#60a5fa' && !foreignLink.copy.official,'documento de outra conta não promove autoridade nem altera pigmento');
+// A parent live-query render must not restart a drawer session (390px incident).
+// Assert the stable callback is the real JSX consumer, not an unused helper.
+let drawerCloseDecl,drawerOpening;
+function visitDrawerSession(node) {
+ if(ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.name.text==='closeMedicationSheet360') {
+  assert.ok(!drawerCloseDecl,'duplicate close handler');drawerCloseDecl=node;
+ }
+ if((ts.isJsxOpeningElement(node)||ts.isJsxSelfClosingElement(node))&&node.tagName.getText(listAst)==='MedicationSheet360R3') {
+  assert.ok(!drawerOpening,'duplicate medication drawer');drawerOpening=node;
+ }
+ ts.forEachChild(node,visitDrawerSession);
+}
+visitDrawerSession(listAst);
+const drawerInit=drawerCloseDecl?.initializer;
+const drawerHandler=drawerOpening?.attributes.properties.find(a=>ts.isJsxAttribute(a)&&a.name.text==='onClose');
+check(Boolean(drawerInit&&ts.isCallExpression(drawerInit)&&drawerInit.expression.getText(listAst)==='useCallback'&&
+ drawerInit.arguments.length===2&&ts.isArrayLiteralExpression(drawerInit.arguments[1])&&drawerInit.arguments[1].elements.length===0&&
+ drawerInit.arguments[0].getText(listAst).replace(/\s/g,'')==='()=>setMedicationSheet360(null)'&&
+ drawerHandler?.initializer?.expression?.getText(listAst)==='closeMedicationSheet360'),
+ 'gaveta: callback de fechamento estável no consumidor real, sem reiniciar aba em atualização do pai');
+
 check(list.includes('style={medicationPersonalAccentStyle(med)}'),'cor pessoal limitada ao ícone');
 check(list.includes('const personalAccent = medicationPersonalAccent(med);'),'uma resolução por medicamento');
 check(!list.includes('aria-hidden="true" className="inline-block h-2 w-2') && list.includes('style={medicationPersonalAccentStyle(med)}'),'cor pessoal no ícone sem ponto decorativo órfão');

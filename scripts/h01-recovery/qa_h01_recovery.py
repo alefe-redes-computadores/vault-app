@@ -126,14 +126,19 @@ def check_modal(p,authority):
     else:expect(premium).to_have_count(0)
     dialog.get_by_role('button',name='Fechar',exact=True).click();expect(dialog).not_to_be_visible(timeout=10000)
 
-def check_sheet(p,kind,row,linked):
+def check_sheet(p,kind,row,linked,diagnostics):
     # Date and document linkage are independent facts. Never infer one from the other.
     require(row['nome']==h.NAMES[kind], 'fixture identity mismatch')
     raw_date=row.get('data_receita')
     expected_date=datetime.fromisoformat(raw_date).strftime('%d/%m/%Y') if raw_date else 'Não informada'
     expected_manufacturer=row['laboratorio_etiqueta']
     require(bool(expected_manufacturer), 'fixture manufacturer missing')
-    c=h.card(p,row['nome']);c.locator('[data-vault-med360-entry="name"]').click()
+    c=h.card(p,row['nome'])
+    # Immediate observation, NOT a wait for positive documentary evidence.
+    # A premature negative snapshot must still fail the original drawer assert.
+    diagnostics.update(expectedLinked=linked,expectedDate=expected_date,
+        cardDocumentMarkersAtOpen=c.locator('[data-vault-v34x-receita-documento]').count())
+    c.locator('[data-vault-med360-entry="name"]').click()
     sheet=p.locator('[data-vault-med360-sheet]');expect(sheet).to_be_visible(timeout=15000)
     expect(sheet.get_by_role('heading',level=2)).to_contain_text(row['nome'],timeout=15000)
     # The component restores its initial tab in a React effect. Assert and wait;
@@ -152,6 +157,8 @@ def check_sheet(p,kind,row,linked):
     expect(date_field.get_by_text(expected_date,exact=True)).to_be_visible()
     expect(sheet.get_by_role('button',name='Abrir detalhes completos')).to_be_visible()
     sheet.get_by_role('button',name='Fechar Gaveta de medicamentos',exact=True).click();expect(sheet).not_to_be_visible(timeout=10000)
+    diagnostics['result']='PASS'
+    diagnostics['cardDocumentMarkersAfter']=c.locator('[data-vault-v34x-receita-documento]').count()
     print('H01_DRAWER_PASS',kind,'date='+expected_date,'linked='+str(linked),flush=True)
 
 
@@ -198,9 +205,15 @@ def guardian_declared(p,after,evidence,key):
         rows[:]=original
 
 FAB_MATRIX=[('Treino', 'sky'), ('Refeição', 'emerald'), ('Medicamento', 'emerald'), ('Tratamento', 'violet'), ('Renovação', 'violet'), ('Médico', 'sky'), ('Farmácia', 'emerald'), ('Hospital', 'emerald'), ('Posto / Local', 'emerald'), ('Exame', 'cyan'), ('Consulta', 'sky'), ('Cirurgia', 'violet'), ('CID', 'violet'), ('Sintoma / Medição', 'rose'), ('Vacinação', 'teal'), ('Procedimento', 'teal'), ('Hidratação', 'cyan'), ('Lembrete', 'amber'), ('Documento / Receita', 'violet'), ('Retirada', 'emerald'), ('Alergia / Reação', 'rose'), ('Dose rápida', 'emerald')]
-def guardian_fab(p,after,evidence,key):
-    p.goto(q.ORIGIN+'/');q.wait_nav(p)
-    p.locator('[data-vault-home-compose] button[aria-label="Adicionar"]').click()
+def guardian_fab(p,after,evidence,key,navigate=True):
+    if navigate:p.goto(q.ORIGIN+'/');q.wait_nav(p)
+    # Navigation can mount under the real splash. Require its exit from DOM;
+    # no force click, animation disabling or time advancement to hide a defect.
+    splash=p.locator('[role="status"][aria-label="Abrindo o Vault"]')
+    expect(splash).to_have_count(0,timeout=20000)
+    fab=p.locator('[data-vault-home-compose] button[aria-label="Adicionar"]')
+    expect(fab).to_be_visible(timeout=15000)
+    fab.click()
     sheet=p.get_by_role('dialog',name='Adicionar novo registro');expect(sheet).to_be_visible(timeout=30000)
     buttons=sheet.locator('button');expect(buttons).to_have_count(len(FAB_MATRIX))
     data=buttons.evaluate_all("""nodes=>nodes.map(b=>{const i=b.querySelector('div.rounded-full'),s=i&&getComputedStyle(i);return {label:b.innerText.trim(),classes:i?.className||'',icon:!!i?.querySelector('svg'),color:s?.color,background:s?.backgroundColor,border:s?.borderColor,radius:s?.borderRadius}})""")
@@ -214,6 +227,40 @@ def guardian_fab(p,after,evidence,key):
     scroller=sheet.locator('.scrollbar-hide');scroller.evaluate('e=>e.scrollTop=0');p.screenshot(path=str(evidence/f'{key}-fab-top.png'),animations='disabled')
     scroller.evaluate('e=>e.scrollTop=e.scrollHeight');p.screenshot(path=str(evidence/f'{key}-fab-bottom.png'),animations='disabled')
     return data
+
+def guardian_fab_controlled(p,browser,width,after,evidence,key,diagnostics):
+    # The original frozen-date context is an explicit control. A failed splash
+    # exit is evidence, not an excuse to force the click or claim it succeeded.
+    p.goto(q.ORIGIN+'/');q.wait_nav(p)
+    splash=p.locator('[role="status"][aria-label="Abrindo o Vault"]')
+    try:
+        expect(splash).to_have_count(0,timeout=10000)
+    except AssertionError:
+        require(splash.count()==1,'fixed-clock splash failure without the expected overlay')
+        diagnostics['fixedClock']={'status':'BLOCKED_BY_SPLASH','present':True}
+        p.screenshot(path=str(evidence/f'{key}-fixed-clock-splash.png'),animations='disabled')
+    else:
+        diagnostics['fixedClock']={'status':'PASS','matrix':guardian_fab(p,after,evidence,key+'-fixed-clock',navigate=False)}
+    # Independent real clock; same viewport, authentication, fixture, authority
+    # and list-to-home route. All 22 original checks still run, unchanged.
+    real=q.new_context(browser,width)
+    page=real.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)[:500]))
+    try:
+        q.login(page);h.seed_fixture(page)
+        page.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(page)
+        expect(h.card(page,h.NAMES['normal'])).to_be_visible(timeout=45000)
+        matrix=guardian_fab(page,after,evidence,key+'-real-clock')
+        require(not errors,'real-clock FAB page errors '+str(errors))
+        diagnostics['realClock']={'status':'PASS','matrix':matrix}
+        diagnostics['classification']='FIXED_CONTEXT_BLOCKED_REAL_CLOCK_PASSED' if diagnostics['fixedClock']['status']=='BLOCKED_BY_SPLASH' else 'BOTH_PASS'
+        print('H01_FAB_CLOCK_CONTROL',key,diagnostics['classification'],flush=True)
+        return matrix
+    except Exception as exc:
+        diagnostics['realClock']={'status':'FAIL','error':str(exc)}
+        try:page.screenshot(path=str(evidence/f'{key}-real-clock-failure.png'),animations='disabled')
+        except Exception:pass
+        raise
+    finally:real.close()
 
 def main():
     global AUTH_MODE
@@ -240,10 +287,23 @@ def main():
                                 scale_text(p,1);p.get_by_role('button',name=label,exact=True).click();expect(h.card(p,h.NAMES['normal']).locator(f'[data-vault-executive-density="{mode}"]')).to_be_visible();scale_text(p,scale)
                                 if scale==1:
                                     for fixture,linked in [('normal',True),('zero',False),('unit',False)]:
-                                        try:check_sheet(p,fixture,fixture_rows[fixture],linked)
+                                        drawer_key=f'{key}-{mode}-drawer-{fixture}'
+                                        diagnostics=report['cases'][key].setdefault('drawer_diagnostics',{}).setdefault(drawer_key,{})
+                                        try:check_sheet(p,fixture,fixture_rows[fixture],linked,diagnostics)
                                         except Exception as exc:
-                                            report['failures'][f'{key}-{mode}-drawer-{fixture}']=str(exc);print('H01_DRAWER_FAIL',key,mode,fixture,str(exc),flush=True)
+                                            report['failures'][drawer_key]=str(exc);print('H01_DRAWER_FAIL',key,mode,fixture,str(exc),flush=True)
+                                            diagnostics['result']='FAIL'
                                             drawer=p.locator('[data-vault-med360-sheet]')
+                                            # Diagnostic collection after the original failure; never overrides it.
+                                            try:
+                                                card=h.card(p,fixture_rows[fixture]['nome'])
+                                                diagnostics['cardDocumentMarkersAfter']=card.locator('[data-vault-v34x-receita-documento]').count()
+                                                diagnostics['drawerDocumentTexts']=drawer.locator('[data-vault-h01-document-evidence]').all_text_contents()
+                                                diagnostics['selectedTabs']=drawer.locator('[role="tab"][aria-selected="true"]').all_text_contents()
+                                                diagnostics['indexedDB']=p.evaluate('''async row=>{if(location.origin!=='http://127.0.0.1:8765')throw Error('nonlab');const db=await new Promise((res,rej)=>{const r=indexedDB.open('vault-db');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});try{const docs=await new Promise((res,rej)=>{const t=db.transaction('documents','readonly');const r=t.objectStore('documents').getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return {matching:docs.filter(d=>d.user_id===row.user_id&&d.person_id===row.person_id&&d.type==='receita'&&(d.id===row.document_id||(d.entidade_tipo==='medicamento'&&d.entidade_id===row.id))).map(d=>d.id)}}finally{db.close()}}''', {k:fixture_rows[fixture].get(k) for k in ('id','document_id','user_id','person_id')})
+                                                p.screenshot(path=str(args.evidence/f'{drawer_key}-failure.png'),animations='disabled')
+                                            except Exception as diagnostic_error:diagnostics['diagnosticError']=str(diagnostic_error)
+                                            print('H01_DRAWER_DIAGNOSTICS',drawer_key,json.dumps(diagnostics,ensure_ascii=False),flush=True)
                                             if drawer.is_visible():drawer.get_by_role('button',name='Fechar Gaveta de medicamentos',exact=True).click();expect(drawer).not_to_be_visible(timeout=10000)
                                 top=top_geometry(p);data={'top':top,'cards':{}};result[mode]=data
                                 p.screenshot(path=str(args.evidence/f'{key}-{scale}-{mode}-top.png'),animations='disabled')
@@ -273,7 +333,9 @@ def main():
                                 require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)
                         scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors))
                         if width in (320,430):report['cases'][key]['guardian_declared']=guardian_declared(p,after,args.evidence,key)
-                        if authority=='legacy':report['cases'][key]['guardian_fab']=guardian_fab(p,after,args.evidence,key)
+                        if authority=='legacy':
+                            diagnostics=report['cases'][key].setdefault('fab_clock_control',{})
+                            report['cases'][key]['guardian_fab']=guardian_fab_controlled(p,browser,width,after,args.evidence,key,diagnostics)
                         require(not errors,'page errors '+str(errors));print('H01_CASE_'+('FAIL' if any(z.startswith(key+'-') for z in report['failures']) else 'PASS'),key,flush=True)
                     except Exception as exc:
                         report['failures'][key]=str(exc);traceback.print_exc();print('H01_CASE_FAIL',key,str(exc),flush=True)

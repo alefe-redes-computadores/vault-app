@@ -32,6 +32,7 @@ import { isRestockDestination, medicationRestockHref, medicationStockCountHref }
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
+  useCallback,
   useEffect,
   useDeferredValue,
   useMemo,
@@ -385,6 +386,8 @@ export default function MedicamentosListPage() {
 
   const [secondaryActionSheetR4, setSecondaryActionSheetR4] = useState<MedicationActionsR4 | null>(null);
   const [medicationSheet360, setMedicationSheet360] = useState<Medication360Value | null>(null);
+  // Keep the drawer session stable through unrelated live-query/owner refresh renders.
+  const closeMedicationSheet360 = useCallback(() => setMedicationSheet360(null), []);
   const [medicationContextP7R3, setMedicationContextP7R3] = useState<MedicationContextP7R3 | null>(null);
   // MED-UX360: single selected medication identity, never a detached visual snapshot.
   const [selectedRegulatoryScope, setSelectedRegulatoryScope] = useState<{
@@ -1931,7 +1934,7 @@ export default function MedicamentosListPage() {
         </section>
 
                 <MedicationContextSheetP7R3 value={medicationContextP7R3} onClose={()=>setMedicationContextP7R3(null)}/>
-                <MedicationSheet360R3 value={medicationSheet360} onClose={()=>setMedicationSheet360(null)} onNavigate={href=>router.push(href)}/>
+                <MedicationSheet360R3 value={medicationSheet360} onClose={closeMedicationSheet360} onNavigate={href=>router.push(href)}/>
 
         <MedicationActionsSheetR4 value={secondaryActionSheetR4} onClose={()=>setSecondaryActionSheetR4(null)}/>
 

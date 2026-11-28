@@ -1,7 +1,7 @@
 name: VAULT H01 — geometria real de Medicamentos
 on:
   push:
-    branches: [main]
+    branches: [main, guardian/stability-residual-closure-20261128]
     paths:
       - 'app/saude/medicamentos/page.tsx'
       - 'app/globals.css'
@@ -10,6 +10,7 @@ on:
       - 'components/BottomNav.tsx'
       - 'components/saude/MedicationOperationalStrip.tsx'
       - 'scripts/h01-recovery/**'
+      - 'scripts/test-vault-m64-premium-performance.cjs'
       - '.github/workflows/h01-recovery.yml'
   workflow_dispatch:
 permissions:
@@ -19,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   geometry:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/guardian/stability-residual-closure-20261128'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -87,5 +88,59 @@ jobs:
         with:
           name: Vault-H01-recovery-real-Chromium
           path: ${{ runner.temp }}/h01-evidence/
+          if-no-files-found: error
+          retention-days: 30
+  guardian-full-gate:
+    # This additional gate is isolated to the candidate branch, never a release/promotion.
+    if: github.ref == 'refs/heads/guardian/stability-residual-closure-20261128'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+      VAULT_V63_COLLECT_ALL: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify pinned base and exact allowed delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 1c1094d1b1cfe79303850fbb7f7de5841da71408 HEAD
+          git diff --check 1c1094d1b1cfe79303850fbb7f7de5841da71408 HEAD
+          actual="$(git diff --name-only 1c1094d1b1cfe79303850fbb7f7de5841da71408 HEAD | sort)"
+          expected="$(printf '%s\n' '.github/workflows/h01-recovery.yml' 'scripts/h01-recovery/qa_h01_recovery.py' 'scripts/test-vault-m64-premium-performance.cjs' 'app/saude/medicamentos/page.tsx' | sort)"
+          test "$actual" = "$expected"
+          git rev-parse HEAD HEAD^{tree}
+      - run: npm ci --no-audit --no-fund
+      - name: Directed M64, V63 integral and V70
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p guardian-gate-evidence
+          status=0
+          node scripts/test-vault-m64-premium-performance.cjs 2>&1 | tee guardian-gate-evidence/m64.log || status=1
+          node scripts/test-vault-residual-consumers.cjs 2>&1 | tee guardian-gate-evidence/residual.log || status=1
+          if ! node scripts/test-v63-release-gate.mjs 2>&1 | tee guardian-gate-evidence/v63.log; then
+            status=1
+            # On failure collect both V70 diagnoses independently; on success V63 already ran both.
+            node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee guardian-gate-evidence/v70-super.log || status=1
+            node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee guardian-gate-evidence/v70-final.log || status=1
+          fi
+          node node_modules/typescript/bin/tsc --noEmit 2>&1 | tee guardian-gate-evidence/typescript.log || status=1
+          exit "$status"
+      - name: Preserve gate evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Vault-Guardian-closure-full-gate
+          path: guardian-gate-evidence/
           if-no-files-found: error
           retention-days: 30
