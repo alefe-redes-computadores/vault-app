@@ -211,7 +211,7 @@ def check_sheet(p,kind,row,linked,diagnostics):
 
 
 
-def guardian_declared(p,after,evidence,key):
+def guardian_declared(p,authority,after,evidence,key):
     rows=q.TABLES['medicamentos']; original=list(rows)
     matrix=[('comum','COMUM · CAD.','rgb(148, 163, 184)'),('branca','ESPECIAL · CAD.','rgb(203, 213, 225)'),('azul','AZUL · CAD.','rgb(96, 165, 250)'),('amarela','AMARELA · CAD.','rgb(250, 204, 21)'),(None,'REG. REVISÃO','rgb(100, 116, 139)')]
     cases=[]
@@ -223,6 +223,7 @@ def guardian_declared(p,after,evidence,key):
     try:
         p.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(p);h.seed_fixture(p);seed_device(p)
         expect(p.locator('[role="status"][aria-label="Abrindo o Vault"]')).to_have_count(0,timeout=20000)
+        check_modal(p,authority)
         results={}
         for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
             p.get_by_role('button',name=label,exact=True).click()
@@ -255,8 +256,8 @@ def guardian_declared(p,after,evidence,key):
 
 def guardian_declared_controlled(browser,width,authority,after,evidence,key):
     # Classification tests are independent of medication date/clock arithmetic.
-    # Use a fresh real-clock context for both R4 and candidate; fixed time is
-    # retained for every original geometry/drawer test. No force, no timer
+    # Use a fresh real-clock context for both R4 and candidate; fixture time is
+    # retained as an advancing noon anchor for geometry/drawer tests. No force, no timer
     # manipulation and no reduced assertions. A real-clock splash or RPC
     # failure blocks certification.
     ctx=q.new_context(browser,width)
@@ -266,7 +267,7 @@ def guardian_declared_controlled(browser,width,authority,after,evidence,key):
     start=len(ENROLL_READS)
     try:
         q.login(page)
-        result=guardian_declared(page,after,evidence,key)
+        result=guardian_declared(page,authority,after,evidence,key)
         require(authority in ENROLL_READS[start:],'declared matrix has no actual authority RPC')
         require(not errors,'declared real-clock page errors '+str(errors))
         require(set(result)=={'compact','comfort'} and all(len(v)==5 for v in result.values()),'incomplete declared matrix')
@@ -303,18 +304,18 @@ def guardian_fab(p,after,evidence,key,navigate=True):
     return data
 
 def guardian_fab_controlled(p,browser,width,after,evidence,key,diagnostics):
-    # The original frozen-date context is an explicit control. A failed splash
-    # exit is evidence, not an excuse to force the click or claim it succeeded.
+    # The anchored but naturally advancing fixture clock is a control. A
+    # failed splash exit is evidence; the independent real clock must pass.
     p.goto(q.ORIGIN+'/');q.wait_nav(p)
     splash=p.locator('[role="status"][aria-label="Abrindo o Vault"]')
     try:
         expect(splash).to_have_count(0,timeout=10000)
     except AssertionError:
         require(splash.count()==1,'fixed-clock splash failure without the expected overlay')
-        diagnostics['fixedClock']={'status':'BLOCKED_BY_SPLASH','present':True}
-        p.screenshot(path=str(evidence/f'{key}-fixed-clock-splash.png'),animations='disabled')
+        diagnostics['fixtureClock']={'status':'BLOCKED_BY_SPLASH','present':True}
+        p.screenshot(path=str(evidence/f'{key}-fixture-clock-splash.png'),animations='disabled')
     else:
-        diagnostics['fixedClock']={'status':'PASS','matrix':guardian_fab(p,after,evidence,key+'-fixed-clock',navigate=False)}
+        diagnostics['fixtureClock']={'status':'PASS','matrix':guardian_fab(p,after,evidence,key+'-fixture-clock',navigate=False)}
     # Independent real clock; same viewport, authentication, fixture, authority
     # and list-to-home route. All 22 original checks still run, unchanged.
     real=q.new_context(browser,width)
@@ -326,7 +327,7 @@ def guardian_fab_controlled(p,browser,width,after,evidence,key,diagnostics):
         matrix=guardian_fab(page,after,evidence,key+'-real-clock')
         require(not errors,'real-clock FAB page errors '+str(errors))
         diagnostics['realClock']={'status':'PASS','matrix':matrix}
-        diagnostics['classification']='FIXED_CONTEXT_BLOCKED_REAL_CLOCK_PASSED' if diagnostics['fixedClock']['status']=='BLOCKED_BY_SPLASH' else 'BOTH_PASS'
+        diagnostics['classification']='FIXTURE_CLOCK_BLOCKED_REAL_CLOCK_PASSED' if diagnostics['fixtureClock']['status']=='BLOCKED_BY_SPLASH' else 'BOTH_PASS'
         print('H01_FAB_CLOCK_CONTROL',key,diagnostics['classification'],flush=True)
         return matrix
     except Exception as exc:
@@ -422,7 +423,7 @@ def main():
                 for authority in ('legacy','premium'):
                     AUTH_MODE=authority;ctx=None;key=f'{width}-{authority}';errors=[];report['cases'][key]={}
                     try:
-                        n=len(ENROLL_READS);ctx=q.new_context(browser,width);p=ctx.new_page();p.on('pageerror',lambda e:errors.append(str(e)[:500]));p.clock.set_fixed_time(datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')))
+                        n=len(ENROLL_READS);ctx=q.new_context(browser,width);p=ctx.new_page();p.on('pageerror',lambda e:errors.append(str(e)[:500]));p.clock.install(time=datetime.fromisoformat(args.day+'T12:00:00').replace(tzinfo=ZoneInfo('America/Sao_Paulo')))
                         q.login(p);h.seed_fixture(p);seed_device(p);p.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(p);expect(h.card(p,h.NAMES['normal'])).to_be_visible(timeout=45000)
                         p.get_by_role('button',name='Lista',exact=True).click();check_modal(p,authority);require(authority in ENROLL_READS[n:],'no actual authority RPC')
                         for scale in (1,1.25):
