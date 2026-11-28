@@ -5,6 +5,9 @@ on:
     paths:
       - 'app/saude/medicamentos/page.tsx'
       - 'app/globals.css'
+      - 'lib/medications/regulatory-copy-ux360.ts'
+      - 'lib/navigation/bottom-nav-compose.ts'
+      - 'components/BottomNav.tsx'
       - 'components/saude/MedicationOperationalStrip.tsx'
       - 'scripts/h01-recovery/**'
       - '.github/workflows/h01-recovery.yml'
@@ -28,7 +31,7 @@ jobs:
       CAPACITOR_BUILD: '0'
       VAULT_WEB_STATIC_BUILD: '1'
       NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
-      BASE: '109b116e997de0087883c5b0a7deb94143d97ef3'
+      BASE: '5d76df41dfae7f2c3607eb18454aa5bf6fe64afd'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -42,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse "$BASE^{tree}")" = f91ae395bce3e4dd47ce84a3730898a35d50050d
+          test "$(git rev-parse "$BASE^{tree}")" = 3817f3b2ddd7b9f7d6d8dbd9d9769642476cad27
           git merge-base --is-ancestor "$BASE" HEAD
           git worktree add --detach "$RUNNER_TEMP/h01-before" "$BASE"
           mkdir -p "$RUNNER_TEMP/h01-evidence/before" "$RUNNER_TEMP/h01-evidence/after"

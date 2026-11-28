@@ -47,6 +47,15 @@ ok(options('/saude/rede','tab=medicos').some(x=>x.path==='/saude/medicos/novo'),
 ok(options('/inteligencia').length===0 && options('/mais').length===0,'Central e Mais não exibem FAB de cadastro indevido');
 ok(getOptionColorClass('cartao').includes('rose-') && getOptionColorClass('consulta').includes('sky-'),'cores semânticas além de azul');
 ok(!getOptionColorClass('novo-cofre').includes('text-ice'),'fallback visual neutro');
+// GUARDIAN residual: the actual catalogue contains 22 options, not 18.
+const guardianFab=[["vital-treino","Treino","/saude/vital/treinos?action=new","sky"],["vital-refeicao","Refeição","/saude/vital/nutricao?action=new","emerald"],["medicamento","Medicamento","/saude/medicamentos/novo","emerald"],["tratamento","Tratamento","/saude/tratamentos/novo","violet"],["renovacao","Renovação","/saude/renovacao/nova","violet"],["medico","Médico","/saude/medicos/novo","sky"],["farmacia","Farmácia","/saude/farmacias/novo","emerald"],["hospital","Hospital","/saude/hospitais/novo","emerald"],["local","Posto / Local","/saude/locais/novo","emerald"],["exame","Exame","/saude/exames/novo","cyan"],["consulta","Consulta","/saude/consultas/nova","sky"],["cirurgia","Cirurgia","/saude/cirurgias/nova","violet"],["cid","CID","/saude/cids/novo","violet"],["sintoma","Sintoma / Medição","/saude/registros/novo","rose"],["vacina","Vacinação","/saude/vacinas","teal"],["procedimento","Procedimento","/saude/procedimentos","teal"],["hidratacao","Hidratação","/saude/hidratacao","cyan"],["lembrete","Lembrete","/saude/lembretes","amber"],["documento","Documento / Receita","/saude/documentos/novo","violet"],["retirada","Retirada","/saude/retiradas/nova","emerald"],["alergia","Alergia / Reação","/saude/reacoes","rose"],["dose-rapida","Dose rápida","/hoje?action=dose","emerald"]];
+assert.deepEqual(options('/').map(x=>[x.id,x.label,x.path]),guardianFab.map(x=>x.slice(0,3)),'all IDs, labels, order and destinations preserved');
+for(const [id,label,path,tone] of guardianFab){
+ const color=getOptionColorClass(id);
+ ok(color===`bg-${tone}-400/10 text-${tone}-300 border-${tone}-400/25`, `FAB ${id}: canonical translucent semantic tone`);
+}
+ok(nav.includes('rounded-full border ${colorClass}')&&nav.includes('handleComposeOptionPress('),'FAB rings and existing navigation handler preserved');
+
 ok(legacy.includes('const compose =') && legacy.includes('compose.includes('),'V44 valida catálogo real e não implementação removida');
 const v272=read('scripts/test-v272-avatar-supply-dose-resilience.cjs');
 const preApk=read('scripts/test-pre-apk-intelligence-nav-contract.mjs');

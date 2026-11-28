@@ -402,6 +402,13 @@ export function getOptionColorClass(id: string): string {
     return "bg-violet-400/10 text-violet-300 border-violet-400/25";
   if (["sintoma","novo-registro"].includes(id))
     return "bg-rose-400/10 text-rose-300 border-rose-400/25";
+  // GUARDIAN FAB: reuse the canonical entity colors; keep every existing destination.
+  if (["cid","documento"].includes(id)) return "bg-violet-400/10 text-violet-300 border-violet-400/25";
+  if (["vacina","procedimento"].includes(id)) return "bg-teal-400/10 text-teal-300 border-teal-400/25";
+  if (id === "hidratacao") return "bg-cyan-400/10 text-cyan-300 border-cyan-400/25";
+  if (id === "lembrete") return "bg-amber-400/10 text-amber-300 border-amber-400/25";
+  if (["retirada","dose-rapida"].includes(id)) return "bg-emerald-400/10 text-emerald-300 border-emerald-400/25";
+  if (id === "alergia") return "bg-rose-400/10 text-rose-300 border-rose-400/25";
   if (id === "cartao") return "bg-rose-400/10 text-rose-300 border-rose-400/25";
   if (id === "conta") return "bg-emerald-400/10 text-emerald-300 border-emerald-400/25";
   return "bg-surface-raised/55 text-ink-secondary border-surface-border/50";

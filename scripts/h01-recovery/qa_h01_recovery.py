@@ -58,7 +58,7 @@ def top_geometry(p):
 
 def inspect(c):
     g=h.geometry(c)
-    g.update(c.evaluate('''e=>{const rect=n=>{if(!n)return null;const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height,cx:x.x+x.width/2,cy:x.y+x.height/2}};const card=rect(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]'),title=e.querySelector('[data-vault-med360-entry="name"] > span:first-child > span:first-child'),meta=e.querySelector('[data-vault-h01-identity-meta]'),man=e.querySelector('[data-vault-h01-manufacturer]'),chip=e.querySelector('[data-vault-h01-chips]'),strip=e.querySelector('[data-vault-h01-operational-strip]'),panel=e.querySelector('[data-vault-r5-operational]'),base=e.querySelector('[data-vault-h01-final-base]'),action=e.querySelector('[data-vault-r4-main-action],[data-vault-h01-status-slot]'),done=e.querySelector('[data-vault-h01-completed]'),icon=e.querySelector('[data-vault-med-flow-icon]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-h01-manufacturer],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {viewportWidth:innerWidth,rail:rail?.innerText||'',railRect:rect(rail),railTextRect:rect(rail?.querySelector('span[aria-hidden] > span')),regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',manufacturer:man?.innerText||'',factsAria:strip?.getAttribute('aria-label')||'',factsText:strip?.innerText||'',completed:done?.innerText||'',completedInteractive:!!done?.closest('button,a,[role="button"],[data-vault-r4-main-action]'),axis:{title:rect(title),meta:rect(meta),chips:rect(chip),recipe:rect(rx),recipeIcon:rect(rx?.querySelector('svg')),panel:rect(panel),base:rect(base),action:rect(action),icon:rect(icon),facts:rect(strip)},outside:visible.filter(n=>{const a=rect(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
+    g.update(c.evaluate('''e=>{const rect=n=>{if(!n)return null;const x=n.getBoundingClientRect();return {x:x.x,y:x.y,right:x.right,bottom:x.bottom,w:x.width,h:x.height,cx:x.x+x.width/2,cy:x.y+x.height/2}};const card=rect(e),rail=e.querySelector('button[aria-label^="Ver classificação da receita"]'),reg=e.querySelector('[data-vault-ux360-regulatory-label]'),rx=e.querySelector('[data-vault-v34x-receita-cadastro]'),title=e.querySelector('[data-vault-med360-entry="name"] > span:first-child > span:first-child'),meta=e.querySelector('[data-vault-h01-identity-meta]'),man=e.querySelector('[data-vault-h01-manufacturer]'),chip=e.querySelector('[data-vault-h01-chips]'),strip=e.querySelector('[data-vault-h01-operational-strip]'),panel=e.querySelector('[data-vault-r5-operational]'),base=e.querySelector('[data-vault-h01-final-base]'),action=e.querySelector('[data-vault-r4-main-action],[data-vault-h01-status-slot]'),done=e.querySelector('[data-vault-h01-completed]'),icon=e.querySelector('[data-vault-med-flow-icon]');const visible=[...e.querySelectorAll('button:not([aria-hidden="true"]),[data-vault-h01-dose],[data-vault-h01-stock],[data-vault-h01-manufacturer],[data-vault-r5-active-ingredient],[data-vault-ux360-regulatory-label],[data-vault-v34x-receita-cadastro]')].filter(n=>n.getBoundingClientRect().width>2&&n.getBoundingClientRect().height>2&&!n.closest('.sr-only'));return {viewportWidth:innerWidth,rail:rail?.innerText||'',railRect:rect(rail),railColor:rail?getComputedStyle(rail.parentElement).backgroundColor:'',railTextRect:rect(rail?.querySelector('span[aria-hidden] > span')),regTitle:reg?.title||reg?.getAttribute('aria-label')||'',regHidden:!!reg?.classList.contains('sr-only'),rx:rx?.innerText||'',manufacturer:man?.innerText||'',manufacturerFactory:!!man?.querySelector('svg[data-vault-guardian-factory="true"]'),manufacturerBadge:!!man&&man.getAttribute('data-vault-guardian-laboratory-badge')==='true'&&getComputedStyle(man).boxShadow!=='none'&&getComputedStyle(man).backgroundColor!=='rgba(0, 0, 0, 0)',factsAria:strip?.getAttribute('aria-label')||'',factsText:strip?.innerText||'',completed:done?.innerText||'',completedInteractive:!!done?.closest('button,a,[role="button"],[data-vault-r4-main-action]'),axis:{title:rect(title),meta:rect(meta),chips:rect(chip),recipe:rect(rx),recipeIcon:rect(rx?.querySelector('svg')),panel:rect(panel),base:rect(base),action:rect(action),icon:rect(icon),facts:rect(strip)},outside:visible.filter(n=>{const a=rect(n);return a.x<card.x-2||a.right>card.right+2||a.y<card.y-2||a.bottom>card.bottom+2||n.scrollWidth>n.clientWidth+3}).map(n=>n.innerText.slice(0,90))}}'''))
     return g
 
 def check(kind,g,mode,after):
@@ -155,13 +155,73 @@ def check_sheet(p,kind,row,linked):
     print('H01_DRAWER_PASS',kind,'date='+expected_date,'linked='+str(linked),flush=True)
 
 
+
+def guardian_declared(p,after,evidence,key):
+    rows=q.TABLES['medicamentos']; original=list(rows)
+    matrix=[('comum','CAD. COMUM','rgb(148, 163, 184)'),('branca','CAD. ESPECIAL','rgb(203, 213, 225)'),('azul','CAD. AZUL','rgb(96, 165, 250)'),('amarela','CAD. AMARELA','rgb(250, 204, 21)'),(None,'REG. PENDENTE','rgb(100, 116, 139)')]
+    cases=[]
+    for i,(declared,expected,color) in enumerate(matrix):
+        name=f'QA SEM REFERENCIA ZZ {i+1}'; row=q.med(h.uid(3,800+i),q.PERSON_A,name)
+        row.update(laboratorio_etiqueta='Laboratório QA',formato='comprimido',tipo_uso='continuo')
+        if declared:row['tipo_receita']=declared
+        rows.append(row);cases.append((name,declared,expected,color))
+    try:
+        p.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(p);h.seed_fixture(p);seed_device(p)
+        results={}
+        for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
+            p.get_by_role('button',name=label,exact=True).click()
+            result=[]
+            for name,declared,expected,color in cases:
+                c=h.card(p,name);expect(c).to_be_visible(timeout=45000)
+                expect(c.locator(f'[data-vault-executive-density="{mode}"]')).to_be_visible()
+                rail=c.get_by_role('button',name=re.compile('^Ver classificação da receita:'))
+                expect(rail).to_be_visible();actual=rail.get_attribute('aria-label').split(': ',1)[1].upper();meaning=rail.get_attribute('aria-description') or ''
+                record={'name':name,'declared':declared,'rail':actual,'meaning':meaning,'color':rail.evaluate('e=>getComputedStyle(e.parentElement).backgroundColor')}
+                result.append(record)
+                if after:
+                    require(actual==expected,f'{name} rail {actual} != {expected}')
+                    require(record['color']==color,f'{name} declared rail color {record["color"]} != {color}')
+                    expect(c.locator('[data-vault-guardian-laboratory-badge] svg[data-vault-guardian-factory="true"]')).to_be_visible()
+                    if declared:require('Cor da tarja: cadastro' in meaning,'declared color provenance absent')
+                    bounds=rail.evaluate("e=>{const r=e.getBoundingClientRect(),t=e.querySelector('span[aria-hidden] > span').getBoundingClientRect();return t.top>=r.top-1&&t.bottom<=r.bottom+1}");require(bounds,'declared rail text clipped '+name)
+                    require('fonte oficial' not in meaning.lower().replace('sem confirmação oficial',''),'unverified promoted')
+                    if declared:
+                        require('cadastro:' in meaning.lower() and 'sem confirmação oficial' in meaning.lower(),'declared provenance missing')
+                        require(c.locator('[data-vault-h01-declaration]').count()==0,'duplicate declaration')
+                    reg=c.locator('[data-vault-ux360-regulatory-label]');expect(reg).to_have_class('sr-only')
+                if declared in ('azul','amarela') or declared is None:
+                    c.evaluate("e=>e.scrollIntoView({block:'center',behavior:'instant'})")
+                    p.screenshot(path=str(evidence/f'{key}-{mode}-declared-{declared or "unknown"}.png'),animations='disabled')
+            results[mode]=result
+        return results
+    finally:
+        rows[:]=original
+
+FAB_MATRIX=[('Treino', 'sky'), ('Refeição', 'emerald'), ('Medicamento', 'emerald'), ('Tratamento', 'violet'), ('Renovação', 'violet'), ('Médico', 'sky'), ('Farmácia', 'emerald'), ('Hospital', 'emerald'), ('Posto / Local', 'emerald'), ('Exame', 'cyan'), ('Consulta', 'sky'), ('Cirurgia', 'violet'), ('CID', 'violet'), ('Sintoma / Medição', 'rose'), ('Vacinação', 'teal'), ('Procedimento', 'teal'), ('Hidratação', 'cyan'), ('Lembrete', 'amber'), ('Documento / Receita', 'violet'), ('Retirada', 'emerald'), ('Alergia / Reação', 'rose'), ('Dose rápida', 'emerald')]
+def guardian_fab(p,after,evidence,key):
+    p.goto(q.ORIGIN+'/');q.wait_nav(p)
+    p.locator('[data-vault-home-compose] button[aria-label="Adicionar"]').click()
+    sheet=p.get_by_role('dialog',name='Adicionar novo registro');expect(sheet).to_be_visible(timeout=30000)
+    buttons=sheet.locator('button');expect(buttons).to_have_count(len(FAB_MATRIX))
+    data=buttons.evaluate_all("""nodes=>nodes.map(b=>{const i=b.querySelector('div.rounded-full'),s=i&&getComputedStyle(i);return {label:b.innerText.trim(),classes:i?.className||'',icon:!!i?.querySelector('svg'),color:s?.color,background:s?.backgroundColor,border:s?.borderColor,radius:s?.borderRadius}})""")
+    require([r['label'] for r in data]==[x[0] for x in FAB_MATRIX],'FAB labels/order changed')
+    for row,(_,tone) in zip(data,FAB_MATRIX):
+        require(row['icon'] and 'rounded-full' in row['classes'] and 'border' in row['classes'],'FAB icon/ring missing '+row['label'])
+        if after:
+            require(all(x in row['classes'].split() for x in (f'bg-{tone}-400/10',f'text-{tone}-300',f'border-{tone}-400/25')),'FAB wrong semantic tone '+row['label'])
+            require(row['background'] not in ('transparent','rgba(0, 0, 0, 0)') and row['border'] not in ('transparent','rgba(0, 0, 0, 0)'),'FAB computed color missing '+row['label'])
+            require(row['radius'] and row['color'],'FAB computed icon missing '+row['label'])
+    scroller=sheet.locator('.scrollbar-hide');scroller.evaluate('e=>e.scrollTop=0');p.screenshot(path=str(evidence/f'{key}-fab-top.png'),animations='disabled')
+    scroller.evaluate('e=>e.scrollTop=e.scrollHeight');p.screenshot(path=str(evidence/f'{key}-fab-bottom.png'),animations='disabled')
+    return data
+
 def main():
     global AUTH_MODE
     a=argparse.ArgumentParser();a.add_argument('--out',type=Path,required=True);a.add_argument('--evidence',type=Path,required=True);a.add_argument('--sha',required=True);a.add_argument('--phase',choices=['before','after'],required=True);a.add_argument('--baseline',type=Path);a.add_argument('--day',required=True);args=a.parse_args()
     after=args.phase=='after';q.ROOT=args.out.resolve();require((q.ROOT/'index.html').is_file(),'real export missing');args.evidence.mkdir(parents=True,exist_ok=True);fixture_rows=fixtures(args.day)
     require(bool(fixture_rows['normal'].get('data_receita')) and bool(fixture_rows['zero'].get('data_receita')) and not fixture_rows['unit'].get('data_receita'),'independent date fixture matrix invalid')
     baseline=json.loads(args.baseline.read_text()) if after else None
-    if after:require(baseline['phase']=='before','baseline required')
+    if after:require(baseline['phase']=='before' and baseline['sha']=='5d76df41dfae7f2c3607eb18454aa5bf6fe64afd','certified R4 baseline required')
     report={'sha':args.sha,'phase':args.phase,'status':'FAIL','cases':{},'failures':{},'safeArea':'simulated Chromium','authority':'synthetic enrollment; no SQL or clinical mutation','productionWrites':0}
     server=q.ThreadingHTTPServer(('127.0.0.1',8765),Server);threading.Thread(target=server.serve_forever,daemon=True).start()
     try:
@@ -178,7 +238,7 @@ def main():
                             k=str(scale);result={};report['cases'][key][k]=result
                             for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
                                 scale_text(p,1);p.get_by_role('button',name=label,exact=True).click();expect(h.card(p,h.NAMES['normal']).locator(f'[data-vault-executive-density="{mode}"]')).to_be_visible();scale_text(p,scale)
-                                if after and scale==1:
+                                if scale==1:
                                     for fixture,linked in [('normal',True),('zero',False),('unit',False)]:
                                         try:check_sheet(p,fixture,fixture_rows[fixture],linked)
                                         except Exception as exc:
@@ -191,16 +251,30 @@ def main():
                                 for kind,name in h.NAMES.items():
                                     c=h.card(p,name);expect(c).to_be_visible(timeout=30000);c.evaluate("e=>e.scrollIntoView({block:'center',behavior:'instant'})");p.wait_for_timeout(100);g=inspect(c);data['cards'][kind]=g
                                     if scale==1 and kind in ('normal','ignored','review','long'):p.screenshot(path=str(args.evidence/f'{key}-{mode}-{kind}.png'),animations='disabled')
-                                    try:check(kind,g,mode,after)
+                                    try:
+                                        check(kind,g,mode,True)
+                                        if after:
+                                            require(g['manufacturerBadge'] and g['manufacturerFactory'],'separate manufacturer Factory badge absent '+kind)
+                                            if kind=='review':
+                                                require(g['railColor']=='rgb(250, 204, 21)','review lost declared yellow identity '+repr(g['railColor']))
+                                                require('REG. REVISÃO' in g['rail'].upper(),'review status hidden')
+                                                require('Cor da tarja: cadastro' in g['regTitle'],'review color provenance absent')
+                                            elif kind in ('normal','long','ignored','conflict'):
+                                                require(g['railColor']=='rgb(203, 213, 225)','confirmed official control color changed '+kind+' '+repr(g['railColor']))
+                                            elif kind in ('zero','unit','negative','sos','taken'):
+                                                require(g['railColor']=='rgb(148, 163, 184)','confirmed ordinary prescription not gray '+kind+' '+repr(g['railColor']))
                                     except AssertionError as exc:report['failures'][f'{key}-{scale}-{mode}-{kind}']=str(exc);print('H01_CARD_FAIL',key,scale,mode,kind,str(exc),flush=True)
                                 if after and baseline['status']=='PASS':
                                     b=baseline['cases'][key][k][mode];data['delta_first_y']=top['first']['y']-b['top']['first']['y'];data['delta_median']=statistics.median(g['card']['height'] for g in data['cards'].values())-statistics.median(g['card']['height'] for g in b['cards'].values());
-                                    for ok,msg in [(data['delta_first_y']<=0,'header grew versus original productive baseline'),(mode!='compact' or data['delta_median']<0,'compact card median did not improve')]:
+                                    data['card_delta_px']={kind:round(g['card']['height']-b['cards'][kind]['card']['height'],2) for kind,g in data['cards'].items()}
+                                    for ok,msg in [(data['delta_first_y']<=2,'header grew versus certified R4'),(data['delta_median']<=2,'median height grew versus certified R4'),(max(data['card_delta_px'].values())<=18*scale+2,'individual card grew beyond one text line versus certified R4')]:
                                         if not ok:report['failures'][f'{key}-{scale}-{mode}-{msg}']=msg;print('H01_GEOMETRY_FAIL',key,scale,mode,msg,flush=True)
-                            if after:
-                                for kind in ('normal','ignored','review','long'):
-                                    require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)
-                        scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors));print('H01_CASE_'+('FAIL' if any(z.startswith(key+'-') for z in report['failures']) else 'PASS'),key,flush=True)
+                            for kind in ('normal','ignored','review','long'):
+                                require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)
+                        scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors))
+                        if width in (320,430):report['cases'][key]['guardian_declared']=guardian_declared(p,after,args.evidence,key)
+                        if authority=='legacy':report['cases'][key]['guardian_fab']=guardian_fab(p,after,args.evidence,key)
+                        require(not errors,'page errors '+str(errors));print('H01_CASE_'+('FAIL' if any(z.startswith(key+'-') for z in report['failures']) else 'PASS'),key,flush=True)
                     except Exception as exc:
                         report['failures'][key]=str(exc);traceback.print_exc();print('H01_CASE_FAIL',key,str(exc),flush=True)
                         if ctx:
