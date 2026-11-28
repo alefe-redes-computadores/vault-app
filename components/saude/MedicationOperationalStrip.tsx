@@ -29,7 +29,6 @@ export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTo
     const shortDose = clock ? (completedBadgeH01 && !isFuture ? clock[2] : `${isFuture ? "Próx." : "Tomada"} ${clock[2]}`) : today.label;
     const doseHeading = clock ? (isFuture ? "Próxima dose" : "Dose tomada") : "Dose de hoje";
     const shortStock = stockLabel.replace(/\bcomprimidos?\b/gi,"comp.").replace(/\bcápsulas?\b/gi,"cáps.");
-    const stockParts = stockLabel.match(/^(-?\d+(?:[.,]\d+)?)(?:\s+(.+))?$/);
     const StatusIcon = doseOutcome === "ignored" ? MinusCircle : doseOutcome === "completed" ? CheckCircle2 : isFuture ? Clock3 : Circle;
     return <div data-vault-h01-operational-strip="true" data-vault-h01-aligned-strip="true"
       aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`} title={`${today.detail} · ${stockDetail}`}>
@@ -37,8 +36,9 @@ export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTo
         {compact ? <><StatusIcon size={12} aria-hidden="true" className="shrink-0"/><span>{shortDose}</span></> : <><span data-vault-h01-fact-label>{doseHeading}</span><span data-vault-h01-fact-value>{clock ? clock[2] : today.label}</span></>}
       </span>
       <span data-vault-h01-stock="true" className={`min-w-0 font-semibold ${tone}`} title={stockLabel}>
-        {compact ? <><span aria-hidden="true" className="text-ink-muted">·</span><Package size={12} aria-hidden="true" className="shrink-0"/><span>{shortStock}</span></> : <><span data-vault-h01-fact-label>Estoque</span><span data-vault-h01-fact-value>{stockParts ? stockParts[1] : stockLabel}</span>{stockParts?.[2] && <span data-vault-h01-fact-unit>{stockParts[2]}</span>}{showStockDetail && <span data-vault-h01-fact-unit role="note">{stockDetail}</span>}</>}
+        {compact ? <><Package size={12} aria-hidden="true" className="shrink-0"/><span>{shortStock}</span></> : <><span data-vault-h01-fact-label>Estoque</span><span data-vault-h01-fact-value title={stockLabel}>{shortStock}</span></>}
       </span>
+      {!compact && showStockDetail && <span data-vault-h01-stock-note role="note" className="text-ink-muted text-[10px] leading-snug">{stockDetail}</span>}
     </div>;
   }
   return <div data-vault-h01-operational-strip={flowLayoutH01?"true":undefined} className={flowLayoutH01 ? (compact ? "mt-0 grid min-w-0 gap-0 text-[11px] leading-tight" : "mt-0 grid min-w-0 gap-1 text-xs leading-snug") : (compact ? "mt-0 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 border-t-0 pt-0 text-[10px] leading-[1.05rem]" : "mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 border-t-0 pt-0 text-[10px] leading-snug")}

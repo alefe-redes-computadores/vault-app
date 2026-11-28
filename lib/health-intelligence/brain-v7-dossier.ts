@@ -15,6 +15,7 @@ export type BrainV7DossierInput = {
   medications: readonly Medicamento[];
   acquisitions: readonly Renovacao[];
   rationales: readonly BrainV7Rationale[];
+  regulatoryDescriptions?: Readonly<Record<string,string>>;
 };
 export function prepareBrainV7Dossier(input: BrainV7DossierInput): string {
   const r=input.report;
@@ -40,6 +41,8 @@ export function prepareBrainV7Dossier(input: BrainV7DossierInput): string {
   for(const m of active.slice(0,24)){
     const activeManufacturer=manufacturer.get(m.id!)||'não documentado na última aquisição identificada';
     lines.push(`• ${m.nome} ${m.dosagem||''} | tipo: ${m.tipo_uso||'não informado'} | último fabricante identificado: ${activeManufacturer}`.slice(0,220));
+    const descriptive=input.regulatoryDescriptions?.[m.id!];
+    if(descriptive)lines.push('  '+descriptive.slice(0,350));
   }
   if(active.length>24)lines.push(`• Mais ${active.length-24} medicamento(s) cadastrados; conferir no aplicativo.`);
   lines.push('','ESTABILIDADE DE BASE (medicamentos marcados voluntariamente)');

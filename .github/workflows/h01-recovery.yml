@@ -1,7 +1,7 @@
 name: VAULT H01 — geometria real de Medicamentos
 on:
   push:
-    branches: [main, guardian/stability-residual-closure-20261128]
+    branches: [main, guardian/stability-residual-closure-20261128, guardian/h01-definitiva-integral-20261128]
     paths:
       - 'app/saude/medicamentos/page.tsx'
       - 'app/globals.css'
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   geometry:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/guardian/stability-residual-closure-20261128'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/guardian/stability-residual-closure-20261128' || github.ref == 'refs/heads/guardian/h01-definitiva-integral-20261128'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -74,14 +74,31 @@ jobs:
         if: ${{ !cancelled() && (steps.baseline.outcome == 'success' || steps.baseline.outcome == 'failure') }}
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           E="$RUNNER_TEMP/h01-evidence/after"
-          npm ci --no-audit --no-fund 2>&1 | tee "$E/npm.log"
-          node scripts/test-vault-m136-visual-navigation.cjs 2>&1 | tee "$E/m136.log"
-          node scripts/test-vault-stability-h01-h04.cjs 2>&1 | tee "$E/directed.log"
-          npm run build 2>&1 | tee "$E/build.log"
-          node scripts/verify-static-release-stability.cjs web 2>&1 | tee "$E/static.log"
-          "$RUNNER_TEMP/h01-browser/bin/python" scripts/h01-recovery/qa_h01_recovery.py --phase after --out out --evidence "$E" --sha "$GITHUB_SHA" --baseline "$RUNNER_TEMP/h01-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-evidence/day.txt")" 2>&1 | tee "$E/chromium.log"
+          status=0
+          run_gate() {
+            local name="$1"; shift
+            "$@" 2>&1 | tee "$E/$name.log"
+            local rc=$?
+            printf '%s\t%s\n' "$name" "$rc" >> "$E/status.tsv"
+            if [ "$rc" != 0 ]; then status=1; fi
+            return "$rc"
+          }
+          if run_gate npm npm ci --no-audit --no-fund; then
+            run_gate m136 node scripts/test-vault-m136-visual-navigation.cjs || :
+            run_gate directed node scripts/test-vault-stability-h01-h04.cjs || :
+            if run_gate build npm run build; then
+              run_gate static node scripts/verify-static-release-stability.cjs web || :
+              run_gate chromium "$RUNNER_TEMP/h01-browser/bin/python" scripts/h01-recovery/qa_h01_recovery.py --phase after --out out --evidence "$E" --sha "$GITHUB_SHA" --baseline "$RUNNER_TEMP/h01-evidence/before/measurements.json" --day "$(cat "$RUNNER_TEMP/h01-evidence/day.txt")" || :
+            else
+              printf 'static\tNOT_RUN_BUILD_FAILED\nchromium\tNOT_RUN_BUILD_FAILED\n' >> "$E/status.tsv"
+            fi
+          else
+            printf 'm136\tNOT_RUN_DEPENDENCIES_FAILED\ndirected\tNOT_RUN_DEPENDENCIES_FAILED\nbuild\tNOT_RUN_DEPENDENCIES_FAILED\nstatic\tNOT_RUN_DEPENDENCIES_FAILED\nchromium\tNOT_RUN_DEPENDENCIES_FAILED\n' >> "$E/status.tsv"
+          fi
+          cat "$E/status.tsv"
+          exit "$status"
       - name: Preserve visual proof, including failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -92,7 +109,7 @@ jobs:
           retention-days: 30
   guardian-full-gate:
     # This additional gate is isolated to the candidate branch, never a release/promotion.
-    if: github.ref == 'refs/heads/guardian/stability-residual-closure-20261128'
+    if: github.ref == 'refs/heads/guardian/h01-definitiva-integral-20261128'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -113,10 +130,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor 1c1094d1b1cfe79303850fbb7f7de5841da71408 HEAD
-          git diff --check 1c1094d1b1cfe79303850fbb7f7de5841da71408 HEAD
-          actual="$(git diff --name-only 1c1094d1b1cfe79303850fbb7f7de5841da71408 HEAD | sort)"
-          expected="$(printf '%s\n' '.github/workflows/h01-recovery.yml' 'scripts/h01-recovery/qa_h01_recovery.py' 'scripts/test-vault-m64-premium-performance.cjs' 'app/saude/medicamentos/page.tsx' | sort)"
+          git merge-base --is-ancestor 49c3aabde83bf0b2480a84bb5e967922e41975f2 HEAD
+          git diff --check 49c3aabde83bf0b2480a84bb5e967922e41975f2 HEAD
+          actual="$(git diff --name-only 49c3aabde83bf0b2480a84bb5e967922e41975f2 HEAD | sort)"
+          expected="$(printf '%s\n' '.github/workflows/h01-recovery.yml' 'app/globals.css' 'app/saude/careflow/modo-medico/page.tsx' 'app/saude/medicamentos/page.tsx' 'components/saude/BrainV7UniversalConsole.tsx' 'components/saude/MedicationOperationalStrip.tsx' 'hooks/useMedicationRegulatoryProfiles.ts' 'lib/health-intelligence/brain-v7-dossier.ts' 'lib/health-intelligence/pharmalens-reconciliation-p6.ts' 'lib/m3/medical-dossier-p3.ts' 'lib/medication-regulatory-visual.ts' 'lib/medications/regulatory-copy-ux360.ts' 'scripts/h01-recovery/qa_h01_recovery.py' 'scripts/test-vault-brain-v7-universal.cjs' 'scripts/test-vault-ci360-m3-p3.cjs' 'scripts/test-vault-ci360-p6-p5-macro2.cjs' 'scripts/test-vault-m64-premium-performance.cjs' | sort)"
+          test "$(git rev-parse 49c3aabde83bf0b2480a84bb5e967922e41975f2^{tree})" = 22e224eae88d5dba466c96b7df4abd2d956aa6cb
           test "$actual" = "$expected"
           git rev-parse HEAD HEAD^{tree}
       - run: npm ci --no-audit --no-fund
@@ -126,15 +144,22 @@ jobs:
           set -uo pipefail
           mkdir -p guardian-gate-evidence
           status=0
-          node scripts/test-vault-m64-premium-performance.cjs 2>&1 | tee guardian-gate-evidence/m64.log || status=1
-          node scripts/test-vault-residual-consumers.cjs 2>&1 | tee guardian-gate-evidence/residual.log || status=1
-          if ! node scripts/test-v63-release-gate.mjs 2>&1 | tee guardian-gate-evidence/v63.log; then
-            status=1
-            # On failure collect both V70 diagnoses independently; on success V63 already ran both.
-            node scripts/test-v70-super-integrity-ux-contract.mjs 2>&1 | tee guardian-gate-evidence/v70-super.log || status=1
-            node scripts/test-v70-final-completeness-contract.mjs 2>&1 | tee guardian-gate-evidence/v70-final.log || status=1
-          fi
-          node node_modules/typescript/bin/tsc --noEmit 2>&1 | tee guardian-gate-evidence/typescript.log || status=1
+          run_gate() {
+            local name="$1"; shift
+            "$@" 2>&1 | tee "guardian-gate-evidence/$name.log"
+            local rc=$?
+            printf '%s\t%s\n' "$name" "$rc" >> guardian-gate-evidence/status.tsv
+            if [ "$rc" != 0 ]; then status=1; fi
+          }
+          run_gate m64 node scripts/test-vault-m64-premium-performance.cjs
+          run_gate m136 node scripts/test-vault-m136-visual-navigation.cjs
+          run_gate residual node scripts/test-vault-residual-consumers.cjs
+          run_gate v63 node scripts/test-v63-release-gate.mjs
+          run_gate v70-super node scripts/test-v70-super-integrity-ux-contract.mjs
+          run_gate v70-final node scripts/test-v70-final-completeness-contract.mjs
+          run_gate typescript node node_modules/typescript/bin/tsc --noEmit
+          run_gate directed node scripts/test-vault-stability-h01-h04.cjs
+          cat guardian-gate-evidence/status.tsv
           exit "$status"
       - name: Preserve gate evidence, including failures
         if: always()

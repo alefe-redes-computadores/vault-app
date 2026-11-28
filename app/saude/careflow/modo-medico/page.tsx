@@ -1,4 +1,6 @@
 'use client';
+import {useMedicationCatalogProfiles} from '@/hooks/useMedicationRegulatoryProfiles';
+import {medicationRegulatoryKnowledgeText} from '@/lib/medications/regulatory-copy-ux360';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
@@ -135,6 +137,10 @@ export default function MedicalModeP3Page(){
   },[scopeKey,user?.id,activePersonId,health.context,consultations,start]);
   const person=persons.find(p=>p.id===activePersonId);
   const ready=Boolean(user?.id&&activePersonId&&a10?.scope===scopeKey&&a10.verified&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&a4Phases?.scope===scopeKey&&surgical?.scope===scopeKey&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey)&&(!sections.includes('vaccinations')||vaccination?.scope===scopeKey)&&(!sections.some(s=>s==='procedures_a9'||s==='sensitivities_a9')||a9?.scope===scopeKey));
+  const regulatoryMeds=useMemo(()=>health.context?.userId===user?.id&&health.context?.personId===activePersonId
+    ? health.context.medicamentos.filter(m=>m.user_id===user?.id&&m.person_id===activePersonId) : [],[health.context,user?.id,activePersonId]);
+  const {regulatoryProfiles:medicalRegulatory}=useMedicationCatalogProfiles(regulatoryMeds,false);
+  const regulatoryDescriptions=useMemo(()=>Object.fromEntries(regulatoryMeds.filter(m=>m.id).map(m=>[m.id!,medicationRegulatoryKnowledgeText(medicalRegulatory[m.id!],m.tipo_receita)])),[regulatoryMeds,medicalRegulatory]);
   const a4Facts=useMemo(()=>user?.id&&activePersonId&&health.context&&a4Phases?.scope===scopeKey?
     projectA4ClinicalFacts({userId:user.id,personId:activePersonId,phases:a4Phases.rows,
       treatments:health.context.tratamentos,medications:health.context.medicamentos,from:start,through:end,max:2000}):[],
@@ -143,20 +149,20 @@ export default function MedicalModeP3Page(){
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:''};
     try{
       if(sections.includes('vital')&&!episode&&(!vitalEvidence.data||vitalEvidence.scope?.user_id!==user.id||vitalEvidence.scope?.person_id!==activePersonId))throw Error('Aguarde registros Vital ou desmarque a seção.');
-      return {report:buildMedicalDossierP3({vitalEvidence:vitalEvidence.data??undefined,context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
+      return {report:buildMedicalDossierP3({regulatoryDescriptions,vitalEvidence:vitalEvidence.data??undefined,context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
         surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,longitudinalA10:a10Facts,hospitalizationLinksA10:a10?.scope===scopeKey?a10.data.hospitalization_relations_a5:undefined,
         ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined}),error:''};
     }catch(error){return {report:null,error:error instanceof Error?error.message:'Não foi possível preparar esta prévia.'};}
-  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts,vitalEvidence.data,vitalEvidence.scope]);
+  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts,vitalEvidence.data,vitalEvidence.scope,regulatoryDescriptions]);
   const normalized=q.trim().toLocaleLowerCase('pt-BR');
   // Busca percorre a projeção detalhada completa, mas não altera o PDF.
   const searchReport=useMemo(()=>{
     if(!normalized||!ready||!user?.id||!activePersonId||!health.context)return prepared.report;
-    try{return buildMedicalDossierP3({vitalEvidence:vitalEvidence.data??undefined,context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
+    try{return buildMedicalDossierP3({regulatoryDescriptions,vitalEvidence:vitalEvidence.data??undefined,context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
         surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,clinicalA9:a9?.scope===scopeKey?a9:undefined,longitudinalA10:a10Facts,hospitalizationLinksA10:a10?.scope===scopeKey?a10.data.hospitalization_relations_a5:undefined,
       ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined});}
     catch{return prepared.report;}
-  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts,vitalEvidence.data,vitalEvidence.scope]);
+  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination,a9,a10Facts,vitalEvidence.data,vitalEvidence.scope,regulatoryDescriptions]);
   const filtered=useMemo(()=>searchReport?.rows.filter(r=>
     (focusSection==='all'||r.section===focusSection)&&
     (!normalized||[r.title,r.detail,r.source,...r.relations].join(' ').toLocaleLowerCase('pt-BR').includes(normalized)))||[],

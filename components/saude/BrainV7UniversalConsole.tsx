@@ -11,6 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActivePersonId } from '@/hooks/useActivePersonId';
 import { useLocalDay } from '@/hooks/useLocalDay';
 import type { Medicamento } from '@/lib/types';
+import { useMedicationCatalogProfiles } from '@/hooks/useMedicationRegulatoryProfiles';
+import { medicationRegulatoryKnowledgeText } from '@/lib/medications/regulatory-copy-ux360';
 import { projectBrainUniversalV7, shiftBrainDayV7 } from '@/lib/health-intelligence/brain-v7-universal';
 import { prepareBrainV7Dossier, type BrainV7Rationale } from '@/lib/health-intelligence/brain-v7-dossier';
 import { buildBrainClinicalReviewP6, brainClinicalReturnBriefP6 } from '@/lib/health-intelligence/brain-clinical-review-p6';
@@ -94,6 +96,8 @@ export function BrainV7UniversalConsole() {
   const snapshot=data?.scope===scope?data:null;
   const ready=Boolean(uid&&pid&&loadedScope===scope&&snapshot&&!snapshot.error&&a4Ledger?.scope===scope);
   const medicines=useMemo(()=>(ready&&snapshot?snapshot.medications:[]).filter((m):m is Medicamento & {id:string}=>Boolean(m.id&&m.user_id===uid&&m.person_id===pid)),[snapshot,ready,uid,pid]);
+  const {regulatoryProfiles:brainRegulatory}=useMedicationCatalogProfiles(medicines,false);
+  const regulatoryDescriptions=useMemo(()=>Object.fromEntries(medicines.map(m=>[m.id,medicationRegulatoryKnowledgeText(brainRegulatory[m.id],m.tipo_receita)])),[medicines,brainRegulatory]);
   const a4Facts=useMemo(()=>ready&&a4Ledger?.scope===scope?
     projectA4ClinicalFacts({userId:uid,personId:pid,phases:a4Ledger.phases,treatments:a4Ledger.treatments,medications:medicines,max:30}):[],
     [ready,a4Ledger,scope,uid,pid,medicines]);
@@ -108,10 +112,10 @@ export function BrainV7UniversalConsole() {
     records:snapshot.records,doseLogs:snapshot.doseLogs,
   }):null,[ready,snapshot,uid,pid,today,nowISO,medicines]);
   const dossier=useMemo(()=>report&&snapshot?[prepareBrainV7Dossier({report,userId:uid,personId:pid,medications:medicines,
-    acquisitions:snapshot.acquisitions,rationales:includedNotes}),
+    acquisitions:snapshot.acquisitions,rationales:includedNotes,regulatoryDescriptions}),
     clinicalReviewP6?brainClinicalReturnBriefP6(clinicalReviewP6):'',
     formatA4ClinicalDossier(a4Facts,12)].filter(Boolean).join('\n\n'):'',
-    [report,snapshot,uid,pid,medicines,includedNotes,clinicalReviewP6,a4Facts]);
+    [report,snapshot,uid,pid,medicines,includedNotes,clinicalReviewP6,a4Facts,regulatoryDescriptions]);
   function saveSettings(nextAnchors: string[], nextNotes: BrainV7Rationale[]) {
     try {localStorage.setItem(storageKey,JSON.stringify({anchors:nextAnchors.slice(0,5),rationales:nextNotes.slice(-30)}));return true;}
     catch {setStatus('Não foi possível gravar no dispositivo. Verifique o armazenamento local.');return false;}

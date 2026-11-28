@@ -1021,7 +1021,7 @@ export default function MedicamentosListPage() {
       // MED-04: a verified catalogue class wins over a documentary fallback.
       // The Detalhes page already consumes regulatoryProfiles from this same hook.
       const regulatoryCopy=regulatoryCopyUX360(regulatoryProfile,catalogIdentity?.regulatoryNeedsReview===true,reconciliationP6,catalogIdentity?.authorityState);
-      const prescriptionIdentityP6 = regulatoryCopy.review ? regulatoryCopy.rail : regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
+      const prescriptionIdentityP6 = regulatoryCopy.review ? regulatoryCopy.listRail : regulatoryListLabelMED04(regulatoryProfile, reconciliationP6, catalogIdentity?.regulatoryNeedsReview === true);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
       const activeIngredients = medicationIngredientDisplayResidual(catalogIdentity, medicationKnowledge360.facts);
@@ -1043,7 +1043,7 @@ export default function MedicamentosListPage() {
         regulatoryCopy.listRailColor ?? regulatorySurface.rail;
       const personalAccent = medicationPersonalAccent(med);
 
-      const regulatoryMeaning = `${regulatoryCopy.label}${regulatoryCopy.official && regulatoryProfile?.detail ? `: ${regulatoryProfile.detail}` : ""}${regulatoryCopy.source ? ` · Fonte: ${regulatoryCopy.source}.` : ""}${regulatoryCopy.cardDeclaration ? ` · ${regulatoryCopy.cardDeclaration}.` : ""}${regulatoryCopy.declarationConflict ? " · Cadastro diverge da referência." : ""}${!regulatoryCopy.official && regulatoryCopy.declared ? ` · Cor da tarja: cadastro (${regulatoryCopy.declared}); não representa confirmação oficial.` : ""} · ${regulatoryCopy.document}.`;
+      const regulatoryMeaning = `${regulatoryCopy.label}${regulatoryCopy.official && regulatoryProfile?.detail ? `: ${regulatoryProfile.detail}` : ""}${regulatoryCopy.source ? ` · Fonte: ${regulatoryCopy.source}.` : ""}${regulatoryCopy.cardDeclaration ? ` · ${regulatoryCopy.cardDeclaration}.` : ""}${regulatoryCopy.declarationConflict ? " · Cadastro diverge da referência." : ""}${!regulatoryCopy.official && regulatoryCopy.declared ? ` · Cor da tarja: cadastro (${regulatoryCopy.declared}); não representa confirmação oficial.` : ""}${regulatoryCopy.listRailOrigin === "catalog-review" ? " · Cor da tarja: referência do catálogo em conferência; não representa confirmação oficial." : ""}${regulatoryCopy.listRailOrigin === "catalog-identity" ? " · Identidade farmacêutica conhecida; classe não comprovada." : ""}${regulatoryCopy.catalogClass && !regulatoryCopy.official ? " · Referência do catálogo: "+regulatoryCopy.catalogClass.label+" · "+regulatoryCopy.catalogClass.sourceLabel+"; conferir aplicabilidade." : ""} · ${regulatoryCopy.document}.`;
 
       const rotinaParcial =
         !isSOS &&
@@ -1463,7 +1463,7 @@ export default function MedicamentosListPage() {
           showChevron={false}
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="label"
-          rail={(regulatoryProfile || receita) ? (
+          rail={(regulatoryProfile || receita) || regulatoryCopy.listRailOrigin === "unknown" || regulatoryCopy.listRailOrigin === "declared" ? (
             <button
               type="button"
               title={regulatoryMeaning}
@@ -1517,7 +1517,7 @@ export default function MedicamentosListPage() {
                       {medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)}
                     </span>
                     {med.dosagem && <span title={med.dosagem} className="min-w-0 max-w-full break-words text-[11px] font-medium leading-snug text-ink-secondary">{med.dosagem}</span>}
-                    <ChevronRight size={14} className="shrink-0 text-ink-faint" aria-hidden="true"/>
+                    <ChevronRight size={14} className="shrink-0 text-ink-faint" data-vault-h01-identity-chevron aria-hidden="true"/>
                     </span>
                     {(showActiveIngredient || manufacturerH01) && <span data-vault-h01-identity-meta className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[11px] leading-tight" : "text-xs leading-snug"}`}>
                       {showActiveIngredient && <span data-vault-r5-active-ingredient className={compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
@@ -1578,8 +1578,8 @@ export default function MedicamentosListPage() {
               </div>}
               </div>
                 <div data-vault-h01-regulatory className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
-                  <span data-vault-ux360-regulatory-label title={regulatoryMeaning} className={(regulatoryProfile || receita) && !regulatoryCopy.review && (!regulatoryCopy.official || prescriptionIdentityP6 !== "REG. OFICIAL") ? "sr-only" : "text-[11px] font-semibold leading-snug text-ink-secondary"}>{compactCards && (regulatoryProfile || receita) && !regulatoryCopy.official ? (regulatoryCopy.review ? "Em revisão" : "Sem confirmação oficial") : `${regulatoryCopy.label}${regulatoryCopy.official?" · fonte oficial":""}`}</span>
-                  {regulatoryCopy.cardDeclaration && !prescriptionReview360 && (regulatoryCopy.review || regulatoryCopy.official || regulatoryCopy.declarationConflict || !(regulatoryProfile || receita)) && <button type="button" data-vault-h01-declaration onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}} className={`pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1 text-left text-[11px] leading-snug ${regulatoryCopy.declarationConflict?"text-amber-200":"text-ink-secondary"}`} title={regulatoryCopy.cardDeclaration}>{compactCards && !regulatoryCopy.official && !regulatoryCopy.declarationConflict && regulatoryCopy.declared && (regulatoryProfile || receita) ? `Cadastro: ${regulatoryCopy.declared}` : regulatoryCopy.cardDeclaration}</button>}
+                  <span data-vault-ux360-regulatory-label title={regulatoryMeaning} className="sr-only">{compactCards && (regulatoryProfile || receita) && !regulatoryCopy.official ? (regulatoryCopy.review ? "Em revisão" : "Sem confirmação oficial") : `${regulatoryCopy.label}${regulatoryCopy.official?" · fonte oficial":""}`}</span>
+                  {regulatoryCopy.cardDeclaration && !prescriptionReview360 && regulatoryCopy.declarationConflict && <button type="button" data-vault-h01-declaration onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("receita");}} className={`pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1 text-left text-[11px] leading-snug ${regulatoryCopy.declarationConflict?"text-amber-200":"text-ink-secondary"}`} title={regulatoryCopy.cardDeclaration}>{compactCards && !regulatoryCopy.official && !regulatoryCopy.declarationConflict && regulatoryCopy.declared && (regulatoryProfile || receita) ? `Cadastro: ${regulatoryCopy.declared}` : regulatoryCopy.cardDeclaration}</button>}
                   {!compactCards && med.data_receita && <span data-vault-v34x-receita-cadastro title={`Receita informada no cadastro · ${med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}`} className="flex max-w-full items-start gap-1 break-words text-[10px] leading-snug text-sky-200"><FileCheck2 size={12} className="mt-0.5 shrink-0" aria-hidden="true"/>Receita informada · {med.data_receita.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1')}</span>}
                 </div>
               </div>

@@ -85,10 +85,10 @@ function findRegulatoryInitializers(node) {
 }
 findRegulatoryInitializers(listAst);
 check(regulatoryInitializers.size === 4, 'quatro expressões reais de projeção regulatória');
-function runRegulatoryCase({declaredType, code, linked=false, review=false, identity='confirmed', malformed=false, foreign=false}) {
+function runRegulatoryCase({declaredType, code, linked=false, review=false, identity=code?'confirmed':'unvalidated', malformed=false, foreign=false}) {
  const source='ANVISA — referência sintética M64';
  const types={receita_comum:'comum',receita_controle_especial:'branca',notificacao_a:'amarela',notificacao_b:'azul',notificacao_b2:'azul'};
- const rule={prescriptionModelCode:code,vaultPrescriptionType:types[code],sources:[{label:source}],hasMalformedExceptions:malformed};
+ const rule={prescriptionModelCode:code,vaultPrescriptionType:types[code],sources:[{label:source,authority:'anvisa'}],hasMalformedExceptions:malformed};
  const reference={regulatoryIdentity:{referenceType:'product'},regulatoryRules:code?[rule]:[]};
  const med={id:'med-a',user_id:'owner-a',person_id:'person-a',tipo_receita:declaredType,
    ...(linked?{document_id:'doc-a'}:{}),catalog_snapshot:{match_kind:'exact',reference}};
@@ -106,7 +106,7 @@ function runRegulatoryCase({declaredType, code, linked=false, review=false, iden
  check(context.regulatoryCopy.validity==='Vínculo documental não comprova validade atual.','vínculo não comprova validade');
  return {copy:context.regulatoryCopy,color:context.regulatoryBorderColor,meaning:context.regulatoryMeaning,source,profile:regulatoryProfile};
 }
-const declaredMatrix=[['comum','#94a3b8','Cad. comum'],['branca','#cbd5e1','Cad. especial'],['azul','#60a5fa','Cad. azul'],['amarela','#facc15','Cad. amarela'],[null,'#64748b','REG. PENDENTE']];
+const declaredMatrix=[['comum','#94a3b8','Comum · cad.'],['branca','#cbd5e1','Especial · cad.'],['azul','#60a5fa','Azul · cad.'],['amarela','#facc15','Amarela · cad.'],[null,'#64748b','REG. REVISÃO']];
 for(const [declaredType,color,label] of declaredMatrix) for(const linked of [false,true]) {
  const registered=runRegulatoryCase({declaredType,linked});
  check(registered.color===color && registered.copy.listRail===label && !registered.copy.official && registered.copy.rail==='REG. PENDENTE',`cadastro/ausência ${declaredType}: cor, legenda e autoridade independentes`);
@@ -114,10 +114,14 @@ for(const [declaredType,color,label] of declaredMatrix) for(const linked of [fal
  else check(!registered.meaning.includes('Cor da tarja: cadastro'),'não inventa classificação ausente');
  for(const state of [{review:true},{identity:'possible_divergence'},{code:'notificacao_b',review:true},{code:'notificacao_b',malformed:true,review:true}]) {
   const disputed=runRegulatoryCase({declaredType,linked,...state});
-  check(disputed.color===color && disputed.copy.review && !disputed.copy.official && disputed.copy.listRail==='REG. REVISÃO',`revisão ${declaredType}: pigmento declarado sem promover a autoridade`);
+  const catalogOnly=!declaredType&&state.code==='notificacao_b'&&!state.malformed;
+  const knownWithoutClass=!declaredType&&state.code==='notificacao_b'&&state.malformed;
+  check(disputed.color===(catalogOnly?'#3b82f6':color) && disputed.copy.review && !disputed.copy.official && disputed.copy.rail==='REG. REVISÃO' && disputed.copy.listRail===(catalogOnly?'Azul B · cat.':knownWithoutClass?'Cat. · s/ classe':label),'revisão mantém conhecimento independente sem promover autoridade');
+  check(disputed.copy.listRailOrigin===(declaredType?'declared':catalogOnly?'catalog-review':knownWithoutClass?'catalog-identity':'unknown'),'origem real da identidade visual em revisão');
+  if(catalogOnly)check(disputed.meaning.includes('referência do catálogo em conferência')&&disputed.meaning.includes('não representa confirmação oficial'),'catálogo em conferência não vira confirmação');
  }
 }
-const officialMatrix=[['receita_comum','comum','#94a3b8','Comum'],['receita_controle_especial','branca','#cbd5e1','Especial'],['notificacao_b','azul','#3b82f6','Notif. B'],['notificacao_b2','azul','#3b82f6','Notif. B2'],['notificacao_a','amarela','#eab308','Notif. A']];
+const officialMatrix=[['receita_comum','comum','#94a3b8','Comum'],['receita_controle_especial','branca','#cbd5e1','Especial'],['notificacao_b','azul','#3b82f6','Azul B'],['notificacao_b2','azul','#3b82f6','Azul B2'],['notificacao_a','amarela','#eab308','Amarela']];
 for(const [code,matching,color,label] of officialMatrix) for(const linked of [false,true]) {
  for(const declaredType of [matching,matching==='azul'?'amarela':'azul',null]) {
   const current=runRegulatoryCase({declaredType,code,linked});
@@ -132,6 +136,18 @@ for(const code of ['notificacao_retinoides','notificacao_talidomida']) for(const
  const special=runRegulatoryCase({declaredType:null,code,linked});
  check(special.color==='#fb7185' && special.copy.official && special.copy.listRail==='Especial' && special.copy.source===special.source,'notificação especial: cor oficial vermelha e fonte preservadas');
 }
+// H01 GOLD: no medication name branches; test the real resolver across class and evidence axes.
+for(const [code,matching,color,label] of officialMatrix) {
+ const partial=runRegulatoryCase({code,review:true,identity:'compatible'});
+ check(!partial.copy.official && partial.copy.listRail===label+' · cat.' && partial.copy.listRailOrigin==='catalog-review' && partial.profile.classEvidence?.modelCode===code,'class independent of presentation: '+code);
+ const divergent=runRegulatoryCase({code,review:true,identity:'possible_divergence'});
+ check(!divergent.copy.official && divergent.copy.listRailOrigin==='unknown' && divergent.copy.listRail==='REG. REVISÃO','divergent match cannot assert another product class: '+code);
+ const recorded=runRegulatoryCase({code,declaredType:matching,review:true,identity:'compatible'});
+ check(!recorded.copy.official && recorded.copy.listRailOrigin==='declared' && recorded.copy.catalogClass?.modelCode===code,'declared and catalog facts coexist: '+code);
+}
+const identityOnly=regulatoryPresentation.regulatoryCopyUX360({verified:false,label:'Classificação não confirmada',referenceIdentity:'compatible',identifiedIngredients:['Substância sintética QA']},false,{});
+check(identityOnly.listRail==='Cat. · s/ classe' && !identityOnly.official,'known substance without class does not claim official prescription');
+check(regulatoryPresentation.medicationRegulatoryKnowledgeText({verified:false,label:'Classificação não confirmada',referenceIdentity:'compatible',identifiedIngredients:['Substância sintética QA']}).includes('Princípio ativo: Substância sintética QA'),'shared descriptive text preserves ingredient without fabricated class');
 const foreignLink=runRegulatoryCase({declaredType:'azul',linked:true,foreign:true});
 check(foreignLink.color==='#60a5fa' && !foreignLink.copy.official,'documento de outra conta não promove autoridade nem altera pigmento');
 // A parent live-query render must not restart a drawer session (390px incident).

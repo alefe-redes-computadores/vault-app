@@ -40,6 +40,12 @@ const byName=rec.reconcileMedicationP6({medication:m,documents:[wrong],renewals:
 assert.equal(byName.directDocumentCount,0,'Mesmo título não faz vínculo');
 const wrongScope=rec.reconcileMedicationP6({medication:m,documents:[doc],renewals:[event],userId:'u1',personId:'p2'});
 assert.equal(wrongScope.directDocumentCount,0,'Pessoa divergente não recebe dados');
+const classEvidenceFixture={label:'Notificação A',modelCode:'notificacao_a',sourceLabel:'ANVISA',scope:'substance',railColor:'#facc15'};
+const partialKnowledge=rec.reconcileMedicationP6({medication:m,documents:[],renewals:[],userId:'u1',personId:'p1',regulatory:{verified:false,label:'Em conferência',classEvidence:classEvidenceFixture,referenceIdentity:'compatible',reviewReasons:['presentation-review']}});
+assert.ok(partialKnowledge.records.some(x=>x.kind==='review'&&x.note.includes('Notificação A')&&x.note.includes('ANVISA')),'PharmaLens retains independently evidenced class');
+assert.ok(partialKnowledge.needsReview&&partialKnowledge.regulatoryStatus!=='official_exact','Class evidence cannot confer exact product or personal validity');
+const divergentKnowledge=rec.reconcileMedicationP6({medication:m,documents:[],renewals:[],userId:'u1',personId:'p1',regulatory:{verified:true,label:'Notificação A',classEvidence:classEvidenceFixture,referenceIdentity:'possible_divergence',reviewReasons:['identity-divergence']}});
+assert.ok(!divergentKnowledge.records.some(x=>x.kind==='official'||x.id.startsWith('catalog-review:')),'Divergence must not attach another substance class');
 const official=rec.reconcileMedicationP6({medication:m,documents:[doc],renewals:[],userId:'u1',personId:'p1',regulatory:{verified:true,label:'Notificação B'}});
 assert.equal(official.regulatoryStatus,'official_exact');
 assert.equal(rec.medicationListEvidenceLabelP6(official,{verified:true}),null,'Trilho oficial preservado');
@@ -74,32 +80,33 @@ function extractP6R4(source,name,kind){const ast=ts.createSourceFile('source.tsx
 const visualR4=fs.readFileSync(path.join(ROOT,'lib/medication-regulatory-visual.ts'),'utf8');
 const sandboxR4={exports:{},medicationListEvidenceLabelP6:rec.medicationListEvidenceLabelP6};
 vm.runInNewContext(extractP6R4(visualR4,'medicationRegulatoryShortLabel',ts.ScriptKind.TS)+'\nthis.medicationRegulatoryShortLabel=medicationRegulatoryShortLabel;',sandboxR4,{timeout:1000});
+vm.runInNewContext(extractP6R4(visualR4,'medicationRegulatoryListIdentity',ts.ScriptKind.TS)+'\nthis.medicationRegulatoryListIdentity=medicationRegulatoryListIdentity;',sandboxR4,{timeout:1000});
 const copySourceR4=fs.readFileSync(path.join(ROOT,'lib/medications/regulatory-copy-ux360.ts'),'utf8');
 const copyModuleR4={exports:{}};
-const copySandboxR4={exports:copyModuleR4.exports,module:copyModuleR4,require:id=>{assert.equal(id,'../medication-regulatory-visual');return {medicationRegulatoryShortLabel:sandboxR4.medicationRegulatoryShortLabel};}};
+const copySandboxR4={exports:copyModuleR4.exports,module:copyModuleR4,require:id=>{assert.equal(id,'../medication-regulatory-visual');return {medicationRegulatoryShortLabel:sandboxR4.medicationRegulatoryShortLabel,medicationRegulatoryListIdentity:sandboxR4.medicationRegulatoryListIdentity};}};
 vm.runInNewContext(ts.transpileModule(copySourceR4,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,copySandboxR4,{timeout:1000});
 sandboxR4.regulatoryCopyUX360=copyModuleR4.exports.regulatoryCopyUX360;
 vm.runInNewContext(extractP6R4(list,'regulatoryListLabelMED04',ts.ScriptKind.TSX)+'\nthis.label=regulatoryListLabelMED04;',sandboxR4,{timeout:1000});
 const documentEvidenceR4={hasDocumentEvidence:true,declaredType:'azul'};
-for(const [full,short] of [['Controle especial','Especial'],['Notificação A','Notif. A'],['Notificação B','Notif. B'],['Notificação B2','Notif. B2'],['Receita comum','Comum']])assert.equal(sandboxR4.label({verified:true,label:full},documentEvidenceR4,false),short,'oficial prevalece sobre documento pessoal');
-assert.equal(sandboxR4.label({verified:false,label:'Receita informada'},documentEvidenceR4,false),'Cad. azul','cadastro declarado, não documento nem fonte oficial');
+for(const [full,short] of [['Controle especial','Especial'],['Notificação A','Amarela'],['Notificação B','Azul B'],['Notificação B2','Azul B2'],['Receita comum','Comum']])assert.equal(sandboxR4.label({verified:true,label:full},documentEvidenceR4,false),short,'oficial prevalece sobre documento pessoal');
+assert.equal(sandboxR4.label({verified:false,label:'Receita informada'},documentEvidenceR4,false),'Azul · cad.','cadastro declarado, não documento nem fonte oficial');
 const linkedR4=sandboxR4.regulatoryCopyUX360({verified:false,label:'Receita informada'},false,documentEvidenceR4);assert.equal(linkedR4.official,false);assert.equal(linkedR4.declared,'Notificação azul');assert.match(linkedR4.document,/vinculado/);assert.match(linkedR4.validity,/não comprova/);
-assert.equal(sandboxR4.label(null,{hasDocumentEvidence:false,declaredType:'azul'},false),'Cad. azul');
+assert.equal(sandboxR4.label(null,{hasDocumentEvidence:false,declaredType:'azul'},false),'Azul · cad.');
 assert.equal(sandboxR4.regulatoryCopyUX360(null,false,{hasDocumentEvidence:false,declaredType:'azul'}).declared,'Notificação azul');
-assert.equal(sandboxR4.label(null,{hasDocumentEvidence:false,declaredType:null},false),'REG. PENDENTE');
-assert.equal(sandboxR4.label({verified:true,label:'Notificação A'},documentEvidenceR4,true),'REG. REVISÃO','divergência não afirma classe');
+assert.equal(sandboxR4.label(null,{hasDocumentEvidence:false,declaredType:null},false),'REG. REVISÃO');
+assert.equal(sandboxR4.label({verified:true,label:'Notificação A'},documentEvidenceR4,true),'Azul · cad.','declaração não afirma classe oficial em revisão');
 assert.equal(sandboxR4.regulatoryCopyUX360({verified:true,label:'Notificação A'},false,documentEvidenceR4,'possible_divergence').official,false);
 assert.equal(sandboxR4.regulatoryCopyUX360({verified:true,label:'Classificação em revisão'},false,documentEvidenceR4).rail,'REG. REVISÃO');
 // GUARDIAN residual: independently vary documentary evidence, registered type and authority.
-for(const [declaredType,expected] of [['comum','Cad. comum'],['branca','Cad. especial'],['azul','Cad. azul'],['amarela','Cad. amarela'],[null,'REG. PENDENTE'],['invalid','REG. PENDENTE']]){
+for(const [declaredType,expected] of [['comum','Comum · cad.'],['branca','Especial · cad.'],['azul','Azul · cad.'],['amarela','Amarela · cad.'],[null,'REG. REVISÃO'],['invalid','REG. REVISÃO']]){
  for(const hasDocumentEvidence of [false,true]){
   const summary={declaredType,hasDocumentEvidence};
   const a=sandboxR4.regulatoryCopyUX360(null,false,summary);
   assert.equal(a.official,false);assert.equal(a.rail,'REG. PENDENTE');
   assert.equal(sandboxR4.label(null,summary,false),expected);
   assert.equal(a.listRail,expected);
-  assert.equal(sandboxR4.label(null,summary,true),'REG. REVISÃO');
-  assert.equal(sandboxR4.regulatoryCopyUX360(null,false,summary,'possible_divergence').listRail,'REG. REVISÃO');
+  assert.equal(sandboxR4.label(null,summary,true),expected);
+  assert.equal(sandboxR4.regulatoryCopyUX360(null,false,summary,'possible_divergence').listRail,expected);
   assert.match(a.validity,/não comprova/);
  }
 }
@@ -111,13 +118,24 @@ for(const [declaredType,color] of [['comum','#94a3b8'],['branca','#cbd5e1'],['az
   const summary={declaredType,hasDocumentEvidence};
   const pending=sandboxR4.regulatoryCopyUX360({verified:false,label:'Receita informada'},review,summary,identity);
   assert.equal(pending.listRailColor,color);assert.equal(pending.official,false);
-  if(review||identity==='possible_divergence')assert.equal(pending.listRail,'REG. REVISÃO');
+  const names={'comum':'Comum · cad.','branca':'Especial · cad.','azul':'Azul · cad.','amarela':'Amarela · cad.'};
+  const known=Object.hasOwn(names,declaredType);
+  const expected=known?names[declaredType]:identity==='confirmed'?'Cat. · s/ classe':'REG. REVISÃO';
+  assert.equal(pending.listRail,expected);
   const disputed=sandboxR4.regulatoryCopyUX360({verified:true,label:'Notificação B'},true,summary,identity);
-  assert.equal(disputed.listRailColor,color);assert.equal(disputed.official,false);assert.equal(disputed.listRail,'REG. REVISÃO');
+  assert.equal(disputed.listRailColor,color);assert.equal(disputed.official,false);assert.equal(disputed.rail,'REG. REVISÃO');assert.equal(disputed.listRail,expected);
   const official=sandboxR4.regulatoryCopyUX360({verified:true,label:'Notificação B'},false,summary,'confirmed');
-  assert.equal(official.listRailColor,null);assert.equal(official.listRail,'Notif. B');assert(official.official);
+  assert.equal(official.listRailColor,null);assert.equal(official.listRail,'Azul B');assert(official.official);
  }
 }
+const classEvidence={label:'Notificação A',modelCode:'notificacao_a',sourceLabel:'ANVISA — fixture',scope:'substance',railColor:'#eab308'};
+const compatible={verified:true,label:'Notificação A',sourceLabel:'ANVISA — fixture',classEvidence,referenceIdentity:'compatible',reviewReasons:['substance-scope','presentation-review']};
+const declaredCompatible=sandboxR4.regulatoryCopyUX360(compatible,false,{declaredType:'amarela',hasDocumentEvidence:true});
+assert.equal(declaredCompatible.listRail,'Amarela · cad.');assert.equal(declaredCompatible.official,false);assert.equal(declaredCompatible.catalogClass.modelCode,'notificacao_a');
+const classCompatible=sandboxR4.regulatoryCopyUX360(compatible,false,{hasDocumentEvidence:false});
+assert.equal(classCompatible.listRail,'Amarela · cat.');assert.equal(classCompatible.official,false);assert.equal(classCompatible.rail,'REG. REVISÃO');
+const divergent=sandboxR4.regulatoryCopyUX360({...compatible,referenceIdentity:'possible_divergence'},false,{});
+assert.equal(divergent.listRail,'REG. REVISÃO');assert.equal(divergent.catalogClass,undefined);
 assert.equal(guardianConflict.listRailColor,null,'confirmed authority retains canonical official pigment; conflict remains visible');
 assert.equal(sandboxR4.regulatoryCopyUX360({verified:true,label:'Receita comum'},false,{declaredType:'azul',hasRegulatoryConflict:true},'confirmed').listRailColor,'#94a3b8','ordinary prescription remains gray even when a declared conflict exists');
 assert(list.includes('regulatoryCopy.listRailColor ?? regulatorySurface.rail'),'runtime ListCard consumes the color projection');
