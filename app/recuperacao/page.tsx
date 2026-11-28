@@ -103,7 +103,7 @@ export default function RecoveryCenterPage() {
 
   const syncBusy = syncing || isProcessing || syncRuntime.phase === "pulling" || syncRuntime.phase === "background" || syncRuntime.phase === "pushing";
   const runRecoverySync = useCallback(async () => {
-    if (!user || syncBusy || !isOnline) return;
+    if (!user || syncBusy || !isOnline) return false;
     setSyncing(true);
     setResult(null);
     try {
@@ -132,12 +132,14 @@ export default function RecoveryCenterPage() {
       } else {
         setResult("Dados conferidos com a nuvem e fila de envio processada.");
       }
+      return operation.phase === "synced" && !operation.error && failedPullTables.length === 0 && pushed.remaining === 0 && pushed.permanentlyFailed === 0;
     } catch (error) {
       setResult(
         error instanceof Error
           ? `Não foi possível concluir: ${error.message}`
           : "Não foi possível concluir a recuperação."
       );
+      return false;
     } finally {
       setDiagnostics(getPullDiagnostics());
       setSyncing(false);
@@ -158,7 +160,7 @@ export default function RecoveryCenterPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void px-4 pb-32 pt-6 text-ink-primary">
-        {user?.id && <Macro02PreparationR6 key={`prepare:${user.id}`} uid={user.id} />}
+        {user?.id && <Macro02PreparationR6 key={`prepare:${user.id}`} uid={user.id} synchronize={runRecoverySync} syncBusy={syncBusy} />}
         {user?.id && <Macro02ActiveDeviceVerificationR5 key={user.id} uid={user.id} />}
         <header className="mx-auto flex max-w-2xl items-start gap-3">
           <button

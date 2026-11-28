@@ -3,6 +3,7 @@ import {supabase} from '@/lib/supabase/client';
 import {CUTOVER_TABLES} from '@/lib/dose-premium/cutover-recovery';
 import {captureMacro02LocalCutover} from '@/lib/dose-premium/cutover-local-snapshot';
 import {exactMacro02LocalIdentity,readMacro02ExactRecoveryImage,exportMacro02ExactRecoveryImage} from '@/lib/dose-premium/cutover-storage-codec';
+import {retryMacro02ReadOnly} from '@/lib/dose-premium/recovery-export-diagnostic';
 import {recoverMacro02Operational,type RecoveryHost} from '@/lib/dose-premium/cutover-operational-recovery';
 
 const tables=()=>[...CUTOVER_TABLES,'syncQueue'].map(t=>db.table(t));
@@ -33,7 +34,10 @@ async function withAuthenticatedRecoverySession<T>(uid:string,fn:(host:RecoveryH
 /** Private exact capture; caller decides how to store the bytes locally.
  * Do not send the contents to any remote logging or diagnostics endpoint. */
 export async function exportAuthenticatedMacro02RecoveryImage(uid:string){
- return withAuthenticatedRecoverySession(uid,async host=>{const bytes=exportMacro02ExactRecoveryImage(await host.readLocal());host.assertSession();const digest=await host.sha256(bytes);if(await host.authenticatedAccount()!==uid)throw Error('M02_RECOVERY_ACCOUNT_CHANGED');return {bytes,sha256:digest,allowsActivation:false as const};});
+ // Retry once only on a fresh read-only, authenticated transaction; the
+ // invalidated attempt cannot supply the bytes or authorization.
+ const attempt=()=>withAuthenticatedRecoverySession(uid,async host=>{const bytes=exportMacro02ExactRecoveryImage(await host.readLocal());host.assertSession();const digest=await host.sha256(bytes);if(await host.authenticatedAccount()!==uid)throw Error('M02_RECOVERY_ACCOUNT_CHANGED');return {bytes,sha256:digest,allowsActivation:false as const};});
+ return retryMacro02ReadOnly(attempt,()=>document.visibilityState==='visible');
 }
 export async function restoreAuthenticatedMacro02RecoveryImage(input:{uid:string;epoch:string;operationId:string;backupText:string;expectedSourceSha256:string}){
  return withAuthenticatedRecoverySession(input.uid,async host=>{
