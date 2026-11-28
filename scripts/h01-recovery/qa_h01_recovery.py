@@ -222,6 +222,7 @@ def guardian_declared(p,after,evidence,key):
         rows.append(row);cases.append((name,declared,expected,color))
     try:
         p.goto(q.ORIGIN+'/saude/medicamentos');q.wait_nav(p);h.seed_fixture(p);seed_device(p)
+        expect(p.locator('[role="status"][aria-label="Abrindo o Vault"]')).to_have_count(0,timeout=20000)
         results={}
         for mode,label in [('compact','Compactos'),('comfort','Conforto')]:
             p.get_by_role('button',name=label,exact=True).click()
@@ -251,6 +252,31 @@ def guardian_declared(p,after,evidence,key):
         return results
     finally:
         rows[:]=original
+
+def guardian_declared_controlled(browser,width,authority,after,evidence,key):
+    # Classification tests are independent of medication date/clock arithmetic.
+    # Use a fresh real-clock context for both R4 and candidate; fixed time is
+    # retained for every original geometry/drawer test. No force, no timer
+    # manipulation and no reduced assertions. A real-clock splash or RPC
+    # failure blocks certification.
+    ctx=q.new_context(browser,width)
+    page=ctx.new_page()
+    errors=[]
+    page.on('pageerror',lambda e:errors.append(str(e)[:500]))
+    start=len(ENROLL_READS)
+    try:
+        q.login(page)
+        result=guardian_declared(page,after,evidence,key)
+        require(authority in ENROLL_READS[start:],'declared matrix has no actual authority RPC')
+        require(not errors,'declared real-clock page errors '+str(errors))
+        require(set(result)=={'compact','comfort'} and all(len(v)==5 for v in result.values()),'incomplete declared matrix')
+        print('H01_DECLARED_REAL_CLOCK_PASS',key,flush=True)
+        return result
+    except Exception:
+        try:page.screenshot(path=str(evidence/f'{key}-declared-real-clock-failure.png'),animations='disabled')
+        except Exception:pass
+        raise
+    finally:ctx.close()
 
 FAB_MATRIX=[('Treino', 'sky'), ('Refeição', 'emerald'), ('Medicamento', 'emerald'), ('Tratamento', 'violet'), ('Renovação', 'violet'), ('Médico', 'sky'), ('Farmácia', 'emerald'), ('Hospital', 'emerald'), ('Posto / Local', 'emerald'), ('Exame', 'cyan'), ('Consulta', 'sky'), ('Cirurgia', 'violet'), ('CID', 'violet'), ('Sintoma / Medição', 'rose'), ('Vacinação', 'teal'), ('Procedimento', 'teal'), ('Hidratação', 'cyan'), ('Lembrete', 'amber'), ('Documento / Receita', 'violet'), ('Retirada', 'emerald'), ('Alergia / Reação', 'rose'), ('Dose rápida', 'emerald')]
 def guardian_fab(p,after,evidence,key,navigate=True):
@@ -457,7 +483,7 @@ def main():
                             for kind in ('normal','ignored','review','long'):
                                 require(result['comfort']['cards'][kind]['card']['height']>result['compact']['cards'][kind]['card']['height']+4,'density not distinct '+kind)
                         scale_text(p,1);p.get_by_role('button',name='Compactos',exact=True).click();p.evaluate('window.scrollTo(0,0)');p.add_style_tag(content=':root { --vault-h01-safe-top:28px; } body { padding-top:28px!important; padding-bottom:20px!important; }');p.wait_for_timeout(150);p.evaluate('window.scrollTo(0,260)');p.wait_for_timeout(250);r=p.locator('.vault-h01-medications-header').bounding_box();require(abs(r['y']-28)<=3,'safe top overlap');p.screenshot(path=str(args.evidence/f'{key}-safe-area.png'),animations='disabled');require(not errors,'page errors '+str(errors))
-                        if width in (320,430):report['cases'][key]['guardian_declared']=guardian_declared(p,after,args.evidence,key)
+                        if width in (320,430):report['cases'][key]['guardian_declared']=guardian_declared_controlled(browser,width,authority,after,args.evidence,key)
                         if authority=='legacy':
                             diagnostics=report['cases'][key].setdefault('fab_clock_control',{})
                             report['cases'][key]['guardian_fab']=guardian_fab_controlled(p,browser,width,after,args.evidence,key,diagnostics)
