@@ -1522,7 +1522,7 @@ export default function MedicamentosListPage() {
                     {(showActiveIngredient || manufacturerH01) && <span data-vault-h01-identity-meta className={`block min-w-0 max-w-full break-words text-left font-normal text-ink-muted ${compactCards ? "text-[11px] leading-tight" : "text-xs leading-snug"}`}>
                       {showActiveIngredient && <span data-vault-r5-active-ingredient className={compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"} title={`Princípio ativo: ${activeIngredient}`} aria-hidden="true">{activeIngredient}</span>}
                       {showActiveIngredient && manufacturerH01 && ' '}
-                      {manufacturerH01 && <span data-vault-h01-manufacturer data-vault-guardian-laboratory-badge="true" data-vault-r5-context="fabricante" title={manufacturerEvidenceH01} className="font-medium text-ink-secondary"><Factory size={12} aria-hidden="true" data-vault-guardian-factory="true"/>{latestManufacturer || med.laboratorio_etiqueta}<span className="sr-only"> · {manufacturerEvidenceH01}</span></span>}
+                      {manufacturerH01 && <span data-vault-h01-manufacturer data-vault-guardian-laboratory-badge="true" data-vault-r5-context="fabricante" title={manufacturerEvidenceH01} className="font-medium text-ink-secondary" style={compactCards ? { paddingInline: 0 } : undefined}><Factory size={12} aria-hidden="true" data-vault-guardian-factory="true"/>{latestManufacturer || med.laboratorio_etiqueta}<span className="sr-only"> · {manufacturerEvidenceH01}</span></span>}
                     </span>}
                   </button>
                   </div>
