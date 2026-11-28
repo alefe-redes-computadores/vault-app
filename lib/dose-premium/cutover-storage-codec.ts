@@ -78,6 +78,59 @@ function canonicalInstant(value:unknown){
  const fraction=(match?.[1]??'').padEnd(6,'0');
  return new Date(Date.parse(value)).toISOString().replace(/\.\d{3}Z$/,'.'+fraction+'Z');
 }
+// JSONB columns verified in the live schema (metadata only). The comparison
+// projection models JSON transport omission of undefined OBJECT properties.
+// The independent typed backup and exact identity retain every original key.
+// Never apply this projection to a row, queue, restoration or server evidence.
+const localJsonbFields:Readonly<Partial<Record<CutoverTable,readonly string[]>>>={
+ a1_supply_locations:['a3_location_snapshot'],a1_treatment_phases:['regime_a4'],
+ documents:['attachments','metadata'],doseLogs:['estoque_movimento','farmaco_snapshot'],
+ medicamentos:['catalog_snapshot','contexto_clinico_m1','historico_dosagens'],
+ renovacoes:['a3_location_changes','a3_location_snapshot'],
+ retiradas:['a3_location_changes','a3_location_snapshot','reagendamentos'],
+};
+function comparisonValue(value:unknown,omitUndefinedObjectKeys:boolean,block:(kind:string)=>never,ancestors=new Set<object>()):unknown{
+ if(value===null||typeof value==='string'||typeof value==='boolean')return value;
+ if(value===undefined)return block('UNDEFINED');
+ if(typeof value==='number'){
+  if(!Number.isFinite(value))return block('NONFINITE');
+  if(Object.is(value,-0))return block('NEGATIVE_ZERO');
+  return value;
+ }
+ if(typeof value!=='object')return block('TYPE');
+ if(ancestors.has(value))return block('CYCLE');
+ if(Object.getOwnPropertySymbols(value).length)return block('SYMBOL');
+ ancestors.add(value);
+ try{
+  if(Array.isArray(value)){
+   if(Object.keys(value).length!==value.length)return block('ARRAY_SHAPE');
+   for(let i=0;i<value.length;i++)if(!Object.prototype.hasOwnProperty.call(value,i))return block('ARRAY_SHAPE');
+   // No undefined-to-null conversion in arrays, no sparse-array repair.
+   return value.map(v=>comparisonValue(v,omitUndefinedObjectKeys,block,ancestors));
+  }
+  if(!plain(value))return block('OBJECT_TYPE');
+  const entries:[string,unknown][]=[];
+  for(const k of Object.keys(value)){
+   if(omitUndefinedObjectKeys&&value[k]===undefined)continue;
+   entries.push([k,comparisonValue(value[k],omitUndefinedObjectKeys,block,ancestors)]);
+  }
+  return Object.fromEntries(entries);
+ }finally{ancestors.delete(value);}
+}
+function checkedComparisonRow(table:CutoverTable,out:Row,origin:'local'|'remote'){
+ const known=new Set([...MACRO02_R3_REMOTE_COLUMNS[table].split(','),'synced','isDefault','visual_icon_expanded']);
+ if(Object.getOwnPropertySymbols(out).length)return fail('NON_JSON_'+table.toUpperCase()+'_ROW_SYMBOL');
+ for(const field of Object.keys(out)){
+  // Only static schema names may escape this function. No dynamic keys, row
+  // identifiers, values, contents or nested metadata paths in diagnostics.
+  const safeField=known.has(field)?field.toUpperCase():'UNMAPPED';
+  const block=(kind:string):never=>fail('NON_JSON_'+table.toUpperCase()+'_'+safeField+'_'+kind);
+  const jsonb=origin==='local'&&(localJsonbFields[table]?.includes(field)??false);
+  const projected=comparisonValue(out[field],jsonb,block);
+  if(jsonb)out[field]=projected;
+ }
+ cutoverCanonical(out);return out;
+}
 function normalizeRow(table:CutoverTable,row:Row,origin:'local'|'remote'){
  if(!plain(row))return fail('ROW');
  const out={...row};const optional=new Set(nullable[table].split(',').filter(Boolean));
@@ -99,9 +152,9 @@ function normalizeRow(table:CutoverTable,row:Row,origin:'local'|'remote'){
  // with no cycle; remote true or any actual non-null value stays distinct.
  if(table==='medicamentos'&&origin==='local'&&out.macro02_stock_managed===undefined&&out.estoque_ciclo_id==null)out.macro02_stock_managed=false;
  for(const k of ['created_at','updated_at',...(instants[table]??[])])if(Object.prototype.hasOwnProperty.call(out,k)&&out[k]!==undefined)out[k]=canonicalInstant(out[k]);
- // Existing local-only undefined values must not silently disappear; only
- // the explicit nullable top-level columns above have representation proof.
- cutoverCanonical(out);return out;
+ // The raw row is untouched; only schema-proven JSONB comparison may omit
+ // undefined object properties. All other values retain strict validation.
+ return checkedComparisonRow(table,out,origin);
 }
 export function normalizeMacro02LocalForComparison(raw:CutoverLocal):CutoverLocal{
  if(!plain(raw)||Object.keys(raw).sort().join(',')!=='account_id,external_dependency_queue_count,omitted_unowned_count,queue,rows,unscoped_rows_count'||!plain(raw.rows)||Object.keys(raw.rows).length!==CUTOVER_TABLES.length)return fail('LOCAL_SHAPE');
