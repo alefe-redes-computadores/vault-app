@@ -1,0 +1,123 @@
+name: VAULT Macro02 integrated browser diagnostic evidence - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-retomada-20261128']
+    paths: ['.github/workflows/macro02-retomada-browser-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  integrated-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4173
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-not-a-production-key
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPACITOR_BUILD: '0'
+      VAULT_WEB_STATIC_BUILD: '1'
+      NEXT_PUBLIC_VAULT_NATIVE_RUNTIME: web
+      TZ: America/Sao_Paulo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recover previously certified browser harness; no production data
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^{tree})" = 18575a1b5da20acb21a11e531aa6403793b72922
+          ui="$RUNNER_TEMP/macro02-ui"
+          mkdir -p "$ui"
+          for f in bootstrap.cjs browser.cjs profile-contract.cjs queue-contract.cjs run.sh; do
+            git show da1bc6d149dc11884f4c303a2877a5f585ccae64:.github/macro02-ui/"$f" > "$ui/$f"
+          done
+          test "$(git hash-object "$ui/bootstrap.cjs")" = 83ff3c618167f73690aa3ea251d6896108c17aac
+          test "$(git hash-object "$ui/browser.cjs")" = 460cd7e8bfb1781b608ce68f7479be00d8b640c5
+          test "$(git hash-object "$ui/run.sh")" = c99b6611679ef4d175b0723a5e3bfb92c07a9550
+          python3 - "$ui/browser.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          s=p.read_text()
+          old="await page.getByText('Aparelho conferido com a base remota.',{exact:false}).waitFor({timeout:120000});await attach();assert.equal((await local()).device.epoch,ep);"
+          new="await attach();await wait(async()=>{const x=await local();return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI');assert.equal((await local()).device.epoch,ep);await navigate('/hoje');await center().waitFor({timeout:120000});assert.equal(await page.getByRole('heading',{name:'Conferência de autoridade clínica'}).count(),0);"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          python3 - "$ui/bootstrap.cjs" "$ui/browser.cjs" <<'PY'
+          import sys
+          from pathlib import Path
+          b=Path(sys.argv[1]);s=b.read_text()
+          old="import {getLocalTodayISO} from '@/lib/health-utils';"
+          assert s.count(old)==1
+          s=s.replace(old,old+"""
+          import {verifyMacro02ActiveDeviceR5} from '@/lib/sync/macro02-device-r5';
+          import {captureMacro02LocalCutover} from '@/lib/dose-premium/cutover-local-snapshot';
+          import {exactMacro02LocalIdentity,normalizeMacro02LocalForComparison,normalizeMacro02RemoteForComparison,MACRO02_R3_REMOTE_COLUMNS} from '@/lib/dose-premium/cutover-storage-codec';
+          import {previewMacro02UnfencedComparison} from '@/lib/dose-premium/cutover-projection-lab';
+          """.replace('          ',''))
+          marker=' state:async()=>'
+          assert s.count(marker)==1
+          s=s.replace(marker,""" diagnosis:async(raw)=>{try{const tables=[...CUTOVER_TABLES,'syncQueue'].map(t=>db.table(t));const local=await captureMacro02LocalCutover({transaction:run=>db.transaction('r',tables,run),readTable:t=>db.table(t).toArray(),assertSession(){},validateLocal:exactMacro02LocalIdentity,requireAllQueueDependenciesClear:true},uid);const normalized=normalizeMacro02RemoteForComparison(raw);const fields=Object.fromEntries(CUTOVER_TABLES.map(t=>[t,[...MACRO02_R3_REMOTE_COLUMNS[t].split(','),'synced','isDefault','visual_icon_expanded']]));return previewMacro02UnfencedComparison(normalized.rows,normalizeMacro02LocalForComparison(local),fields);}catch(e){return {error:String(e.message)};}},
+          directVerifyDiagnostic:async()=>{try{await verifyMacro02ActiveDeviceR5(uid);return 'DIRECT_VERIFY_SUCCESS_NOT_GATE';}catch(e){return String(e.message);}},
+          """.replace('          ','')+marker)
+          b.write_text(s)
+          p=Path(sys.argv[2]);s=p.read_text()
+          old="await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click();await attach();"
+          new="await page.getByRole('button',{name:'Conferir aparelho',exact:true}).click();await attach();"
+          assert s.count(old)==1
+          old2="await wait(async()=>{const x=await local();return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI');"
+          new2="""try{await wait(async()=>{const x=await local();if(await page.getByText('Não foi possível comprovar a correspondência integral.',{exact:false}).count())throw Error('UI verification rejected');return x.device?.epoch===ep&&await page.getByRole('button',{name:'Conferir aparelho',exact:true}).count()===0},'persisted verified device and completed verification UI',30000);}catch(e){console.log('DEVICE_DIAG_SNAPSHOT_RPC_COUNT='+calls.filter(c=>c.name==='vault_macro02_active_snapshot_r5').length);console.log('DEVICE_DIAG_COMPARISON='+JSON.stringify(await page.evaluate(raw=>window.__vaultLab.diagnosis(raw),snapshot())));console.log('DEVICE_DIAG_DIRECT='+await page.evaluate(()=>window.__vaultLab.directVerifyDiagnostic()));throw e;}"""
+          assert s.count(old2)==1
+          p.write_text(s.replace(old2,new2))
+          PY
+          python3 - "$ui/run.sh" <<'PY'
+          import sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          s = p.read_text()
+          a = 'psql_admin < "$p/active-fixture-r7.sql"'
+          b = "psql_lab <<'UI_SEED_SQL'"
+          assert s.count(a) == 1 and s.count(b) == 1
+          s = s.replace(a, a + '\npsql_lab < "$p/cas-r04-m03-fixture.sql"\npsql_lab < supabase/migrations/20261126161012_vault_stb11_visual_cas_r03.sql')
+          s = s.replace(b, 'psql_lab < supabase/migrations/20261127152804_vault_stb11_visual_cas_r04.sql\n' + b)
+          p.write_text(s)
+          PY
+          {
+            printf 'UI_GATE_DIR=%s\n' "$ui"
+            printf 'ESBUILD_MODULE=%s\n' "$ui/tools/node_modules/esbuild"
+            printf 'PLAYWRIGHT_MODULE=%s\n' "$ui/tools/node_modules/playwright"
+            printf 'BOOTSTRAP_BUNDLE=%s\n' "$ui/bootstrap.js"
+          } >> "$GITHUB_ENV"
+          test -z "$(git status --porcelain)"
+      - name: Web export and inherited contracts
+        run: |
+          npm ci --no-audit --no-fund
+          node "$UI_GATE_DIR/queue-contract.cjs" "$PWD"
+          node "$UI_GATE_DIR/profile-contract.cjs" "$PWD"
+          node scripts/ci-build-web-resilient.cjs 2>&1 | tee "$UI_GATE_DIR/build.log"
+          node scripts/verify-static-release-stability.cjs web | tee "$UI_GATE_DIR/static.log"
+      - name: Chromium, actual IndexedDB, PG17 and receipt lifecycle
+        run: |
+          npm install --prefix "$UI_GATE_DIR/tools" --no-audit --no-fund --save-exact playwright@1.56.1 esbuild@0.25.12
+          "$UI_GATE_DIR/tools/node_modules/.bin/playwright" install --with-deps chromium
+          node "$UI_GATE_DIR/bootstrap.cjs"
+          bash "$UI_GATE_DIR/run.sh" 2>&1 | tee "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_OFFLINE_RELOAD_AND_HISTORY_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_COLD_OFFLINE_PROFILE_AND_OUTBOX_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_BACKUP_ACTIVE_RECEIPT_READ_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq UI_RECONNECT_EXACT_RETRY_NO_DUPLICATE_PASS "$UI_GATE_DIR/browser.log"
+          grep -Fxq MACRO02_ACTIVE_PREMIUM_BROWSER_PG17_GATE_PASS "$UI_GATE_DIR/browser.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macro02-integrated-browser
+          path: |
+            ${{ runner.temp }}/macro02-ui/*.log
+            ${{ runner.temp }}/macro02-ui/*.png
+            ${{ runner.temp }}/macro02-ui/failure.html
+          if-no-files-found: warn
