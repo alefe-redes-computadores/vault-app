@@ -1,0 +1,80 @@
+name: VAULT Macro02 complementary certification - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-complementary-18575a1b5da2']
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [recovery, active]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          fetch-depth: 0
+          persist-credentials: false
+      - run: |
+          test "$(git rev-parse HEAD)" = e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          test "$(git rev-parse HEAD^{tree})" = 18575a1b5da20acb21a11e531aa6403793b72922
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: PostgreSQL 17.6 disposable fixture
+        run: |
+          if [ "${{ matrix.suite }}" = recovery ]; then
+            bash scripts/macro02-activation-lab/run-recovery-r3-pg.sh
+          else
+            bash scripts/macro02-activation-lab/run-active-r7-pg.sh
+          fi
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          fetch-depth: 0
+          persist-credentials: false
+      - run: |
+          test "$(git rev-parse HEAD)" = e6ef2cc5506963b5dc6fe9fad40790e79bf3b101
+          test "$(git rev-parse HEAD^{tree})" = 18575a1b5da20acb21a11e531aa6403793b72922
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/m02-browser" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/m02-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Real Chromium IndexedDB and WebCrypto offline persistence
+        run: |
+          node <<'JS'
+          const fs=require('fs'),ts=require('typescript'),assert=require('node:assert/strict'),path=require('path');
+          const {chromium}=require(path.join(process.env.RUNNER_TEMP,'m02-browser/node_modules/playwright'));
+          const compiled=ts.transpileModule(fs.readFileSync('lib/dose-premium/private-preparation-store.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try{
+              const ctx=await browser.newContext();
+              await ctx.route('http://127.0.0.1:8765/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Macro02 isolated fixture</title>'}));
+              const p=await ctx.newPage();
+              await p.goto('http://127.0.0.1:8765/');
+              async function install(){
+                await p.addScriptTag({path:require.resolve('dexie/dist/dexie.js')});
+                await p.addScriptTag({content:'(()=>{const module={exports:{}},exports=module.exports,require=(n)=>{if(n==="dexie")return window.Dexie;throw Error(n)};'+compiled+';window.createPrivatePreparationStore=module.exports.createPrivatePreparationStore;})()'});
+              }
+              await install();
+              const v={account_id:'synthetic-owner',operation_id:'synthetic-operation',sha256:'a'.repeat(64),epoch:null,completed:false,bytes:'synthetic legacy fixture only'};
+              const a=await p.evaluate(async v=>{const s=window.createPrivatePreparationStore();await s.add(v);let duplicate=false;try{await s.add({...v,operation_id:'other'})}catch{duplicate=true}const raw=await new Promise((resolve,reject)=>{const q=indexedDB.open('vault-macro02-private-preparation-v1');q.onerror=()=>reject(q.error);q.onsuccess=()=>{const db=q.result,r=db.transaction('copies').objectStore('copies').get(v.account_id);r.onsuccess=()=>{const x=r.result;db.close();resolve({keyExtractable:x.key.extractable,plaintextPresent:JSON.stringify(x).includes(v.bytes),cipherBytes:x.cipher.byteLength})};r.onerror=()=>reject(r.error)}});s.close();return {duplicate,raw}},v);
+              assert(a.duplicate);assert.equal(a.raw.keyExtractable,false);assert.equal(a.raw.plaintextPresent,false);assert(a.raw.cipherBytes>0);
+              await p.reload();await install();await ctx.setOffline(true);
+              const b=await p.evaluate(async v=>{const s=window.createPrivatePreparationStore();const copy=await s.read(v.account_id),foreign=await s.read('foreign');await s.bind(v.account_id,v.operation_id,v.sha256,'epoch-a');let wrong=false;try{await s.bind(v.account_id,v.operation_id,v.sha256,'epoch-b')}catch{wrong=true}await s.complete(v.account_id,v.operation_id,v.sha256,'epoch-a');s.close();const reopened=window.createPrivatePreparationStore();const final=await reopened.read(v.account_id);reopened.close();return {copy,foreign,wrong,final,offline:!navigator.onLine}},v);
+              assert.deepEqual(b.copy,v);assert.equal(b.foreign,null);assert(b.wrong);assert(b.offline);assert.deepEqual(b.final,{...v,epoch:'epoch-a',completed:true});console.log('MACRO02_REAL_CHROMIUM_INDEXEDDB_WEBCRYPTO_OFFLINE_PASS');
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
