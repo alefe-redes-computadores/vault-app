@@ -1,0 +1,38 @@
+name: VAULT Macro02 cause root and preflight - LAB ONLY
+on:
+  push:
+    branches: ['vault-lab/macro02-causa-raiz-ed61c405ef03']
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact source and preserved gates
+        run: |
+          test "$(git rev-parse HEAD^)" = "ed61c405ef03f42bef80db9b08e1496c3cdc4e1d"
+          git checkout --detach ed61c405ef03f42bef80db9b08e1496c3cdc4e1d
+          test "$(git rev-parse HEAD^{tree})" = "b1c0b48de1b8d529ccd85b52a6bcfa7ac1b91ada"
+          git merge-base --is-ancestor 49c3aabde83bf0b2480a84bb5e967922e41975f2 HEAD
+          git diff --check 49c3aabde83bf0b2480a84bb5e967922e41975f2 HEAD
+          git diff --exit-code 49c3aabde83bf0b2480a84bb5e967922e41975f2 HEAD -- scripts/test-v63-release-gate.mjs scripts/test-vault-stability-360.cjs scripts/macro02-auto-preparation-contracts.cjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node scripts/test-vault-macro02-cause-root.cjs
+      - run: node scripts/test-vault-macro02-operational-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-recovery.cjs
+      - run: node scripts/test-vault-macro02-cutover-projection.cjs
+      - run: node scripts/macro02-auto-preparation-contracts.cjs
+      - run: node node_modules/typescript/bin/tsc --noEmit
+      - run: node scripts/test-v63-release-gate.mjs
+      - name: Android Web export (synthetic configuration)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-lab-only
+        run: npm run build:export
