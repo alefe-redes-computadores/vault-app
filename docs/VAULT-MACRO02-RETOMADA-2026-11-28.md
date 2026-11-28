@@ -44,3 +44,9 @@ Concluir V63/V70/TS/export Android, novo teste browser integrado e qualquer regr
 - Diagnóstico integrado 46176102589 (job 141075028146) conserva as exigências da UI; em caso de falha coleta comparação de tabelas/categorias e erro técnico em uma tentativa separada que NÃO satisfaz o gate.
 - Workflow PG17 previamente aprovado teve trigger restringido para não repetir por commits de documentação/harness. Código de produto inalterado, sem publicação ou migração produtiva.
 - Ambos os testes novos estavam em execução na última consulta. Verificar os jobs/artefatos exatos, sem considerar status em andamento como sucesso. Se houver falha de produto, corrigir em branch protegida, fixar nova árvore e reexecutar os gates afetados.
+
+
+### Diagnóstico da conferência de aparelho
+- Run 46176102589 / job 141075028146: DEVICE_DIAG_SNAPSHOT_RPC_COUNT=0; comparação posterior sem divergência (equal=3, localOnly=remoteOnly=divergent=missingDependencies=0); DIRECT_VERIFY_SUCCESS_NOT_GATE. A tentativa de UI continua reprovada. Causa exata da rejeição original não foi registrada pelo componente.
+- Hipótese concreta de interferência do harness: original anexa bundle com cliente Supabase independente DEPOIS da conferência; revalidação anexava DURANTE a conferência, podendo invalidar os listeners de autenticação do app. Não confundir hipótese com causa comprovada. Teste 46176018970 também falhou no primeiro aparelho com essa instrumentação.
+- Commit laboratorial 62d581dd7920caea40caef00a916544022531687; run 46176561974 / job 141076496600 remove a anexação durante a conferência nos dois cenários, exige desaparecimento do cartão, epoch e hashes persistidos, duas leituras de snapshot e Central real. Executa ambos os cenários no mesmo build, com bases descartáveis distintas e coleta independente dos códigos de saída. A tentativa diagnóstica jamais satisfaz o gate. Nenhuma alteração de produto até aqui.
